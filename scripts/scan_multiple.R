@@ -83,7 +83,6 @@ for (i in seq_along(scan_list)) {
 }
 
 ### Keep rows with only 15-minute intervals ###
-
 # Loop through each data frame in the list
 for (i in seq_along(scan_list)) {
   # Access the current data frame
@@ -97,11 +96,15 @@ for (i in seq_along(scan_list)) {
 }
 
 #### Clean out by specifics of each data set ####
-#Look at your data and decide if you need to do anything else with it, in this case I am going to remove the first few rows of data 
+#Look at your data and decide if you need to do anything else with it
 scan_list[1]
+#in this case I am going to remove the first few rows of data to clean it more since they are junk
 
-N <- 5
-scan_list[1] <- scan_list[1][[-(1:N), , drop = FALSE]]
+scan_list[[1]] <- scan_list[[1]][-c(1:5), ]
+
+#Second data frame:
+scan_list[2]
+#this one looks ok, I won't do anything to it
 
 ##############
 ## Plotting ##
@@ -203,7 +206,7 @@ for (i in seq_along(scan_list)) {
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
     theme(axis.text.x = element_text(angle=45)) +
     ylab("Measured")
-  ggsave(paste0("scan_figs/Temp_", scan_csvs$name[i], ".png"))
+  ggsave(paste0("scan_figs/Measured_", scan_csvs$name[i], ".png"))
 }
 
 print(p)
@@ -223,10 +226,10 @@ print(p)
 siteNo <- "08315480"
 pCode <- "00060" #this code is for discharge data
 #check first date entry
-head(scan_list[[1]][["dateTime"]])
+head(scan_list[[1]][["dateTime"]]) # check start date for Blossom (USF20)
 start.date <- "2024-05-08"
 #check last date entry
-tail(scan_list[[1]][["dateTime"]])
+tail(scan_list[[1]][["dateTime"]]) # check end date for Blossom (USF20)
 end.date <- "2024-05-23"
 
 # Retrieve data
@@ -246,32 +249,112 @@ ts
 
 #### Plot with s::can data ####
 ### For only one df ###
-# Convert data frames to xts objects
+# Convert data frames to xts objects to line up dateTimes
 scan_ts <- xts(scan_list[[1]], order.by = scan_list[[1]]$dateTime)
 santafeUSGS_ts <- xts(santafeUSGS, order.by = santafeUSGS$dateTime)
 
 # Merge the xts objects
 combined_xts <- merge(scan_ts, santafeUSGS_ts, join = "outer")
+# Convert xts object to data.frame... do I really have to do this?
+combined_df <- data.frame(dateTime = index(combined_xts), coredata(combined_xts))
 
-p <- ggplot(data = combined_xts) + 
-  geom_line(aes(x=dateTime, y=Temp, color='Temperature')) +
-  geom_line(aes(x=dateTime, y=DOC, color='DOC')) +
-  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
-  theme(axis.text.x = element_text(angle=45))
+# Verify dateTime is in POSIXct
+class(combined_df$dateTime)
+
+### Plot ###
+p <- ggplot(data = combined_df) + 
+  geom_point(aes(x=dateTime, y=Temp, color='Temperature')) +
+  geom_point(aes(x=dateTime, y=TSS, color='TSS')) +
+  geom_point(aes(x=dateTime, y=TOC, color='TOC')) +
+  geom_point(aes(x=dateTime, y=NO3N, color='NO3-N')) +
+  geom_point(aes(x=dateTime, y=NO3, color='NO3')) +
+  geom_point(aes(x=dateTime, y=DOC, color='DOC')) +
+  geom_point(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
+  scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
+  scale_y_discrete(breaks = seq(0, 20, by = 5)) +
+  theme(axis.text.x = element_text(angle=45)) +
+  ylab("Measured")
   
 print(p)
 
-# Merge the data frames by the 'dateTime' column
-# merge time series 
+#### Now merge all your scan data with USGS data ####
+# Create empty list to store data frames
+scan_ts <- list()
+# Convert data frames to xts objects to line up dateTimes
+for (i in seq_along(scan_list)) {
+  # Access the current data frame (df)
+  df <- scan_list[[i]]
+  # Convert df into time series (ts)
+  ts <- xts(df, order.by = df$dateTime)
+  
+  scan_ts[[scan_csvs$name[i]]] <- ts
+
+}
+# Convert USGS data to xts objects to line up dateTimes with scan data
+santafeUSGS_ts <- xts(santafeUSGS, order.by = santafeUSGS$dateTime)
+
+# Merge the xts objects
+for (i in seq_along(scan_ts)) {
+  # Access the time series list
+  ts <- scan_ts[[i]]
+  # Merge
+  xts <- merge(ts, santafeUSGS_ts, join = "outer")
+  
+  scan_ts[[scan_csvs$name[i]]] <- xts
+  
+}
+
+# Convert xts object to data.frame... do I really have to do this?
+# Create empty list to store data frames
+scan_USGS <- list()
+for (i in seq_along(scan_ts)) {
+  # Access the time series list
+  ts <- scan_ts[[i]]
+  # Go back to data frames
+  combined_df <- data.frame(dateTime = index(xts), coredata(xts))
+  
+  scan_USGS[[scan_csvs$name[i]]] <- combined_df
+  
+}
+
+### Plot ###
+for (i in seq_along(scan_USGS)) {
+  # Access list
+  df <- scan_USGS[[i]]
+  # Plot
+  p <- ggplot(data = df) + 
+    geom_point(aes(x=dateTime, y=Temp, color='Temperature')) +
+    geom_point(aes(x=dateTime, y=TSS, color='TSS')) +
+    geom_point(aes(x=dateTime, y=TOC, color='TOC')) +
+    geom_point(aes(x=dateTime, y=NO3N, color='NO3-N')) +
+    geom_point(aes(x=dateTime, y=NO3, color='NO3')) +
+    geom_point(aes(x=dateTime, y=DOC, color='DOC')) +
+    geom_point(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
+    scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
+    scale_y_discrete(breaks = seq(0, 20, by = 5)) +
+    theme(axis.text.x = element_text(angle=45)) +
+    ylab("Measured")
+  ggsave(paste0("scan_figs/scan_USGS_", scan_csvs$name[i], ".png"))
+
+}
+
 for (i in seq_along(scan_list)) {
   # Access the current data frame
   df <- scan_list[[i]]
-  merged_ts <- ts(c(scan_list[i], santafeUSGS),                
-                start = start(scan_list[i]), 
-                frequency = frequency(scan_list[i])) 
-  # Update the data frame in the list
-  scan_list[[i]] <- merged_ts
+  # Plot
+  p <- ggplot(data = df) + 
+    geom_line(aes(x=dateTime, y=Temp, color='Temperature')) +
+    geom_line(aes(x=dateTime, y=TSS, color='TSS')) +
+    geom_line(aes(x=dateTime, y=TOC, color='TOC')) +
+    geom_line(aes(x=dateTime, y=NO3N, color='NO3-N')) +
+    geom_line(aes(x=dateTime, y=NO3, color='NO3')) +
+    geom_line(aes(x=dateTime, y=DOC, color='DOC')) +
+    scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
+    theme(axis.text.x = element_text(angle=45)) +
+    ylab("Measured")
+  ggsave(paste0("scan_figs/Measured_", scan_csvs$name[i], ".png"))
 }
+
 
 
 # Plot
