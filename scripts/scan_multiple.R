@@ -261,7 +261,17 @@ combined_df <- data.frame(dateTime = index(combined_xts), coredata(combined_xts)
 # Verify dateTime is in POSIXct
 class(combined_df$dateTime)
 
+# Convert y-values to numeric
+combined_df$Temp <- as.numeric(as.character(combined_df$Temp))
+combined_df$TSS <- as.numeric(as.character(combined_df$TSS))
+combined_df$TOC <- as.numeric(as.character(combined_df$TOC))
+combined_df$NO3N <- as.numeric(as.character(combined_df$NO3N))
+combined_df$NO3 <- as.numeric(as.character(combined_df$NO3))
+combined_df$DOC <- as.numeric(as.character(combined_df$DOC))
+combined_df$Flow_Inst <- as.numeric(as.character(combined_df$Flow_Inst))
+
 ### Plot ###
+
 p <- ggplot(data = combined_df) + 
   geom_point(aes(x=dateTime, y=Temp, color='Temperature')) +
   geom_point(aes(x=dateTime, y=TSS, color='TSS')) +
@@ -271,13 +281,13 @@ p <- ggplot(data = combined_df) +
   geom_point(aes(x=dateTime, y=DOC, color='DOC')) +
   geom_point(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
   scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
-  scale_y_discrete(breaks = seq(0, 20, by = 5)) +
+  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
   theme(axis.text.x = element_text(angle=45)) +
   ylab("Measured")
   
 print(p)
 
-#### Now merge all your scan data with USGS data ####
+ #### Now merge all your scan data with USGS data ####
 # Create empty list to store data frames
 scan_ts <- list()
 # Convert data frames to xts objects to line up dateTimes
@@ -309,7 +319,7 @@ for (i in seq_along(scan_ts)) {
 scan_USGS <- list()
 for (i in seq_along(scan_ts)) {
   # Access the time series list
-  ts <- scan_ts[[i]]
+  xts <- scan_ts[[i]]
   # Go back to data frames
   combined_df <- data.frame(dateTime = index(xts), coredata(xts))
   
@@ -321,6 +331,16 @@ for (i in seq_along(scan_ts)) {
 for (i in seq_along(scan_USGS)) {
   # Access list
   df <- scan_USGS[[i]]
+  
+  # Convert y-values to numeric
+  df$Temp <- as.numeric(as.character(df$Temp))
+  df$TSS <- as.numeric(as.character(df$TSS))
+  df$TOC <- as.numeric(as.character(df$TOC))
+  df$NO3N <- as.numeric(as.character(df$NO3N))
+  df$NO3 <- as.numeric(as.character(df$NO3))
+  df$DOC <- as.numeric(as.character(df$DOC))
+  df$Flow_Inst <- as.numeric(as.character(df$Flow_Inst))
+  
   # Plot
   p <- ggplot(data = df) + 
     geom_point(aes(x=dateTime, y=Temp, color='Temperature')) +
@@ -331,49 +351,11 @@ for (i in seq_along(scan_USGS)) {
     geom_point(aes(x=dateTime, y=DOC, color='DOC')) +
     geom_point(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
-    scale_y_discrete(breaks = seq(0, 20, by = 5)) +
+    scale_y_continuous(breaks = seq(0, 20, by = 5)) +
     theme(axis.text.x = element_text(angle=45)) +
     ylab("Measured")
+  #save plots
   ggsave(paste0("scan_figs/scan_USGS_", scan_csvs$name[i], ".png"))
-
-}
-
-for (i in seq_along(scan_list)) {
-  # Access the current data frame
-  df <- scan_list[[i]]
-  # Plot
-  p <- ggplot(data = df) + 
-    geom_line(aes(x=dateTime, y=Temp, color='Temperature')) +
-    geom_line(aes(x=dateTime, y=TSS, color='TSS')) +
-    geom_line(aes(x=dateTime, y=TOC, color='TOC')) +
-    geom_line(aes(x=dateTime, y=NO3N, color='NO3-N')) +
-    geom_line(aes(x=dateTime, y=NO3, color='NO3')) +
-    geom_line(aes(x=dateTime, y=DOC, color='DOC')) +
-    scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
-    theme(axis.text.x = element_text(angle=45)) +
-    ylab("Measured")
-  ggsave(paste0("scan_figs/Measured_", scan_csvs$name[i], ".png"))
-}
-
-
-
-# Plot
-for (i in seq_along(scan_list)) {
-  # Access the current data frame
-  df <- scan_list[[i]]
-  # Plot
-  p <- ggplot(data = df) + 
-    geom_line(aes(x=dateTime, y=df$Temp, color='Temperature')) +
-    geom_line(aes(x=dateTime, y=df$TSS, color='TSS')) +
-    geom_line(aes(x=dateTime, y=df$TOC, color='TOC')) +
-    geom_line(aes(x=dateTime, y=df$NO3N, color='NO3-N')) +
-    geom_line(aes(x=dateTime, y=df$NO3, color='NO3')) +
-    geom_line(aes(x=dateTime, y=df$DOC, color='DOC')) +
-    geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow'))
-    scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
-    theme(axis.text.x = element_text(angle=45)) +
-    ylab("Measured")
-    ggsave(paste0("scan_figs/Measured_", scan_csvs$name[i], ".png"))
 
 }
 
