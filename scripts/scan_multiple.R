@@ -349,7 +349,7 @@ for (i in seq_along(scan_USGS)) {
     geom_point(aes(x=dateTime, y=NO3N, color='NO3-N')) +
     geom_point(aes(x=dateTime, y=NO3, color='NO3')) +
     geom_point(aes(x=dateTime, y=DOC, color='DOC')) +
-    geom_point(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
+    geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
     scale_y_continuous(breaks = seq(0, 20, by = 5)) +
     theme(axis.text.x = element_text(angle=45)) +
