@@ -120,7 +120,7 @@ for (i in seq_along(scan_list)) {
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
     ggtitle(paste(scan_csvs$name[i])) +
     theme(axis.text.x = element_text(angle=45))
-  ggsave(paste0("scan_figs/DOC_", scan_csvs$name[i], ".png"))
+  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_DOC.png"))
 }
 
 ### NO3 ###
@@ -133,7 +133,7 @@ for (i in seq_along(scan_list)) {
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
     ggtitle(paste(scan_csvs$name[i])) +
     theme(axis.text.x = element_text(angle=45))
-  ggsave(paste0("scan_figs/NO3_", scan_csvs$name[i], ".png"))
+  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_NO3.png"))
 }
 
 ### NO3N ###
@@ -146,7 +146,8 @@ for (i in seq_along(scan_list)) {
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
     ggtitle(paste(scan_csvs$name[i])) +
     theme(axis.text.x = element_text(angle=45))
-  ggsave(paste0("scan_figs/NO3N_", scan_csvs$name[i], ".png"))
+  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_NO3N.png"))
+  
 }
 
 ### TOC ###
@@ -159,7 +160,8 @@ for (i in seq_along(scan_list)) {
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
     ggtitle(paste(scan_csvs$name[i])) +
     theme(axis.text.x = element_text(angle=45))
-  ggsave(paste0("scan_figs/TOC_", scan_csvs$name[i], ".png"))
+  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_TOC.png"))
+  
 }
 
 ### TSS ###
@@ -172,7 +174,8 @@ for (i in seq_along(scan_list)) {
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
     ggtitle(paste(scan_csvs$name[i])) +
     theme(axis.text.x = element_text(angle=45))
-  ggsave(paste0("scan_figs/TSS_", scan_csvs$name[i], ".png"))
+  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_TSS.png"))
+  
 }
 
 ### Temp ###
@@ -185,7 +188,7 @@ for (i in seq_along(scan_list)) {
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
     ggtitle(paste(scan_csvs$name[i])) +
     theme(axis.text.x = element_text(angle=45))
-  ggsave(paste0("scan_figs/Temp_", scan_csvs$name[i], ".png"))
+  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_Temp.png"))
 }
 
 #######################
@@ -193,6 +196,7 @@ for (i in seq_along(scan_list)) {
 #######################
 
 for (i in seq_along(scan_list)) {
+  
   # Access the current data frame
   df <- scan_list[[i]]
   # Plot
@@ -206,7 +210,7 @@ for (i in seq_along(scan_list)) {
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
     theme(axis.text.x = element_text(angle=45)) +
     ylab("Measured")
-  ggsave(paste0("scan_figs/Measured_", scan_csvs$name[i], ".png"))
+  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_Measured.png"))
 }
 
 print(p)
@@ -273,13 +277,13 @@ combined_df$Flow_Inst <- as.numeric(as.character(combined_df$Flow_Inst))
 ### Plot ###
 
 p <- ggplot(data = combined_df) + 
-  geom_point(aes(x=dateTime, y=Temp, color='Temperature')) +
-  geom_point(aes(x=dateTime, y=TSS, color='TSS')) +
-  geom_point(aes(x=dateTime, y=TOC, color='TOC')) +
-  geom_point(aes(x=dateTime, y=NO3N, color='NO3-N')) +
-  geom_point(aes(x=dateTime, y=NO3, color='NO3')) +
-  geom_point(aes(x=dateTime, y=DOC, color='DOC')) +
-  geom_point(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
+  geom_line(aes(x=dateTime, y=Temp, color='Temperature')) +
+  geom_line(aes(x=dateTime, y=TSS, color='TSS')) +
+  geom_line(aes(x=dateTime, y=TOC, color='TOC')) +
+  geom_line(aes(x=dateTime, y=NO3N, color='NO3-N')) +
+  geom_line(aes(x=dateTime, y=NO3, color='NO3')) +
+  geom_line(aes(x=dateTime, y=DOC, color='DOC')) +
+  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
   scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
   scale_y_continuous(breaks = seq(0, 20, by = 5)) +
   theme(axis.text.x = element_text(angle=45)) +
@@ -355,9 +359,28 @@ for (i in seq_along(scan_USGS)) {
     theme(axis.text.x = element_text(angle=45)) +
     ylab("Measured")
   #save plots
-  ggsave(paste0("scan_figs/scan_USGS_", scan_csvs$name[i], ".png"))
+  ggsave(paste0("scan_figs/", scan_csvs$name[i], "scan_USGS.png"))
 
 }
+##########################
+## Save Images to Drive ##
+##########################
+
+# Define the local folder path and the target folder ID in Google Drive
+local_folder <- "scan_figs/"
+drive_folder_id <- "1DZktlQUHaot_r4e_fD9ip6zcxHWqslMP"
+
+# List all files in the local folder
+files <- list.files(local_folder, full.names = TRUE)
+
+# Upload each file to the specified Google Drive folder
+lapply(files, function(file) {
+  drive_upload(
+    media = file,
+    path = as_id(drive_folder_id)
+  )
+})
+ 
 
 ####################
 ## Date specifics ##
