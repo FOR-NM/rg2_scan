@@ -1,6 +1,8 @@
----
-title: "S::CAN"
----
+##==============================================================================
+## Project: QuEST
+## Script to estimate visualize scan data from multiple files at a time
+## 
+##==============================================================================
 
 library(dataRetrieval) # Download USGS discharge data
 library(googledrive) #Download docs from Drive
@@ -10,7 +12,7 @@ library(ggplot2)
 library(readr)
 library(scales)
 library(tidyr)
-library(readxl)
+library(readxl) #to read excel 
 library(lubridate) # Edit date format
 library(xts) # Time series
 
@@ -18,10 +20,9 @@ library(xts) # Time series
 ## Import & Visualize Data ##
 #############################
 # Load data from Google drive
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1DZktlQUHaot_r4e_fD9ip6zcxHWqslMP")
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1G6v6i0tLIUthghWr0XL_wi_MqGcqPLgZ")
 # List all CSV files in the folder
 scan_csvs <- googledrive::drive_ls(path = scan)
-
 
 # Create empty list to store data frames
 scan_list <- list()
@@ -69,6 +70,7 @@ for (i in seq_along(scan_list)) {
   colnames(df)[12] ="TOC"
   colnames(df)[14] ="TSS"
   colnames(df)[16] ="Temp"
+  colnames(df)[11] ="Voltage"
   
   # Make sure values are numeric 
   df$DOC <- as.numeric(df$DOC)
@@ -104,7 +106,13 @@ scan_list[[1]] <- scan_list[[1]][-c(1:5), ]
 
 #Second data frame:
 scan_list[2]
-#this one looks ok, I won't do anything to it
+
+#this ones looks ok, I won't do anything to them
+
+##############################
+## Merging data to make one ##
+##############################
+
 
 ##############
 ## Plotting ##
@@ -191,6 +199,19 @@ for (i in seq_along(scan_list)) {
   ggsave(paste0("scan_figs/", scan_csvs$name[i], "_Temp.png"))
 }
 
+### Voltage ###
+for (i in seq_along(scan_list)) {
+  # Access the current data frame
+  df <- scan_list[[i]]
+  # Plot
+  p <- ggplot(data = df, aes(x = dateTime, y = Voltage)) + 
+    geom_line() + 
+    scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
+    ggtitle(paste(scan_csvs$name[i])) +
+    theme(axis.text.x = element_text(angle=45))
+  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_V.png"))
+}
+
 #######################
 ## Plot all together ##
 #######################
@@ -208,6 +229,7 @@ for (i in seq_along(scan_list)) {
     geom_line(aes(x=dateTime, y=NO3, color='NO3')) +
     geom_line(aes(x=dateTime, y=DOC, color='DOC')) +
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
+    ggtitle(paste(scan_csvs$name[i])) +
     theme(axis.text.x = element_text(angle=45)) +
     ylab("Measured")
   ggsave(paste0("scan_figs/", scan_csvs$name[i], "_Measured.png"))
@@ -234,7 +256,7 @@ head(scan_list[[1]][["dateTime"]]) # check start date for Blossom (USF20)
 start.date <- "2024-05-08"
 #check last date entry
 tail(scan_list[[1]][["dateTime"]]) # check end date for Blossom (USF20)
-end.date <- "2024-05-23"
+end.date <- "2024-07-08"
 
 # Retrieve data
 santafeUSGS <- readNWISuv(siteNumbers = siteNo,
@@ -347,28 +369,32 @@ for (i in seq_along(scan_USGS)) {
   
   # Plot
   p <- ggplot(data = df) + 
-    geom_point(aes(x=dateTime, y=Temp, color='Temperature')) +
-    geom_point(aes(x=dateTime, y=TSS, color='TSS')) +
-    geom_point(aes(x=dateTime, y=TOC, color='TOC')) +
-    geom_point(aes(x=dateTime, y=NO3N, color='NO3-N')) +
-    geom_point(aes(x=dateTime, y=NO3, color='NO3')) +
-    geom_point(aes(x=dateTime, y=DOC, color='DOC')) +
+    geom_line(aes(x=dateTime, y=Temp, color='Temperature')) +
+    geom_line(aes(x=dateTime, y=TSS, color='TSS')) +
+    geom_line(aes(x=dateTime, y=TOC, color='TOC')) +
+    geom_line(aes(x=dateTime, y=NO3N, color='NO3-N')) +
+    geom_line(aes(x=dateTime, y=NO3, color='NO3')) +
+    geom_line(aes(x=dateTime, y=DOC, color='DOC')) +
     geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
     scale_y_continuous(breaks = seq(0, 20, by = 5)) +
+    ggtitle(paste(scan_csvs$name[i])) +
     theme(axis.text.x = element_text(angle=45)) +
     ylab("Measured")
   #save plots
   ggsave(paste0("scan_figs/", scan_csvs$name[i], "scan_USGS.png"))
 
 }
+
+print(p)
+
 ##########################
 ## Save Images to Drive ##
 ##########################
 
 # Define the local folder path and the target folder ID in Google Drive
 local_folder <- "scan_figs/"
-drive_folder_id <- "1DZktlQUHaot_r4e_fD9ip6zcxHWqslMP"
+drive_folder_id <- "1Unk7b1SVFBg-8Z7JM_yN7IhuLmBmFEK5"
 
 # List all files in the local folder
 files <- list.files(local_folder, full.names = TRUE)
@@ -380,7 +406,6 @@ lapply(files, function(file) {
     path = as_id(drive_folder_id)
   )
 })
- 
 
 ####################
 ## Date specifics ##
