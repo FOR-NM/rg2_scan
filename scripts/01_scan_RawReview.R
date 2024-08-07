@@ -1,7 +1,8 @@
 ##==============================================================================
 ## Project: QuEST
-## Script to estimate visualize scan data from multiple files at a time
-## 
+## Script to visualize raw scan data from NM, multiple files at a time
+## Code author:
+## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
 
 library(dataRetrieval) # Download USGS discharge data
@@ -16,11 +17,11 @@ library(readxl) #to read excel
 library(lubridate) # Edit date format
 library(xts) # Time series
 
-#############################
-## Import & Visualize Data ##
-#############################
+#################################
+#### Import & Visualize Data ####
+#################################
 # Load data from Google drive
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1G6v6i0tLIUthghWr0XL_wi_MqGcqPLgZ")
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1DZktlQUHaot_r4e_fD9ip6zcxHWqslMP")
 # List all CSV files in the folder
 scan_csvs <- googledrive::drive_ls(path = scan)
 
@@ -52,10 +53,9 @@ for (i in seq_along(scan_csvs$id)) {
   scan_list[[scan_csvs$name[i]]] <- data
 }
 
-
-##############
-## Cleaning ## 
-##############
+#################
+#### Tidying #### 
+#################
 ### Rename columns and change to values to numeric ###
 # Loop through each data frame in the list
 for (i in seq_along(scan_list)) {
@@ -86,37 +86,42 @@ for (i in seq_along(scan_list)) {
 
 ### Keep rows with only 15-minute intervals ###
 # Loop through each data frame in the list
-for (i in seq_along(scan_list)) {
-  # Access the current data frame
-  df <- scan_list[[i]]
+#for (i in seq_along(scan_list)) {
+# Access the current data frame
+  #df <- scan_list[[i]]
   
   # Filter function 
-  df <- df %>%
-    filter(format(df$dateTime, "%M") %in% c("00", "15", "30", "45"))
+  #df <- df %>%
+    #filter(format(df$dateTime, "%M") %in% c("00", "15", "30", "45"))
   # Update the data frame in the list
-  scan_list[[i]] <- df
-}
+  #scan_list[[i]] <- df
+#}
 
 #### Clean out by specifics of each data set ####
 #Look at your data and decide if you need to do anything else with it
 scan_list[1]
 #in this case I am going to remove the first few rows of data to clean it more since they are junk
 
-scan_list[[1]] <- scan_list[[1]][-c(1:5), ]
+scan_list[[1]] <- scan_list[[1]][-c(1:93), ]
 
 #Second data frame:
 scan_list[2]
 
-#this ones looks ok, I won't do anything to them
+scan_list[[2]] <- scan_list[[2]][-c(1:28), ]
 
-##############################
-## Merging data to make one ##
-##############################
+#Third data frame:
+scan_list[3]
+
+scan_list[[3]] <- scan_list[[3]][-c(1:9), ]
+
+##################################
+#### Merging data to make one ####
+##################################
 
 
-##############
-## Plotting ##
-##############
+##################
+#### Plotting ####
+##################
 
 ### DOC ###
 for (i in seq_along(scan_list)) {
@@ -212,9 +217,9 @@ for (i in seq_along(scan_list)) {
   ggsave(paste0("scan_figs/", scan_csvs$name[i], "_V.png"))
 }
 
-#######################
-## Plot all together ##
-#######################
+###########################
+#### Plot all together ####
+###########################
 
 for (i in seq_along(scan_list)) {
   
@@ -237,9 +242,9 @@ for (i in seq_along(scan_list)) {
 
 print(p)
 
-##############################
-## Pull USGS discharge data ##
-##############################
+#################################
+#### Pull USGS discharge data ####
+##################################
 
 ### Close-by gauge USGS ID ###
 # AR: 7049000
@@ -256,7 +261,7 @@ head(scan_list[[1]][["dateTime"]]) # check start date for Blossom (USF20)
 start.date <- "2024-05-08"
 #check last date entry
 tail(scan_list[[1]][["dateTime"]]) # check end date for Blossom (USF20)
-end.date <- "2024-07-08"
+end.date <- "2024-07-30"
 
 # Retrieve data
 santafeUSGS <- readNWISuv(siteNumbers = siteNo,
@@ -388,9 +393,9 @@ for (i in seq_along(scan_USGS)) {
 
 print(p)
 
-##########################
-## Save Images to Drive ##
-##########################
+##############################
+#### Save Images to Drive ####
+##############################
 
 # Define the local folder path and the target folder ID in Google Drive
 local_folder <- "scan_figs/"
@@ -407,9 +412,9 @@ lapply(files, function(file) {
   )
 })
 
-####################
-## Date specifics ##
-####################
+########################
+#### Date specifics ####
+########################
 ### If dates needs to be more specific ####
 #start date
 #this will get data from 2023 and 2024 starting April 1st
