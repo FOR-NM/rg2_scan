@@ -1,7 +1,6 @@
 ##==============================================================================
 ## Project: QuEST
-## Script to clean up scan data 
-## Code author:
+## Script to clean up scan data
 ## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
 
@@ -56,7 +55,7 @@ for (i in seq_along(scan_csvs$id)) {
 #####################################################
 #### Clean out service dates (out of water days) ####
 #####################################################
-
+#When scan is out of water it records as NO_MEDIUM, we'll use that to clean
 # Loop through each data frame in the list
 for (i in seq_along(scan_list)) {
   # Access the current data frame
@@ -69,6 +68,7 @@ for (i in seq_along(scan_list)) {
   # Update the data frame in the list
   scan_list[[i]] <- df
 }
+
 
 #################
 #### Tidying ####
@@ -119,7 +119,9 @@ for (i in seq_along(scan_list)) {
 #scan_list[[i]] <- df
 #}
 
-#### load servicing times sheet ####
+###############################
+#### Load Servicing Times #####
+###############################
 
 # get data from googledrive
 service_tibble <- googledrive::drive_ls("https://drive.google.com/drive/folders/1KdjN1nmeeqtgxk6k3rImtb-wpVXVyLk4")
@@ -143,7 +145,6 @@ service$datetimeMT<-as.POSIXct(service$datetime,
 # remove rows with no exact times & make one new for deployed
 deployedtimes = service[!is.na(service$datetimeMT),]
 deployedtimes = service[service$observation == "deployed", ]
-
 
 ###############################################
 #### Add instrument name or serial number  ####
@@ -203,9 +204,27 @@ for (i in seq_along(scan_list)) {
  # df$dateTime >= deployed_time,
 #]
 
-###########################
-#### Plot all together ####
-###########################
+#######################################
+#### Remove below and above values ####
+#######################################
+# There are some values above and below range, let's remove them?
+# Loop through each data frame in the list
+for (i in seq_along(scan_filtered)) {
+  # Access the current data frame
+  df <- scan_filtered[[i]]
+  
+  # Replace 'VAL_ABOVE' and 'VAL_BELOW' with NA in character columns only
+  df <- df %>%
+    mutate(across(where(is.character), ~ na_if(.x, "VAL_ABOVE") %>%
+                    na_if("VAL_BELOW")))
+  
+  # Update the data frame in the list
+  scan_filtered[[i]] <- df
+}
+
+#####################################
+#### Plot all variables together ####
+#####################################
 
 for (i in seq_along(scan_filtered)) {
   
@@ -237,11 +256,11 @@ for (i in seq_along(scan_filtered)) {
 # NM: 8315480
 # NV: 10347310
 
-# Download functions
+# Define gauge and parameter code
 siteNo <- "08315480"
 pCode <- "00060" #this code is for discharge data
 
-#### For first one = blossom #### 
+#### For first one = USF20 #### 
 #check first date entry
 head(scan_filtered[[1]][["dateTime"]]) # check start date for Blossom (USF20)
 start.date <- "2024-05-08"
@@ -264,7 +283,7 @@ ts <- ggplot(data = santafeUSGS,
   geom_line()
 ts
 
-#### Plot with s::can data ####
+#### Plot USGS with USF20 s::can data ####
 ### For only one df ###
 # Convert data frames to xts objects to line up dateTimes
 scan_ts <- xts(scan_filtered[[1]], order.by = scan_filtered[[1]]$dateTime)
@@ -304,7 +323,46 @@ p <- ggplot(data = combined_df) +
 
 print(p)
 
-### For second one = buttercup ### 
+### Plot TSS with flow ###
+# Since that is the one that has weird peaks
+p <- ggplot(data = combined_df) + 
+  geom_line(aes(x=dateTime, y=TSS, color='TSS')) +
+  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
+  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
+  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
+  theme(axis.text.x = element_text(angle=45)) +
+  ggtitle("USF20") +
+  ylab("Blossom")
+
+print(p)
+
+### Plot TOC with flow ###
+# Since that is the one that has weird peaks
+p <- ggplot(data = combined_df) + 
+  geom_line(aes(x=dateTime, y=TOC, color='TOC')) +
+  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
+  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
+  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
+  theme(axis.text.x = element_text(angle=45)) +
+  ggtitle("USF20") +
+  ylab("Blossom")
+
+print(p)
+
+### Plot TOC with flow ###
+# Since that is the one that has weird peaks
+p <- ggplot(data = combined_df) + 
+  geom_line(aes(x=dateTime, y=DOC, color='DOC')) +
+  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
+  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
+  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
+  theme(axis.text.x = element_text(angle=45)) +
+  ggtitle("USF20") +
+  ylab("Blossom")
+
+print(p)
+
+#### For second one = USF12 #### 
 #check first date entry
 head(scan_filtered[[2]][["dateTime"]]) # check start date for Blossom (USF20)
 start.date <- "2024-05-07"
@@ -327,7 +385,7 @@ ts <- ggplot(data = santafeUSGS,
   geom_line()
 ts
 
-#### Plot with s::can data ####
+#### Plot USGS with USF12 s::can data ####
 ### For only one df ###
 # Convert data frames to xts objects to line up dateTimes
 scan_ts <- xts(scan_filtered[[2]], order.by = scan_filtered[[2]]$dateTime)
@@ -363,6 +421,44 @@ p <- ggplot(data = combined_df) +
   scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
   scale_y_continuous(breaks = seq(0, 20, by = 5)) +
   theme(axis.text.x = element_text(angle=45)) +
+  ylab("Buttercup")
+
+print(p)
+### Plot DOC with flow ###
+# Since that is the one that has weird peaks
+p <- ggplot(data = combined_df) + 
+  geom_line(aes(x=dateTime, y=DOC, color='DOC')) +
+  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
+  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
+  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
+  theme(axis.text.x = element_text(angle=45)) +
+  ggtitle("USF12") +
+  ylab("Buttercup")
+
+print(p)
+
+### Plot TSS with flow ###
+# Since that is the one that has weird peaks
+p <- ggplot(data = combined_df) + 
+  geom_line(aes(x=dateTime, y=TSS, color='TSS')) +
+  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
+  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
+  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
+  theme(axis.text.x = element_text(angle=45)) +
+  ggtitle("USF12") +
+  ylab("Buttercup")
+
+print(p)
+
+### Plot TOC with flow ###
+# Since that is the one that has weird peaks
+p <- ggplot(data = combined_df) + 
+  geom_line(aes(x=dateTime, y=TOC, color='TOC')) +
+  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
+  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
+  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
+  theme(axis.text.x = element_text(angle=45)) +
+  ggtitle("USF12") +
   ylab("Buttercup")
 
 print(p)
@@ -438,13 +534,40 @@ p <- ggplot(data = combined_df) +
   scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
   scale_y_continuous(breaks = seq(0, 20, by = 5)) +
   theme(axis.text.x = element_text(angle=45)) +
+  ggtitle("USF21") +
   ylab("Bubbles")
 
 print(p)
 
-#########################
+### Plot TOC with flow ###
+# Since that is the one that has weird peaks
+p <- ggplot(data = combined_df) + 
+  geom_line(aes(x=dateTime, y=TOC, color='TOC')) +
+  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
+  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
+  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
+  theme(axis.text.x = element_text(angle=45)) +
+  ggtitle("USF21") +
+  ylab("Bubbles")
+
+print(p)
+
+### Plot TOC with flow ###
+# Since that is the one that has weird peaks
+p <- ggplot(data = combined_df) + 
+  geom_line(aes(x=dateTime, y=DOC, color='DOC')) +
+  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
+  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
+  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
+  theme(axis.text.x = element_text(angle=45)) +
+  ggtitle("USF21") +
+  ylab("Bubbles")
+
+print(p)
+
+#######################
 #### Flag outliers ####
-#########################
+#######################
 
 #### Blossom ####
 # Define the number of standard deviations to use as the threshold
@@ -736,3 +859,4 @@ for (i in seq_along(scan_filtered)) {
   # Upload the file to the specified Google Drive folder
   drive_upload(media = file_name, path = as_id(drive_folder_id))
 }
+

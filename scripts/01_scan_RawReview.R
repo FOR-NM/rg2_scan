@@ -1,6 +1,6 @@
 ##==============================================================================
 ## Project: QuEST
-## Script to visualize raw scan data from NM, multiple files at a time
+## Script to visualize raw scan data from NM
 ## Code author:
 ## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
