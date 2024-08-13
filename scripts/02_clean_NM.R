@@ -1,836 +1,373 @@
 ##==============================================================================
-## Project: QuEST
-## Script to clean up scan data
+## Project: QuEST - Script to clean up scan data
 ## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
-
 library(dataRetrieval) # Download USGS discharge data
-library(googledrive) #Download docs from Drive
+library(googledrive) # Download docs from Drive
 library(tidyverse)
-library(dplyr)
-library(ggplot2)
-library(readr)
-library(scales)
-library(tidyr)
-library(readxl) #to read excel 
+library(readxl) # to read Excel
 library(lubridate) # Edit date format
 library(xts) # Time series
+library(ggplot2)
 
 #####################
 #### Import Data ####
 #####################
-# Load data from Google drive
+# Load data from Google Drive
 scan <- googledrive::as_id("https://drive.google.com/drive/folders/1DZktlQUHaot_r4e_fD9ip6zcxHWqslMP")
-# List all CSV files in the folder
 scan_csvs <- googledrive::drive_ls(path = scan, type = "xlsx")
 3
+
 # Create empty list to store data frames
 scan_list <- list()
 
-# Loop over each file in the `scan_csvs` data frame
-for (i in seq_along(scan_csvs$id)) {
-  # Define the local file path
+# Loop over each file in `scan_csvs` and read the data
+scan_list <- lapply(seq_along(scan_csvs$id), function(i) {
   local_path <- file.path("googledrive", scan_csvs$name[i])
   
-  # Download the file
-  googledrive::drive_download(
-    file = scan_csvs$id[i],
-    path = local_path,
-    overwrite = TRUE
-  )
-  
-  # Read the header row (row 2)
+  # Download and read the file
+  googledrive::drive_download(file = scan_csvs$id[i], path = local_path, overwrite = TRUE)
   header <- read_excel(local_path, skip = 1, n_max = 1, col_names = FALSE)
-  # Convert the header to a character vector and clean empty names
   col_names <- as.character(unlist(header[1, ]))
   col_names[col_names == ""] <- paste0("X", seq_along(col_names[col_names == ""]))
   
-  # Read the data starting from row 4 using the header as column names
-  data <- read_excel(local_path, skip = 4, col_names = col_names)
-  
-  # Store the data in the list
-  scan_list[[scan_csvs$name[i]]] <- data
-}
+  # Return the data frame
+  read_excel(local_path, skip = 4, col_names = col_names)
+})
 
-#####################################################
-#### Clean out service dates (out of water days) ####
-#####################################################
-#When scan is out of water it records as NO_MEDIUM, we'll use that to clean
-# Loop through each data frame in the list
-for (i in seq_along(scan_list)) {
-  # Access the current data frame
-  df <- scan_list[[i]]
-  
-  # Replace 'NO_MEDIUM' with NA in character columns only
-  df <- df %>%
-    mutate(across(where(is.character), ~ na_if(.x, "NO_MEDIUM")))
-  
-  # Update the data frame in the list
-  scan_list[[i]] <- df
-}
-
+names(scan_list) <- scan_csvs$name
 
 #################
 #### Tidying ####
 #################
-### Rename columns and change to values to numeric ###
-# Loop through each data frame in the list
-for (i in seq_along(scan_list)) {
-  # Access the current data frame
-  df <- scan_list[[i]]
+# Change some names for easier manipulation
+scan_list <- lapply(scan_list, function(df) {
+  colnames(df)[c(1, 2, 6, 8, 12, 14, 16, 11)] <- c("dateTime", "DOC", "NO3-N", "NO3", "TOC", "TSS", "Temp", "Voltage")
   
-  # Change names for easier handling
-  colnames(df)[1] ="dateTime"
-  colnames(df)[2] ="DOC"
-  colnames(df)[6] ="NO3N"
-  colnames(df)[8] ="NO3"
-  colnames(df)[12] ="TOC"
-  colnames(df)[14] ="TSS"
-  colnames(df)[16] ="Temp"
-  colnames(df)[11] ="Voltage"
+  # Make sure numeric variables are numeric
+  df <- df %>%
+    mutate(across(c(DOC, `NO3-N`, NO3, TOC, TSS, Temp), as.numeric)) %>%
+    mutate(dateTime = as.POSIXct(dateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
   
-  # Make sure values are numeric 
-  df$DOC <- as.numeric(df$DOC)
-  df$NO3N <- as.numeric(df$NO3N)
-  df$NO3 <- as.numeric(df$NO3)
-  df$TOC <- as.numeric(df$TOC)
-  df$TSS <- as.numeric(df$TSS)
-  df$Temp <- as.numeric(df$Temp)
+  return(df)
+})
+
+###################################################################################
+#### Clean out service dates (out of water days) and 'ABOVE' and 'BELOW' values####
+###################################################################################
+# When scan is out of water it records as NO_MEDIUM
+# Replace 'NO_MEDIUM' values with NA 
+# Also when it reads < lower error limit or  > upper error limit, it flags as 'VAL_BELOW' or 'VAL_ABOVE'
+# Replace 'VAL_BELOW' or 'VAL_ABOVE' flagged values with NA 
+
+# Apply the transformation across each data frame in the list
+scan_filtered <- lapply(scan_list, function(df) {
   
-  # convert to POIXct and set timezone
-  df$dateTime<-as.POSIXct(df$dateTime, 
-                                 format = "%Y-%m-%d %H:%M:%S",
-                                 tz="US/Mountain")
+  # Identify all the measured value columns and their corresponding status columns
+  measured_cols <- c("DOC", "NO3-N", "NO3", "TOC", "TSS")
+  status_cols <- paste0(measured_cols, "eq [mg/l] - Measured status")
   
-  # Update the data frame in the list
-  scan_list[[i]] <- df
+  # Loop over each measured column and its corresponding status column
+  for (i in seq_along(measured_cols)) {
+    measured_col <- measured_cols[i]
+    status_col <- status_cols[i]
+    new_col_name <- paste0(measured_col, "_clean")
+    
+    # Check if the status column exists in the data frame
+    if (status_col %in% colnames(df)) {
+      # Replace with NA if status is "NO_MEDIUM", "VAL_ABOVE", or "VAL_BELOW"
+      df[[new_col_name]] <- ifelse(df[[status_col]] %in% c("NO_MEDIUM", "VAL_ABOVE", "VAL_BELOW"), NA, df[[measured_col]])
+    } else {
+      # If status column doesn't exist, just copy the measured column to new column
+      df[[new_col_name]] <- df[[measured_col]]
+    }
+  }
+  
+  return(df)
+})
+
+##############################################################
+#### Check for 'VAL_BELOW' and 'VAL_ABOVE' removed values ####
+##############################################################
+#Compare the min and max values before and after filtering
+
+# Summary statistics for the cleaned columns
+lapply(scan_list, function(df) {
+  summary(df[, !grepl("_clean", colnames(df))])
+})
+
+# Summary statistics for the cleaned columns
+lapply(scan_filtered, function(df) {
+  summary(df[, grepl("_clean", colnames(df))])
+})
+
+# Check if 'NA' is present where status was flagged
+check_na_replacement <- function(df, measured_cols, status_cols) {
+  result <- list()
+  for (i in seq_along(measured_cols)) {
+    measured_col <- measured_cols[i]
+    status_col <- status_cols[i]
+    clean_col <- paste0(measured_col, "_clean")
+    
+    # Verify if NA was set correctly
+    result[[clean_col]] <- any(is.na(df[[clean_col]])) && all(
+      !df[[status_col]] %in% c("NO_MEDIUM", "VAL_ABOVE", "VAL_BELOW") | is.na(df[[clean_col]])
+    )
+  }
+  return(result)
 }
 
-### Keep rows with only 15-minute intervals ###
-# Loop through each data frame in the list
-#for (i in seq_along(scan_list)) {
-# Access the current data frame
-#df <- scan_list[[i]]
-
-# Filter function 
-#df <- df %>%
-#filter(format(df$dateTime, "%M") %in% c("00", "15", "30", "45"))
-# Update the data frame in the list
-#scan_list[[i]] <- df
-#}
+# Apply the check function
+checks <- lapply(scan_filtered, check_na_replacement, measured_cols = c("DOC", "NO3-N", "NO3", "TOC", "TSS"), status_cols = paste0(c("DOC", "NO3-N", "NO3", "TOC", "TSS"), "eq [mg/l] - Measured status"))
+print(checks)
 
 ###############################
 #### Load Servicing Times #####
 ###############################
-
-# get data from googledrive
+# Download and read sensor event log
 service_tibble <- googledrive::drive_ls("https://drive.google.com/drive/folders/1KdjN1nmeeqtgxk6k3rImtb-wpVXVyLk4")
-googledrive::drive_download(as_id(service_tibble$id[service_tibble$name=="sensor_event_log"]), overwrite = TRUE,path="googledrive/sensor_event_log.xlsx")
-
-# read in file and filter to s::can service days and deployments
-service = readxl::read_excel("googledrive/sensor_event_log.xlsx")
-service = service[service$model=="s::can",]
-service = service[service$observation=="out of water" | service$observation=="deployed",]
-
-
-# format date and time
-service$date = as.Date(service$date)
-service$time <- format(as.POSIXct(service$time, format="%H:%M:%S"), "%H:%M:%S")
-service$datetime = paste(service$date,  service$time, sep = " ")
-# convert to POIXct and set timezone
-service$datetimeMT<-as.POSIXct(service$datetime, 
-                               format = "%Y-%m-%d %H:%M",
-                               tz="US/Mountain")
-
-# remove rows with no exact times & make one new for deployed
-deployedtimes = service[!is.na(service$datetimeMT),]
-deployedtimes = service[service$observation == "deployed", ]
+googledrive::drive_download(as_id(service_tibble$id[service_tibble$name == "sensor_event_log"]), overwrite = TRUE, path = "googledrive/sensor_event_log.xlsx")
+# Let's call the file "service"
+service <- readxl::read_excel("googledrive/sensor_event_log.xlsx") %>%
+  # Filter using
+  filter(model == "s::can", observation %in% c("out of water", "deployed"), site_code == "NM") %>%
+  mutate(datetimeMT = as.POSIXct(paste(date, format(as.POSIXct(time, format = "%H:%M:%S"), "%H:%M:%S")), format = "%Y-%m-%d %H:%M", tz = "US/Mountain"))
 
 ###############################################
 #### Add instrument name or serial number  ####
 ###############################################
-
-# Add instrument name to data frame of each
-# Function to extract the ID from the file name
+# Create function to extract file name (they all start with B)
 extract_id <- function(file_name) {
   str_extract(file_name, "B\\w+")
 }
 
-# Add the instrument name or serial number to data
-for (i in seq_along(scan_list)) {
-  df <- scan_list[[i]]
-  file_name <- scan_csvs$name[i]
-  extracted_id <- extract_id(file_name)
-  df <- add_column(df, serial_number = extracted_id)
-  scan_list[[i]] <- df
-}
+# Apply function to add extracted name to all data frames 
+scan_filtered <- mapply(function(df, file_name) {
+  df <- add_column(df, serial_number = extract_id(file_name))
+  return(df)
+}, scan_filtered, scan_csvs$name, SIMPLIFY = FALSE)
 
 #############################################################
 #### Delete all the rows before the deployment date-time ####
 #############################################################
-
-# Initialize an empty list to store filtered data frames
-scan_filtered <- list()
-
-# Loop through each data frame in the list
-for (i in seq_along(scan_list)) {
-  # Access the current data frame
-  df <- scan_list[[i]]
-  
-  # Identify the "deployed" time for the specific instrument
+# The first few rows before deployment are usually junk. Let's get rid of those
+# Create function 
+scan_filtered <- lapply(scan_filtered, function(df) {
+  # Extract each s::can name/serial number
   serial_number <- df$serial_number[1]
-  deployed_time <- deployedtimes$datetimeMT[
-    deployedtimes$serial_number == serial_number
-  ]
+  # Extract the deployed time of each instrument 
+  deployed_time <- service$datetimeMT[service$serial_number == serial_number & service$observation == "deployed"]
   
-  # Convert to POSIXct if not already in that format
-  deployed_time <- as.POSIXct(deployed_time, tz = "America/Denver")
-  df$dateTime <- as.POSIXct(df$dateTime, tz = "America/Denver")
-  
-  # Filter out data that occurs before the "deployed" time
-  filtered_data <- df[df$dateTime >= deployed_time, ]
-  
-  # Store the filtered data in the new list
-  scan_filtered[[scan_csvs$name[i]]] <- filtered_data
-}
-
-#### this is how it would work just for one file ####
-# Identify the "deployed" time for the specific instrument
-#deployed_time <- deployedtimes$datetimeMT[
- # deployedtimes$serial_number=="blossom"
-#]
-# Filter out data that occurs before the "deployed" time
-#filtered_data <- df[
- # df$dateTime >= deployed_time,
-#]
-
-#######################################
-#### Remove below and above values ####
-#######################################
-# There are some values above and below range, let's remove them?
-# Loop through each data frame in the list
-for (i in seq_along(scan_filtered)) {
-  # Access the current data frame
-  df <- scan_filtered[[i]]
-  
-  # Replace 'VAL_ABOVE' and 'VAL_BELOW' with NA in character columns only
-  df <- df %>%
-    mutate(across(where(is.character), ~ na_if(.x, "VAL_ABOVE") %>%
-                    na_if("VAL_BELOW")))
-  
-  # Update the data frame in the list
-  scan_filtered[[i]] <- df
-}
+  # Filter, keep data that is over or equal the deployed time
+  df <- df %>% filter(dateTime >= deployed_time)
+  return(df)
+})
 
 #####################################
 #### Plot all variables together ####
 #####################################
-
-for (i in seq_along(scan_filtered)) {
-  
-  # Access the current data frame
-  df <- scan_filtered[[i]]
-  # Plot
-  p <- ggplot(data = df) + 
-    geom_line(aes(x=dateTime, y=Temp, color='Temperature')) +
-    geom_line(aes(x=dateTime, y=TSS, color='TSS')) +
-    geom_line(aes(x=dateTime, y=TOC, color='TOC')) +
-    geom_line(aes(x=dateTime, y=NO3N, color='NO3-N')) +
-    geom_line(aes(x=dateTime, y=NO3, color='NO3')) +
-    geom_line(aes(x=dateTime, y=DOC, color='DOC')) +
-    scale_x_datetime(date_breaks = "7 days", date_labels = "%m/%d") +
-    ggtitle(paste(scan_csvs$name[i])) +
-    theme(axis.text.x = element_text(angle=45)) +
+# Plot after filtering pre-deployed and out of water times
+plot_variables <- function(df, file_name) {
+  ggplot(data = df) +
+    geom_line(aes(x = dateTime, y = Temp, color = 'Temperature')) +
+    geom_line(aes(x = dateTime, y = TSS_clean, color = 'TSS')) +
+    geom_line(aes(x = dateTime, y = TOC_clean, color = 'TOC')) +
+    geom_line(aes(x = dateTime, y = `NO3-N_clean`, color = 'NO3-N')) +
+    geom_line(aes(x = dateTime, y = NO3_clean, color = 'NO3')) +
+    geom_line(aes(x = dateTime, y = DOC_clean, color = 'DOC')) +
+    scale_x_datetime(date_breaks = "2 days", date_labels = "%m/%d") +
+    ggtitle(file_name) +
+    theme(axis.text.x = element_text(angle = 45)) +
     ylab("Measured")
-  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_Measured.png"))
 }
 
-#################################
+# Plot
+print(plot_variables(scan_filtered[[1]], scan_csvs$name[1]))
+print(plot_variables(scan_filtered[[2]], scan_csvs$name[2]))
+print(plot_variables(scan_filtered[[3]], scan_csvs$name[3]))
+
+# Save figures to folder
+for (i in seq_along(scan_filtered)) {
+  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_Measured.png"), plot_variables(scan_filtered[[i]], scan_csvs$name[i]))
+}
+
+#####################################
+#### Plot all variables separate ####
+#####################################
+
+# Function to plot each variable separately in the same panel
+plot_variables <- function(df, file_name) {
+  df_long <- df %>%
+    select(dateTime, Temp, TSS_clean, TOC_clean, 'NO3-N_clean', NO3_clean, DOC_clean) %>%
+    pivot_longer(cols = -dateTime, names_to = "Variable", values_to = "Value")
+  
+  ggplot(data = df_long, aes(x = dateTime, y = Value, color = Variable)) +
+    geom_line() +
+    facet_wrap(~Variable, scales = "free_y", ncol = 1) +  # Separate plot for each variable, stacked vertically
+    scale_x_datetime(date_breaks = "7 days", date_labels = "%m/%d") +
+    ggtitle(file_name) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    ylab("Measured Value") +
+    theme(legend.position = "none")  # Hide legend since we have separate panels
+}
+
+# Plots
+print(plot_variables(scan_filtered[[1]], scan_csvs$name[1]))
+print(plot_variables(scan_filtered[[2]], scan_csvs$name[2]))
+print(plot_variables(scan_filtered[[3]], scan_csvs$name[3]))
+
+
+### Save figures to folder ###
+for (i in seq_along(scan_filtered)) {
+  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_separate.png"), plot_variables(scan_filtered[[i]], scan_csvs$name[i]))
+}
+
+##################################
 #### Pull USGS discharge data ####
 ##################################
-
-### Close-by gauge USGS ID ###
-# AR: 7049000
-# AL: 2465493?
-# NH: 1073319
-# NM: 8315480
-# NV: 10347310
-
-# Define gauge and parameter code
-siteNo <- "08315480"
-pCode <- "00060" #this code is for discharge data
-
-#### For first one = USF20 #### 
-#check first date entry
-head(scan_filtered[[1]][["dateTime"]]) # check start date for Blossom (USF20)
-start.date <- "2024-05-08"
-#check last date entry
-tail(scan_filtered[[1]][["dateTime"]]) # check end date for Blossom (USF20)
-end.date <- "2024-07-30"
-
-# Retrieve data
-santafeUSGS <- readNWISuv(siteNumbers = siteNo,
-                          parameterCd = pCode,
-                          startDate = start.date,
-                          endDate = end.date)
-
-# Change column names
-santafeUSGS <- renameNWISColumns(santafeUSGS)
-
-### Plot it ###
-ts <- ggplot(data = santafeUSGS,
-             aes(dateTime, Flow_Inst)) +
-  geom_line()
-ts
-
-#### Plot USGS with USF20 s::can data ####
-### For only one df ###
-# Convert data frames to xts objects to line up dateTimes
-scan_ts <- xts(scan_filtered[[1]], order.by = scan_filtered[[1]]$dateTime)
-santafeUSGS_ts <- xts(santafeUSGS, order.by = santafeUSGS$dateTime)
-
-# Merge the xts objects
-combined_xts <- merge(scan_ts, santafeUSGS_ts, join = "outer")
-# Convert xts object to data.frame... do I really have to do this?
-combined_df <- data.frame(dateTime = index(combined_xts), coredata(combined_xts))
-
-# Verify dateTime is in POSIXct
-class(combined_df$dateTime)
-
-# Convert y-values to numeric
-combined_df$Temp <- as.numeric(as.character(combined_df$Temp))
-combined_df$TSS <- as.numeric(as.character(combined_df$TSS))
-combined_df$TOC <- as.numeric(as.character(combined_df$TOC))
-combined_df$NO3N <- as.numeric(as.character(combined_df$NO3N))
-combined_df$NO3 <- as.numeric(as.character(combined_df$NO3))
-combined_df$DOC <- as.numeric(as.character(combined_df$DOC))
-combined_df$Flow_Inst <- as.numeric(as.character(combined_df$Flow_Inst))
-
-### Plot ###
-
-p <- ggplot(data = combined_df) + 
-  geom_line(aes(x=dateTime, y=Temp, color='Temperature')) +
-  geom_line(aes(x=dateTime, y=TSS, color='TSS')) +
-  geom_line(aes(x=dateTime, y=TOC, color='TOC')) +
-  geom_line(aes(x=dateTime, y=NO3N, color='NO3-N')) +
-  geom_line(aes(x=dateTime, y=NO3, color='NO3')) +
-  geom_line(aes(x=dateTime, y=DOC, color='DOC')) +
-  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
-  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
-  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
-  theme(axis.text.x = element_text(angle=45)) +
-  ylab("Blossom")
-
-print(p)
-
-### Plot TSS with flow ###
-# Since that is the one that has weird peaks
-p <- ggplot(data = combined_df) + 
-  geom_line(aes(x=dateTime, y=TSS, color='TSS')) +
-  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
-  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
-  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
-  theme(axis.text.x = element_text(angle=45)) +
-  ggtitle("USF20") +
-  ylab("Blossom")
-
-print(p)
-
-### Plot TOC with flow ###
-# Since that is the one that has weird peaks
-p <- ggplot(data = combined_df) + 
-  geom_line(aes(x=dateTime, y=TOC, color='TOC')) +
-  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
-  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
-  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
-  theme(axis.text.x = element_text(angle=45)) +
-  ggtitle("USF20") +
-  ylab("Blossom")
-
-print(p)
-
-### Plot TOC with flow ###
-# Since that is the one that has weird peaks
-p <- ggplot(data = combined_df) + 
-  geom_line(aes(x=dateTime, y=DOC, color='DOC')) +
-  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
-  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
-  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
-  theme(axis.text.x = element_text(angle=45)) +
-  ggtitle("USF20") +
-  ylab("Blossom")
-
-print(p)
-
-#### For second one = USF12 #### 
-#check first date entry
-head(scan_filtered[[2]][["dateTime"]]) # check start date for Blossom (USF20)
-start.date <- "2024-05-07"
-#check last date entry
-tail(scan_filtered[[2]][["dateTime"]]) # check end date for Blossom (USF20)
-end.date <- "2024-07-30"
-
-# Retrieve data
-santafeUSGS <- readNWISuv(siteNumbers = siteNo,
-                          parameterCd = pCode,
-                          startDate = start.date,
-                          endDate = end.date)
-
-# Change column names
-santafeUSGS <- renameNWISColumns(santafeUSGS)
-
-### Plot it ###
-ts <- ggplot(data = santafeUSGS,
-             aes(dateTime, Flow_Inst)) +
-  geom_line()
-ts
-
-#### Plot USGS with USF12 s::can data ####
-### For only one df ###
-# Convert data frames to xts objects to line up dateTimes
-scan_ts <- xts(scan_filtered[[2]], order.by = scan_filtered[[2]]$dateTime)
-santafeUSGS_ts <- xts(santafeUSGS, order.by = santafeUSGS$dateTime)
-
-# Merge the xts objects
-combined_xts <- merge(scan_ts, santafeUSGS_ts, join = "outer")
-# Convert xts object to data.frame... do I really have to do this?
-combined_df <- data.frame(dateTime = index(combined_xts), coredata(combined_xts))
-
-# Verify dateTime is in POSIXct
-class(combined_df$dateTime)
-
-# Convert y-values to numeric
-combined_df$Temp <- as.numeric(as.character(combined_df$Temp))
-combined_df$TSS <- as.numeric(as.character(combined_df$TSS))
-combined_df$TOC <- as.numeric(as.character(combined_df$TOC))
-combined_df$NO3N <- as.numeric(as.character(combined_df$NO3N))
-combined_df$NO3 <- as.numeric(as.character(combined_df$NO3))
-combined_df$DOC <- as.numeric(as.character(combined_df$DOC))
-combined_df$Flow_Inst <- as.numeric(as.character(combined_df$Flow_Inst))
-
-### Plot ###
-
-p <- ggplot(data = combined_df) + 
-  geom_line(aes(x=dateTime, y=Temp, color='Temperature')) +
-  geom_line(aes(x=dateTime, y=TSS, color='TSS')) +
-  geom_line(aes(x=dateTime, y=TOC, color='TOC')) +
-  geom_line(aes(x=dateTime, y=NO3N, color='NO3-N')) +
-  geom_line(aes(x=dateTime, y=NO3, color='NO3')) +
-  geom_line(aes(x=dateTime, y=DOC, color='DOC')) +
-  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
-  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
-  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
-  theme(axis.text.x = element_text(angle=45)) +
-  ylab("Buttercup")
-
-print(p)
-### Plot DOC with flow ###
-# Since that is the one that has weird peaks
-p <- ggplot(data = combined_df) + 
-  geom_line(aes(x=dateTime, y=DOC, color='DOC')) +
-  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
-  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
-  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
-  theme(axis.text.x = element_text(angle=45)) +
-  ggtitle("USF12") +
-  ylab("Buttercup")
-
-print(p)
-
-### Plot TSS with flow ###
-# Since that is the one that has weird peaks
-p <- ggplot(data = combined_df) + 
-  geom_line(aes(x=dateTime, y=TSS, color='TSS')) +
-  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
-  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
-  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
-  theme(axis.text.x = element_text(angle=45)) +
-  ggtitle("USF12") +
-  ylab("Buttercup")
-
-print(p)
-
-### Plot TOC with flow ###
-# Since that is the one that has weird peaks
-p <- ggplot(data = combined_df) + 
-  geom_line(aes(x=dateTime, y=TOC, color='TOC')) +
-  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
-  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
-  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
-  theme(axis.text.x = element_text(angle=45)) +
-  ggtitle("USF12") +
-  ylab("Buttercup")
-
-print(p)
-
-#### For third one = bubbles #### 
-#check first date entry
-head(scan_filtered[[3]][["dateTime"]]) # check start date for Blossom (USF20)
-start.date <- "2024-06-27"
-#check last date entry
-tail(scan_filtered[[3]][["dateTime"]]) # check end date for Blossom (USF20)
-end.date <- "2024-07-26"
-
-# Retrieve data
-santafeUSGS <- readNWISuv(siteNumbers = siteNo,
-                          parameterCd = pCode,
-                          startDate = start.date,
-                          endDate = end.date)
-
-# Change column names
-santafeUSGS <- renameNWISColumns(santafeUSGS)
-
-### Plot it ###
-ts <- ggplot(data = santafeUSGS,
-             aes(dateTime, Flow_Inst)) +
-  geom_line()
-ts
-
-#### Plot with s::can data ####
-### For only one df ###
-# Convert data frames to xts objects to line up dateTimes
-scan_ts <- xts(scan_filtered[[3]], order.by = scan_filtered[[3]]$dateTime)
-santafeUSGS_ts <- xts(santafeUSGS, order.by = santafeUSGS$dateTime)
-
-# Merge the xts objects
-combined_xts <- merge(scan_ts, santafeUSGS_ts, join = "outer")
-# Convert xts object to data.frame... do I really have to do this?
-combined_df <- data.frame(dateTime = index(combined_xts), coredata(combined_xts))
-
-# Verify dateTime is in POSIXct
-class(combined_df$dateTime)
-
-# Convert y-values to numeric
-combined_df$Temp <- as.numeric(as.character(combined_df$Temp))
-combined_df$TSS <- as.numeric(as.character(combined_df$TSS))
-combined_df$TOC <- as.numeric(as.character(combined_df$TOC))
-combined_df$NO3N <- as.numeric(as.character(combined_df$NO3N))
-combined_df$NO3 <- as.numeric(as.character(combined_df$NO3))
-combined_df$DOC <- as.numeric(as.character(combined_df$DOC))
-combined_df$Flow_Inst <- as.numeric(as.character(combined_df$Flow_Inst))
-
-### Plot ###
-
-p <- ggplot(data = combined_df) + 
-  geom_line(aes(x=dateTime, y=Temp, color='Temperature')) +
-  geom_line(aes(x=dateTime, y=TSS, color='TSS')) +
-  geom_line(aes(x=dateTime, y=TOC, color='TOC')) +
-  geom_line(aes(x=dateTime, y=NO3N, color='NO3-N')) +
-  geom_line(aes(x=dateTime, y=NO3, color='NO3')) +
-  geom_line(aes(x=dateTime, y=DOC, color='DOC')) +
-  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
-  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
-  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
-  theme(axis.text.x = element_text(angle=45)) +
-  ylab("Bubbles")
-
-print(p)
-
-### Plot TSS with flow ###
-# Since that is the one that has weird peaks
-p <- ggplot(data = combined_df) + 
-  geom_line(aes(x=dateTime, y=TSS, color='TSS')) +
-  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
-  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
-  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
-  theme(axis.text.x = element_text(angle=45)) +
-  ggtitle("USF21") +
-  ylab("Bubbles")
-
-print(p)
-
-### Plot TOC with flow ###
-# Since that is the one that has weird peaks
-p <- ggplot(data = combined_df) + 
-  geom_line(aes(x=dateTime, y=TOC, color='TOC')) +
-  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
-  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
-  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
-  theme(axis.text.x = element_text(angle=45)) +
-  ggtitle("USF21") +
-  ylab("Bubbles")
-
-print(p)
-
-### Plot TOC with flow ###
-# Since that is the one that has weird peaks
-p <- ggplot(data = combined_df) + 
-  geom_line(aes(x=dateTime, y=DOC, color='DOC')) +
-  geom_line(aes(x=dateTime, y=Flow_Inst, color='Flow')) +
-  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
-  scale_y_continuous(breaks = seq(0, 20, by = 5)) +
-  theme(axis.text.x = element_text(angle=45)) +
-  ggtitle("USF21") +
-  ylab("Bubbles")
-
-print(p)
-
-#######################
-#### Flag outliers ####
-#######################
-
-#### Blossom ####
-# Define the number of standard deviations to use as the threshold
-num_sd <- 4
-
-# Function to flag outliers in a numeric vector
-flag_outliers <- function(x, num_sd) {
-  mean_value <- mean(x, na.rm = TRUE)
-  sd_value <- sd(x, na.rm = TRUE)
-  ifelse(abs(x - mean_value) > num_sd * sd_value, "Outlier", "Normal")
+# These are codes and functions specific to the USGS package (dataRetrieval)
+retrieve_usgs_data <- function(start_date, end_date, site_no = "08315480", p_code = "00060") {
+  #Retrieve the USGS discharge data as an instantaneous (uv) data type.
+  usgs_data <- readNWISuv(siteNumbers = site_no, parameterCd = p_code, startDate = start_date, endDate = end_date)
+  #Rename columns to more user-friendly names.
+  usgs_data <- renameNWISColumns(usgs_data)
 }
 
-# Apply the function to all numeric columns in each data frame in the list
+# Retrieve USGS data for different s::can sites, each has different deployment dates
+santafeUSGS_20 <- retrieve_usgs_data("2024-05-08", "2024-07-30")
+santafeUSGS_12 <- retrieve_usgs_data("2024-05-07", "2024-07-30")
+santafeUSGS_21 <- retrieve_usgs_data("2024-06-27", "2024-07-26")
+
+# Create plot function
+plot_usgs <- function(df, usgs_df, label) {
+  #Convert both s::can and USGS data to xts objects
+  df_xts <- xts(df, order.by = df$dateTime)
+  usgs_xts <- xts(usgs_df, order.by = usgs_df$dateTime)
+  #Combine them to merge them
+  combined_xts <- merge(df_xts, usgs_xts, join = "outer")
+  #Return to data frame once again to plot
+  combined_df <- data.frame(dateTime = index(combined_xts), coredata(combined_xts))
+  
+  return(combined_xts)
+  
+  # Make sure variables are as numeric
+  combined_df <- combined_df %>% mutate(across(c(Temp, TSS_clean, TOC_clean, `NO3.N_clean`, NO3_clean, DOC_clean, Flow_Inst), as.numeric))
+  
+  ggplot(data = combined_df) +
+    geom_line(aes(x = dateTime, y = Temp, color = 'Temperature')) +
+    geom_line(aes(x = dateTime, y = TSS_clean, color = 'TSS')) +
+    geom_line(aes(x = dateTime, y = TOC_clean, color = 'TOC')) +
+    geom_line(aes(x = dateTime, y = `NO3.N_clean`, color = 'NO3.N')) +
+    geom_line(aes(x = dateTime, y = NO3_clean, color = 'NO3')) +
+    geom_line(aes(x = dateTime, y = DOC_clean, color = 'DOC')) +
+    geom_line(aes(x = dateTime, y = Flow_Inst, color = 'Flow')) +
+    scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
+    scale_y_continuous(breaks = seq(0, 20, by = 5)) +
+    theme(axis.text.x = element_text(angle = 45)) +
+    ylab(label)
+}
+
+
+# Plot
+print(plot_usgs(scan_filtered[[1]], santafeUSGS_12, scan_csvs$name[1]))
+print(plot_usgs(scan_filtered[[2]], santafeUSGS_20, scan_csvs$name[2]))
+print(plot_usgs(scan_filtered[[3]], santafeUSGS_21, scan_csvs$name[3]))
+
+### Save figures to folder ###
 for (i in seq_along(scan_filtered)) {
-  # Access the current data frame
-  df <- scan_filtered[[i]]
+  # Match the correct USGS data with each scan
+  usgs_data <- switch(i,
+                      santafeUSGS_12,
+                      santafeUSGS_20,
+                      santafeUSGS_21)
   
-  # Flag outliers
-  df <- df %>%
-    mutate(across(where(is.numeric), ~flag_outliers(., num_sd), .names = "flag_{col}"))
+  # Generate the plot
+  plot <- plot_usgs(scan_filtered[[i]], usgs_data, scan_csvs$name[i])
   
-  # Store the updated data frame in the list
-  scan_filtered[[i]] <- df
+  # Save the plot to a file
+  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_outlier.png"), plot)
 }
 
-#Retrieve and Plot USGS Data:
+#####################################
+#### Plot all variables separate ####
+#####################################
 
-# Check start and end date for Blossom (USF20)
-start.date <- "2024-05-08"
-end.date <- "2024-07-26"
-
-# Retrieve data from NWIS
-siteNo <- "08315480"
-pCode <- "00060" # Parameter code for streamflow
-
-santafeUSGS <- readNWISuv(siteNumbers = siteNo,
-                          parameterCd = pCode,
-                          startDate = start.date,
-                          endDate = end.date)
-
-# Change column names
-santafeUSGS <- renameNWISColumns(santafeUSGS)
-
-# Plot USGS data
-ts <- ggplot(data = santafeUSGS, aes(dateTime, Flow_Inst)) +
-  geom_line()
-print(ts)
-
-#Merge and Filter Data:
-
-# Convert data frames to xts objects to line up dateTimes
-scan_ts <- xts(scan_filtered[[1]], order.by = scan_filtered[[1]]$dateTime)
-santafeUSGS_ts <- xts(santafeUSGS, order.by = santafeUSGS$dateTime)
-
-# Merge the xts objects
-combined_xts <- merge(scan_ts, santafeUSGS_ts, join = "outer")
-
-# Convert xts object to data.frame
-combined_df <- data.frame(dateTime = index(combined_xts), coredata(combined_xts))
-
-# Verify dateTime is in POSIXct
-combined_df$dateTime <- as.POSIXct(combined_df$dateTime)
-
-# Filter the data to exclude outliers
-filtered_data <- combined_df %>%
-  filter(if_all(starts_with("flag_"), ~ . == "Normal"))
-
-# Convert y-values to numeric
-numeric_columns <- c("Temp", "TSS", "TOC", "NO3N", "NO3", "DOC", "Flow_Inst")
-filtered_data[numeric_columns] <- lapply(filtered_data[numeric_columns], as.numeric)
-
-# Plot the filtered data
-p <- ggplot(data = filtered_data) + 
-  geom_line(aes(x = dateTime, y = Temp, color = 'Temperature')) +
-  geom_line(aes(x = dateTime, y = TSS, color = 'TSS')) +
-  geom_line(aes(x = dateTime, y = TOC, color = 'TOC')) +
-  geom_line(aes(x = dateTime, y = NO3N, color = 'NO3-N')) +
-  geom_line(aes(x = dateTime, y = NO3, color = 'NO3')) +
-  geom_line(aes(x = dateTime, y = DOC, color = 'DOC')) +
-  geom_line(aes(x = dateTime, y = Flow_Inst, color = 'Flow')) +
-  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
-  scale_y_continuous() +
-  theme(axis.text.x = element_text(angle = 45)) +
-  ylab("Blossom") +
-  ggtitle("Filtered blossom X4sd")
-
-print(p)
-
-#### Buttercup ####
-# Define the number of standard deviations to use as the threshold
-num_sd <- 4
-
-# Function to flag outliers in a numeric vector
-flag_outliers <- function(x, num_sd) {
-  mean_value <- mean(x, na.rm = TRUE)
-  sd_value <- sd(x, na.rm = TRUE)
-  ifelse(abs(x - mean_value) > num_sd * sd_value, "Outlier", "Normal")
+# Function to retrieve and plot USGS data with separate facets for each variable
+plot_usgs_faceted <- function(df, usgs_df, label) {
+  # Convert to xts and merge data frames
+  df_xts <- xts(df, order.by = df$dateTime)
+  usgs_xts <- xts(usgs_df, order.by = usgs_df$dateTime)
+  combined_xts <- merge(df_xts, usgs_xts, join = "outer")
+  combined_df <- data.frame(dateTime = index(combined_xts), coredata(combined_xts))
+  
+  # Convert columns to numeric, if necessary
+  combined_df <- combined_df %>% mutate(across(c(Temp, TSS_clean, TOC_clean, 'NO3.N_clean', NO3_clean, DOC_clean, Flow_Inst), as.numeric))
+  
+  # Reshape data to long format for faceting
+  combined_long <- combined_df %>%
+    select(dateTime, Temp, TSS_clean, TOC_clean, 'NO3.N_clean', NO3_clean, DOC_clean, Flow_Inst) %>%
+    pivot_longer(cols = -dateTime, names_to = "Variable", values_to = "Value")
+  
+  # Plot using ggplot with facet_wrap for each variable
+  ggplot(data = combined_long, aes(x = dateTime, y = Value, color = Variable)) +
+    geom_line() +
+    facet_wrap(~Variable, scales = "free_y", ncol = 1) +  # Separate facet for each variable
+    scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    ylab(label) +
+    ggtitle(label) +
+    theme(legend.position = "none")  # Hide the legend as it's redundant with faceting
 }
 
-# Apply the function to all numeric columns in each data frame in the list
+# Plot
+print(plot_usgs_faceted(scan_filtered[[1]], santafeUSGS_12, scan_csvs$name[1]))
+print(plot_usgs_faceted(scan_filtered[[2]], santafeUSGS_20, scan_csvs$name[2]))
+print(plot_usgs_faceted(scan_filtered[[3]], santafeUSGS_21, scan_csvs$name[3]))
+
+### Save figures to folder ###
 for (i in seq_along(scan_filtered)) {
-  # Access the current data frame
-  df <- scan_filtered[[i]]
+  # Match the correct USGS data with each scan
+  usgs_data <- switch(i,
+                      santafeUSGS_12,
+                      santafeUSGS_20,
+                      santafeUSGS_21)
   
-  # Flag outliers
-  df <- df %>%
-    mutate(across(where(is.numeric), ~flag_outliers(., num_sd), .names = "flag_{col}"))
+  # Generate the plot
+  plot <- plot_usgs_faceted(scan_filtered[[i]], usgs_data, scan_csvs$name[i])
   
-  # Store the updated data frame in the list
-  scan_filtered[[i]] <- df
+  # Save the plot to a file
+  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_sep-outlier.png"), plot)
 }
 
-#Retrieve and Plot USGS Data:
+####################################
+#### Merge USGS and s::can data ####
+####################################
 
-# Check start and end date for Blossom (USF20)
-start.date <- "2024-05-07"
-end.date <- "2024-07-26"
-
-# Retrieve data from NWIS
-siteNo <- "08315480"
-pCode <- "00060" # Parameter code for streamflow
-
-santafeUSGS <- readNWISuv(siteNumbers = siteNo,
-                          parameterCd = pCode,
-                          startDate = start.date,
-                          endDate = end.date)
-
-# Change column names
-santafeUSGS <- renameNWISColumns(santafeUSGS)
-
-# Plot USGS data
-ts <- ggplot(data = santafeUSGS, aes(dateTime, Flow_Inst)) +
-  geom_line()
-print(ts)
-
-#Merge and Filter Data:
-
-# Convert data frames to xts objects to line up dateTimes
-scan_ts <- xts(scan_filtered[[2]], order.by = scan_filtered[[2]]$dateTime)
-santafeUSGS_ts <- xts(santafeUSGS, order.by = santafeUSGS$dateTime)
-
-# Merge the xts objects
-combined_xts <- merge(scan_ts, santafeUSGS_ts, join = "outer")
-
-# Convert xts object to data.frame
-combined_df <- data.frame(dateTime = index(combined_xts), coredata(combined_xts))
-
-# Verify dateTime is in POSIXct
-combined_df$dateTime <- as.POSIXct(combined_df$dateTime)
-
-# Filter the data to exclude outliers
-filtered_data <- combined_df %>%
-  filter(if_all(starts_with("flag_"), ~ . == "Normal"))
-
-# Convert y-values to numeric
-numeric_columns <- c("Temp", "TSS", "TOC", "NO3N", "NO3", "DOC", "Flow_Inst")
-filtered_data[numeric_columns] <- lapply(filtered_data[numeric_columns], as.numeric)
-
-# Plot the filtered data
-p <- ggplot(data = filtered_data) + 
-  geom_line(aes(x = dateTime, y = Temp, color = 'Temperature')) +
-  geom_line(aes(x = dateTime, y = TSS, color = 'TSS')) +
-  geom_line(aes(x = dateTime, y = TOC, color = 'TOC')) +
-  geom_line(aes(x = dateTime, y = NO3N, color = 'NO3-N')) +
-  geom_line(aes(x = dateTime, y = NO3, color = 'NO3')) +
-  geom_line(aes(x = dateTime, y = DOC, color = 'DOC')) +
-  geom_line(aes(x = dateTime, y = Flow_Inst, color = 'Flow')) +
-  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
-  scale_y_continuous() +
-  theme(axis.text.x = element_text(angle = 45)) +
-  ylab("Buttercup") +
-  ggtitle("Filtered buttercup X4sd")
-
-print(p)
-
-#### Bubbles ####
-# Define the number of standard deviations to use as the threshold
-num_sd <- 2
-
-# Function to flag outliers in a numeric vector
-flag_outliers <- function(x, num_sd) {
-  mean_value <- mean(x, na.rm = TRUE)
-  sd_value <- sd(x, na.rm = TRUE)
-  ifelse(abs(x - mean_value) > num_sd * sd_value, "Outlier", "Normal")
+# Function to merge USGS data with s::can data
+merge_usgs_with_scan <- function(scan_df, usgs_df) {
+  
+  # Convert both data frames to xts objects
+  scan_xts <- xts(scan_df, order.by = scan_df$dateTime)
+  usgs_xts <- xts(usgs_df, order.by = usgs_df$dateTime)
+  
+  # Merge the xts objects
+  combined_xts <- merge(scan_xts, usgs_xts, join = "outer")
+  
+  # Convert back to data frame
+  combined_df <- data.frame(dateTime = index(combined_xts), coredata(combined_xts))
+  
+  return(combined_df)
 }
 
-# Apply the function to all numeric columns in each data frame in the list
-for (i in seq_along(scan_filtered)) {
-  # Access the current data frame
-  df <- scan_filtered[[i]]
-  
-  # Flag outliers
-  df <- df %>%
-    mutate(across(where(is.numeric), ~flag_outliers(., num_sd), .names = "flag_{col}"))
-  
-  # Store the updated data frame in the list
-  scan_filtered[[i]] <- df
-}
+# List of USGS data frames corresponding to scan_filtered
+usgs_list <- list(
+  santafeUSGS_12,
+  santafeUSGS_20,
+  santafeUSGS_21
+)
 
-#Retrieve and Plot USGS Data:
-
-# Check start and end date for Bubbles (USF21)
-start.date <- "2024-06-27"
-end.date <- "2024-07-26"
-
-# Retrieve data from NWIS
-siteNo <- "08315480"
-pCode <- "00060" # Parameter code for streamflow
-
-santafeUSGS <- readNWISuv(siteNumbers = siteNo,
-                          parameterCd = pCode,
-                          startDate = start.date,
-                          endDate = end.date)
-
-# Change column names
-santafeUSGS <- renameNWISColumns(santafeUSGS)
-
-# Plot USGS data
-ts <- ggplot(data = santafeUSGS, aes(dateTime, Flow_Inst)) +
-  geom_line()
-print(ts)
-
-#Merge and Filter Data:
-
-# Convert data frames to xts objects to line up dateTimes
-scan_ts <- xts(scan_filtered[[3]], order.by = scan_filtered[[3]]$dateTime)
-santafeUSGS_ts <- xts(santafeUSGS, order.by = santafeUSGS$dateTime)
-
-# Merge the xts objects
-combined_xts <- merge(scan_ts, santafeUSGS_ts, join = "outer")
-
-# Convert xts object to data.frame
-combined_df <- data.frame(dateTime = index(combined_xts), coredata(combined_xts))
-
-# Verify dateTime is in POSIXct
-combined_df$dateTime <- as.POSIXct(combined_df$dateTime)
-
-# Filter the data to exclude outliers
-filtered_data <- combined_df %>%
-  filter(if_all(starts_with("flag_"), ~ . == "Normal"))
-
-# Convert y-values to numeric
-numeric_columns <- c("Temp", "TSS", "TOC", "NO3N", "NO3", "DOC", "Flow_Inst")
-filtered_data[numeric_columns] <- lapply(filtered_data[numeric_columns], as.numeric)
-
-#Plot the Filtered Data:
-
-# Plot the filtered data
-p <- ggplot(data = filtered_data) + 
-  geom_line(aes(x = dateTime, y = Temp, color = 'Temperature')) +
-  geom_line(aes(x = dateTime, y = TSS, color = 'TSS')) +
-  geom_line(aes(x = dateTime, y = TOC, color = 'TOC')) +
-  geom_line(aes(x = dateTime, y = NO3N, color = 'NO3-N')) +
-  geom_line(aes(x = dateTime, y = NO3, color = 'NO3')) +
-  geom_line(aes(x = dateTime, y = DOC, color = 'DOC')) +
-  geom_line(aes(x = dateTime, y = Flow_Inst, color = 'Flow')) +
-  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
-  scale_y_continuous() +
-  theme(axis.text.x = element_text(angle = 45)) +
-  ylab("Bubbles") +
-  ggtitle("Filtered bubbles X2sd")
-
-print(p)
+# Merge USGS data with scan_filtered data frames
+scan_with_usgs <- mapply(merge_usgs_with_scan, scan_filtered, usgs_list, SIMPLIFY = FALSE)
 
 ####################################
 #### Save cleaned data to Drive ####
@@ -842,13 +379,13 @@ remove_extension <- function(file_name) {
 }
 
 # Loop through each data frame in the list
-for (i in seq_along(scan_filtered)) {
+for (i in seq_along(scan_with_usgs)) {
   # Access the current data frame
-  df <- scan_filtered[[i]]
+  df <- scan_with_usgs[[i]]
   
   # Define the file name and path
   clean_name <- remove_extension(scan_csvs$name[i])
-  file_name <- paste0("googledrive/", clean_name, ".csv")
+  file_name <- paste0("googledrive/", clean_name, "_filtered.csv")
   
   # Save the new data frame to a CSV file
   write.csv(df, file_name, row.names=FALSE, quote=FALSE)
@@ -859,4 +396,3 @@ for (i in seq_along(scan_filtered)) {
   # Upload the file to the specified Google Drive folder
   drive_upload(media = file_name, path = as_id(drive_folder_id))
 }
-
