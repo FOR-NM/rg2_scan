@@ -52,14 +52,59 @@ scan_list <- lapply(scan_list, function(df) {
   return(df)
 })
 
-###################################################################################
-#### Clean out service dates (out of water days) and 'ABOVE' and 'BELOW' values####
-###################################################################################
+#########################################################################################
+#### Count number of service dates (out of water days) and 'ABOVE' and 'BELOW' values####
+#########################################################################################
+
 # When scan is out of water it records as NO_MEDIUM
 # Replace 'NO_MEDIUM' values with NA 
 # Also when it reads < lower error limit or  > upper error limit, it flags as 'VAL_BELOW' or 'VAL_ABOVE'
 # Replace 'VAL_BELOW' or 'VAL_ABOVE' flagged values with NA 
 
+### First, count how many logs with , 'VAL_BELOW' or 'VAL_ABOVE' each one has ###
+# Initialize a list to store the counts for each file
+count_list <- list()
+
+# Loop over each data frame in the list
+for (file_name in names(scan_list)) {
+  
+  # Get the data frame
+  data <- scan_list[[file_name]]
+  
+  # Filter to only character columns
+  char_data <- data[, sapply(data, is.character)]
+  
+  # Count the number of rows that contain VAL_BELOW, VAL_ABOVE, or NO_MEDIUM
+  val_below_count <- sum(apply(char_data, 1, function(row) any(row == "VAL_BELOW", na.rm = TRUE)))
+  val_above_count <- sum(apply(char_data, 1, function(row) any(row == "VAL_ABOVE", na.rm = TRUE)))
+  no_medium_count <- sum(apply(char_data, 1, function(row) any(row == "NO_MEDIUM", na.rm = TRUE)))
+  
+  # Store the counts in a data frame
+  count_list[[file_name]] <- data.frame(
+    File = file_name,
+    VAL_BELOW = val_below_count,
+    VAL_ABOVE = val_above_count,
+    NO_MEDIUM = no_medium_count
+  )
+}
+
+# Combine all the individual data frames into one
+final_count_table <- do.call(rbind, count_list)
+
+# Print the final table
+print(final_count_table)
+
+############################
+#### Save data to Drive ####
+############################
+
+# Save the final table to a CSV file
+write.csv(final_count_table, "final_NAcount_table.csv", row.names = TRUE)
+
+###################################################################################
+#### Clean out service dates (out of water days) and 'ABOVE' and 'BELOW' values####
+###################################################################################
+#### Now we change them to NAs ####
 # Apply the transformation across each data frame in the list
 scan_filtered <- lapply(scan_list, function(df) {
   

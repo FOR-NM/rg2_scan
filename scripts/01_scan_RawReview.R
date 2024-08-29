@@ -1,6 +1,8 @@
 ##==============================================================================
 ## Project: QuEST
 ## Script to visualize raw scan data from NM
+## Here we will plot some images but will not be saving cleaned data back. 
+## It is just so see what your data looks like and understand what needs to get done
 ## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
 
@@ -99,7 +101,8 @@ for (i in seq_along(scan_list)) {
 #### Clean out by specifics of each data set ####
 #Look at your data and decide if you need to do anything else with it
 scan_list[1]
-#in this case I am going to remove the first few rows of data to clean it more since they are junk
+
+# IN THIS CASE I am going to remove the first few rows of data to clean it more since they are junk
 
 scan_list[[1]] <- scan_list[[1]][-c(1:93), ]
 
@@ -112,11 +115,6 @@ scan_list[[2]] <- scan_list[[2]][-c(1:28), ]
 scan_list[3]
 
 scan_list[[3]] <- scan_list[[3]][-c(1:9), ]
-
-##################################
-#### Merging data to make one ####
-##################################
-
 
 ##################
 #### Plotting ####

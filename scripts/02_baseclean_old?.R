@@ -55,6 +55,32 @@ for (i in seq_along(scan_csvs$id)) {
 #####################################################
 #### Clean out service dates (out of water days) ####
 #####################################################
+
+# Loop through each data frame in the list
+for (i in seq_along(scan_list)) {
+  # Access the current data frame
+  df <- scan_list[[i]]
+  
+  # Replace 'NO_MEDIUM' with NA in character columns only
+  scan_list %>% summarise(across(where(is.character), ~ .))
+  
+  # Update the data frame in the list
+  #scan_list[[i]] <- df
+}
+
+# Loop through each data frame in the list
+for (i in seq_along(scan_list)) {
+  # Access the current data frame
+  df <- scan_list[[i]]
+  
+  # Replace 'NO_MEDIUM' with NA in character columns only
+  df <- df %>%
+    mutate(across(where(is.character), ~ na_if(.x, "NO_MEDIUM")))
+  
+  # Update the data frame in the list
+  scan_list[[i]] <- df
+}
+
 #When scan is out of water it records as NO_MEDIUM, we'll use that to clean
 # Loop through each data frame in the list
 for (i in seq_along(scan_list)) {
@@ -105,19 +131,6 @@ for (i in seq_along(scan_list)) {
   # Update the data frame in the list
   scan_list[[i]] <- df
 }
-
-### Keep rows with only 15-minute intervals ###
-# Loop through each data frame in the list
-#for (i in seq_along(scan_list)) {
-# Access the current data frame
-#df <- scan_list[[i]]
-
-# Filter function 
-#df <- df %>%
-#filter(format(df$dateTime, "%M") %in% c("00", "15", "30", "45"))
-# Update the data frame in the list
-#scan_list[[i]] <- df
-#}
 
 ###############################
 #### Load Servicing Times #####
@@ -245,7 +258,7 @@ for (i in seq_along(scan_filtered)) {
   ggsave(paste0("scan_figs/", scan_csvs$name[i], "_Measured.png"))
 }
 
-#################################
+##################################
 #### Pull USGS discharge data ####
 ##################################
 
