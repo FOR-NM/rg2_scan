@@ -14,34 +14,51 @@ library(ggplot2)
 #### Import Data ####
 #####################
 # Load data from Google Drive
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1DZktlQUHaot_r4e_fD9ip6zcxHWqslMP")
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1np2B4bSWaNMIYE2FHL3YOnZ20FRudsEy")
 scan_csvs <- googledrive::drive_ls(path = scan, type = "xlsx")
-3
 
-# Create empty list to store data frames
-scan_list <- list()
+# Create empty lists to store data frames for the first and second sheets
+params_list <- list()
+fingerprints_list <- list()
 
-# Loop over each file in `scan_csvs` and read the data
-scan_list <- lapply(seq_along(scan_csvs$id), function(i) {
+# Loop over each file in `scan_csvs` and read the first two sheets
+for (i in seq_along(scan_csvs$id)) {
   local_path <- file.path("googledrive", scan_csvs$name[i])
   
-  # Download and read the file
+  # Download the file
   googledrive::drive_download(file = scan_csvs$id[i], path = local_path, overwrite = TRUE)
-  header <- read_excel(local_path, skip = 1, n_max = 1, col_names = FALSE)
-  col_names <- as.character(unlist(header[1, ]))
-  col_names[col_names == ""] <- paste0("X", seq_along(col_names[col_names == ""]))
   
-  # Return the data frame
-  read_excel(local_path, skip = 4, col_names = col_names)
-})
+  # Read the first sheet
+  params <- read_excel(local_path, sheet = 1, skip = 1)
+  # Read the second sheet
+  fingerprints <- read_excel(local_path, sheet = 2, skip = 1)
+  
+  # Store the data frames in their respective lists if not NULL
+  params_list[[scan_csvs$name[i]]] <- params
+  
+  fingerprints_list[[scan_csvs$name[i]]] <- fingerprints
+}
 
-names(scan_list) <- scan_csvs$name
+# Print the list names to verify
+print(names(params_list))
+print(names(fingerprints_list))
+
+#####################
+#### Merge lists ####
+#####################
+# The map2 function is used to iterate over two lists or vectors in parallel.
+#.x corresponds to elements of sheet1_list.
+#.y corresponds to elements of sheet2_list.
+
+merged_list <- map2(params_list, fingerprints_list, ~ {
+  merge(.x, .y, by = 'Parameter:', all = TRUE)
+})
 
 #################
 #### Tidying ####
 #################
 # Change some names for easier manipulation
-scan_list <- lapply(scan_list, function(df) {
+scan_list <- lapply(merged_list, function(df) {
   colnames(df)[c(1, 2, 6, 8, 12, 14, 16, 11)] <- c("dateTime", "DOC", "NO3-N", "NO3", "TOC", "TSS", "Temp", "Voltage")
   
   # Make sure numeric variables are numeric
@@ -197,13 +214,13 @@ scan_filtered <- mapply(function(df, file_name) {
 #############################################################
 # The first few rows before deployment are usually junk. Let's get rid of those
 # Create function 
-scan_filtered <- lapply(scan_filtered, function(df) {
+scan_filtered1 <- lapply(scan_filtered, function(df) {
   # Extract each s::can name/serial number
   serial_number <- df$serial_number[1]
   # Extract the deployed time of each instrument 
   deployed_time <- service$datetimeMT[service$serial_number == serial_number & service$observation == "deployed"]
   
-  # Filter, keep data that is over or equal the deployed time
+  # Filter, keep data that is equal to or after the deployed time
   df <- df %>% filter(dateTime >= deployed_time)
   return(df)
 })

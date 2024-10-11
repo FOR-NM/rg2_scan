@@ -15,9 +15,9 @@ library(readxl) #to read excel
 library(lubridate) # Edit date format
 library(xts) # Time series
 
-#################################
-#### Import & Visualize Data ####
-#################################
+#####################
+#### Import Data ####
+#####################
 # Load data from Google Drive
 scan <- googledrive::as_id("https://drive.google.com/drive/folders/1np2B4bSWaNMIYE2FHL3YOnZ20FRudsEy")
 # List all Excel files in the folder
