@@ -105,7 +105,7 @@ filtered_data <- file_to_plot %>%
 
 # Create the plot
 ggplot(filtered_data, aes(x = Wavelength, y = Absorbance)) +
-  geom_line() +s
+  geom_line() +
   labs(title = paste(date_to_plot, file_name), 
        x = "Wavelength (nm)", y = "Absorbance") +
   theme_minimal()

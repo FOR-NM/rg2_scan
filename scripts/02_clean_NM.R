@@ -10,60 +10,62 @@ library(lubridate) # Edit date format
 library(xts) # Time series
 library(ggplot2)
 
+###################################
+## Clear folders that we will use ##
+###################################
+# List and delete all files in the folder
+files <- list.files(path = "scan_figs", full.names = TRUE)
+file.remove(files)
+
+files <- list.files(path = "googledrive", full.names = TRUE)
+file.remove(files)
+
 #####################
 #### Import Data ####
 #####################
 # Load data from Google Drive
 scan <- googledrive::as_id("https://drive.google.com/drive/folders/1np2B4bSWaNMIYE2FHL3YOnZ20FRudsEy")
 scan_csvs <- googledrive::drive_ls(path = scan, type = "xlsx")
+3
 
-# Create empty lists to store data frames for the first and second sheets
-params_list <- list()
-fingerprints_list <- list()
+# Create empty list to store data frames
+scan_list <- list()
 
-# Loop over each file in `scan_csvs` and read the first two sheets
+# Loop over each file in the `scan_csvs` data frame
 for (i in seq_along(scan_csvs$id)) {
+  # Define the local file path
   local_path <- file.path("googledrive", scan_csvs$name[i])
   
   # Download the file
-  googledrive::drive_download(file = scan_csvs$id[i], path = local_path, overwrite = TRUE)
+  googledrive::drive_download(
+    file = scan_csvs$id[i],
+    path = local_path,
+    overwrite = TRUE
+  )
   
-  # Read the first sheet
-  params <- read_excel(local_path, sheet = 1, skip = 1)
-  # Read the second sheet
-  fingerprints <- read_excel(local_path, sheet = 2, skip = 1)
+  # Read the header row (row 2)
+  header <- read_excel(local_path, skip = 1, n_max = 1, col_names = FALSE)
+  # Convert the header to a character vector and clean empty names
+  col_names <- as.character(unlist(header[1, ]))
+  col_names[col_names == ""] <- paste0("X", seq_along(col_names[col_names == ""]))
   
-  # Store the data frames in their respective lists if not NULL
-  params_list[[scan_csvs$name[i]]] <- params
+  # Read the data starting from row 4 using the header as column names
+  data <- read_excel(local_path, skip = 4, col_names = col_names)
   
-  fingerprints_list[[scan_csvs$name[i]]] <- fingerprints
+  # Store the data in the list
+  scan_list[[scan_csvs$name[i]]] <- data
 }
-
-# Print the list names to verify
-print(names(params_list))
-print(names(fingerprints_list))
-
-#####################
-#### Merge lists ####
-#####################
-# The map2 function is used to iterate over two lists or vectors in parallel.
-#.x corresponds to elements of sheet1_list.
-#.y corresponds to elements of sheet2_list.
-
-merged_list <- map2(params_list, fingerprints_list, ~ {
-  merge(.x, .y, by = 'Parameter:', all = TRUE)
-})
 
 #################
 #### Tidying ####
 #################
 # Change some names for easier manipulation
-scan_list <- lapply(merged_list, function(df) {
-  colnames(df)[c(1, 2, 6, 8, 12, 14, 16, 11)] <- c("dateTime", "DOC", "NO3-N", "NO3", "TOC", "TSS", "Temp", "Voltage")
+scan_list <- lapply(scan_list, function(df) {
+  colnames(df)[c(1, 2, 6, 8, 12, 14, 16, 11)] <- c("dateTime", "DOC", "NO3N", "NO3", "TOC", "TSS", "Temp", "Voltage")
   
   # Make sure numeric variables are numeric
   df <- df %>%
-    mutate(across(c(DOC, `NO3-N`, NO3, TOC, TSS, Temp), as.numeric)) %>%
+    mutate(across(c(DOC, NO3N, NO3, TOC, TSS, Temp), as.numeric)) %>%
     mutate(dateTime = as.POSIXct(dateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
   
   return(df)
@@ -111,22 +113,20 @@ final_count_table <- do.call(rbind, count_list)
 # Print the final table
 print(final_count_table)
 
-############################
 #### Save data to Drive ####
-############################
 
 # Save the final table to a CSV file
-write.csv(final_count_table, "final_NAcount_table.csv", row.names = TRUE)
+# write.csv(final_count_table, "final_NAcount_table.csv", row.names = TRUE)
 
-###################################################################################
-#### Clean out service dates (out of water days) and 'ABOVE' and 'BELOW' values####
-###################################################################################
+#####################################################
+#### Clean out service dates (out of water days) ####
+#####################################################
 #### Now we change them to NAs ####
 # Apply the transformation across each data frame in the list
 scan_filtered <- lapply(scan_list, function(df) {
   
   # Identify all the measured value columns and their corresponding status columns
-  measured_cols <- c("DOC", "NO3-N", "NO3", "TOC", "TSS")
+  measured_cols <- c("DOC", "NO3N", "NO3", "TOC", "TSS")
   status_cols <- paste0(measured_cols, "eq [mg/l] - Measured status")
   
   # Loop over each measured column and its corresponding status column
@@ -137,8 +137,8 @@ scan_filtered <- lapply(scan_list, function(df) {
     
     # Check if the status column exists in the data frame
     if (status_col %in% colnames(df)) {
-      # Replace with NA if status is "NO_MEDIUM", "VAL_ABOVE", or "VAL_BELOW"
-      df[[new_col_name]] <- ifelse(df[[status_col]] %in% c("NO_MEDIUM", "VAL_ABOVE", "VAL_BELOW"), NA, df[[measured_col]])
+      # Replace with NA if status is "NO_MEDIUM"
+      df[[new_col_name]] <- ifelse(df[[status_col]] %in% c("NO_MEDIUM"), NA, df[[measured_col]])
     } else {
       # If status column doesn't exist, just copy the measured column to new column
       df[[new_col_name]] <- df[[measured_col]]
@@ -148,52 +148,32 @@ scan_filtered <- lapply(scan_list, function(df) {
   return(df)
 })
 
-##############################################################
-#### Check for 'VAL_BELOW' and 'VAL_ABOVE' removed values ####
-##############################################################
-#Compare the min and max values before and after filtering
-
-# Summary statistics for the cleaned columns
-lapply(scan_list, function(df) {
-  summary(df[, !grepl("_clean", colnames(df))])
-})
-
-# Summary statistics for the cleaned columns
-lapply(scan_filtered, function(df) {
-  summary(df[, grepl("_clean", colnames(df))])
-})
-
-# Check if 'NA' is present where status was flagged
-check_na_replacement <- function(df, measured_cols, status_cols) {
-  result <- list()
-  for (i in seq_along(measured_cols)) {
-    measured_col <- measured_cols[i]
-    status_col <- status_cols[i]
-    clean_col <- paste0(measured_col, "_clean")
-    
-    # Verify if NA was set correctly
-    result[[clean_col]] <- any(is.na(df[[clean_col]])) && all(
-      !df[[status_col]] %in% c("NO_MEDIUM", "VAL_ABOVE", "VAL_BELOW") | is.na(df[[clean_col]])
-    )
-  }
-  return(result)
-}
-
-# Apply the check function
-checks <- lapply(scan_filtered, check_na_replacement, measured_cols = c("DOC", "NO3-N", "NO3", "TOC", "TSS"), status_cols = paste0(c("DOC", "NO3-N", "NO3", "TOC", "TSS"), "eq [mg/l] - Measured status"))
-print(checks)
-
 ###############################
 #### Load Servicing Times #####
 ###############################
-# Download and read sensor event log
+
+# get data from googledrive
 service_tibble <- googledrive::drive_ls("https://drive.google.com/drive/folders/1KdjN1nmeeqtgxk6k3rImtb-wpVXVyLk4")
-googledrive::drive_download(as_id(service_tibble$id[service_tibble$name == "sensor_event_log"]), overwrite = TRUE, path = "googledrive/sensor_event_log.xlsx")
-# Let's call the file "service"
-service <- readxl::read_excel("googledrive/sensor_event_log.xlsx") %>%
-  # Filter using
-  filter(model == "s::can", observation %in% c("out of water", "deployed"), site_code == "NM") %>%
-  mutate(datetimeMT = as.POSIXct(paste(date, format(as.POSIXct(time, format = "%H:%M:%S"), "%H:%M:%S")), format = "%Y-%m-%d %H:%M", tz = "US/Mountain"))
+googledrive::drive_download(as_id(service_tibble$id[service_tibble$name=="sensor_event_log"]), overwrite = TRUE,path="googledrive/sensor_event_log.xlsx")
+
+# read in file and filter to s::can service days and deployments
+service = readxl::read_excel("googledrive/sensor_event_log.xlsx")
+service = service[service$model=="s::can",]
+service = service[service$observation=="out of water" | service$observation=="deployed",]
+
+
+# format date and time
+service$date = as.Date(service$date)
+service$time <- format(as.POSIXct(service$time, format="%H:%M:%S"), "%H:%M:%S")
+service$datetime = paste(service$date,  service$time, sep = " ")
+# convert to POIXct and set timezone
+service$datetimeMT<-as.POSIXct(service$datetime, 
+                               format = "%Y-%m-%d %H:%M",
+                               tz="US/Mountain")
+
+# remove rows with no exact times & make one new for deployed
+deployedtimes = service[!is.na(service$datetimeMT),]
+deployedtimes = service[service$observation == "deployed", ]
 
 ###############################################
 #### Add instrument name or serial number  ####
@@ -212,6 +192,7 @@ scan_filtered <- mapply(function(df, file_name) {
 #############################################################
 #### Delete all the rows before the deployment date-time ####
 #############################################################
+
 # The first few rows before deployment are usually junk. Let's get rid of those
 # Create function 
 scan_filtered1 <- lapply(scan_filtered, function(df) {
@@ -234,7 +215,7 @@ plot_variables <- function(df, file_name) {
     geom_line(aes(x = dateTime, y = Temp, color = 'Temperature')) +
     geom_line(aes(x = dateTime, y = TSS_clean, color = 'TSS')) +
     geom_line(aes(x = dateTime, y = TOC_clean, color = 'TOC')) +
-    geom_line(aes(x = dateTime, y = `NO3-N_clean`, color = 'NO3-N')) +
+    geom_line(aes(x = dateTime, y = NO3N_clean, color = 'NO3N')) +
     geom_line(aes(x = dateTime, y = NO3_clean, color = 'NO3')) +
     geom_line(aes(x = dateTime, y = DOC_clean, color = 'DOC')) +
     scale_x_datetime(date_breaks = "2 days", date_labels = "%m/%d") +
@@ -244,9 +225,9 @@ plot_variables <- function(df, file_name) {
 }
 
 # Plot
-print(plot_variables(scan_filtered[[1]], scan_csvs$name[1]))
-print(plot_variables(scan_filtered[[2]], scan_csvs$name[2]))
-print(plot_variables(scan_filtered[[3]], scan_csvs$name[3]))
+print(plot_variables(scan_filtered1[[1]], scan_csvs$name[1]))
+print(plot_variables(scan_filtered1[[2]], scan_csvs$name[2]))
+print(plot_variables(scan_filtered1[[3]], scan_csvs$name[3]))
 
 # Save figures to folder
 for (i in seq_along(scan_filtered)) {
@@ -260,7 +241,7 @@ for (i in seq_along(scan_filtered)) {
 # Function to plot each variable separately in the same panel
 plot_variables <- function(df, file_name) {
   df_long <- df %>%
-    select(dateTime, Temp, TSS_clean, TOC_clean, 'NO3-N_clean', NO3_clean, DOC_clean) %>%
+    select(dateTime, Temp, TSS_clean, TOC_clean, 'NO3N_clean', NO3_clean, DOC_clean) %>%
     pivot_longer(cols = -dateTime, names_to = "Variable", values_to = "Value")
   
   ggplot(data = df_long, aes(x = dateTime, y = Value, color = Variable)) +
@@ -274,10 +255,9 @@ plot_variables <- function(df, file_name) {
 }
 
 # Plots
-print(plot_variables(scan_filtered[[1]], scan_csvs$name[1]))
-print(plot_variables(scan_filtered[[2]], scan_csvs$name[2]))
-print(plot_variables(scan_filtered[[3]], scan_csvs$name[3]))
-
+print(plot_variables(scan_filtered1[[1]], scan_csvs$name[1]))
+print(plot_variables(scan_filtered1[[2]], scan_csvs$name[2]))
+print(plot_variables(scan_filtered1[[3]], scan_csvs$name[3]))
 
 ### Save figures to folder ###
 for (i in seq_along(scan_filtered)) {
@@ -300,56 +280,6 @@ santafeUSGS_20 <- retrieve_usgs_data("2024-05-08", "2024-07-30")
 santafeUSGS_12 <- retrieve_usgs_data("2024-05-07", "2024-07-30")
 santafeUSGS_21 <- retrieve_usgs_data("2024-06-27", "2024-07-26")
 
-# Create plot function
-plot_usgs <- function(df, usgs_df, label) {
-  #Convert both s::can and USGS data to xts objects
-  df_xts <- xts(df, order.by = df$dateTime)
-  usgs_xts <- xts(usgs_df, order.by = usgs_df$dateTime)
-  #Combine them to merge them
-  combined_xts <- merge(df_xts, usgs_xts, join = "outer")
-  #Return to data frame once again to plot
-  combined_df <- data.frame(dateTime = index(combined_xts), coredata(combined_xts))
-  
-  return(combined_xts)
-  
-  # Make sure variables are as numeric
-  combined_df <- combined_df %>% mutate(across(c(Temp, TSS_clean, TOC_clean, `NO3.N_clean`, NO3_clean, DOC_clean, Flow_Inst), as.numeric))
-  
-  ggplot(data = combined_df) +
-    geom_line(aes(x = dateTime, y = Temp, color = 'Temperature')) +
-    geom_line(aes(x = dateTime, y = TSS_clean, color = 'TSS')) +
-    geom_line(aes(x = dateTime, y = TOC_clean, color = 'TOC')) +
-    geom_line(aes(x = dateTime, y = `NO3.N_clean`, color = 'NO3.N')) +
-    geom_line(aes(x = dateTime, y = NO3_clean, color = 'NO3')) +
-    geom_line(aes(x = dateTime, y = DOC_clean, color = 'DOC')) +
-    geom_line(aes(x = dateTime, y = Flow_Inst, color = 'Flow')) +
-    scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
-    scale_y_continuous(breaks = seq(0, 20, by = 5)) +
-    theme(axis.text.x = element_text(angle = 45)) +
-    ylab(label)
-}
-
-
-# Plot
-print(plot_usgs(scan_filtered[[1]], santafeUSGS_12, scan_csvs$name[1]))
-print(plot_usgs(scan_filtered[[2]], santafeUSGS_20, scan_csvs$name[2]))
-print(plot_usgs(scan_filtered[[3]], santafeUSGS_21, scan_csvs$name[3]))
-
-### Save figures to folder ###
-for (i in seq_along(scan_filtered)) {
-  # Match the correct USGS data with each scan
-  usgs_data <- switch(i,
-                      santafeUSGS_12,
-                      santafeUSGS_20,
-                      santafeUSGS_21)
-  
-  # Generate the plot
-  plot <- plot_usgs(scan_filtered[[i]], usgs_data, scan_csvs$name[i])
-  
-  # Save the plot to a file
-  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_outlier.png"), plot)
-}
-
 #####################################
 #### Plot all variables separate ####
 #####################################
@@ -363,11 +293,11 @@ plot_usgs_faceted <- function(df, usgs_df, label) {
   combined_df <- data.frame(dateTime = index(combined_xts), coredata(combined_xts))
   
   # Convert columns to numeric, if necessary
-  combined_df <- combined_df %>% mutate(across(c(Temp, TSS_clean, TOC_clean, 'NO3.N_clean', NO3_clean, DOC_clean, Flow_Inst), as.numeric))
+  combined_df <- combined_df %>% mutate(across(c(Temp, TSS_clean, TOC_clean, NO3N_clean, NO3_clean, DOC_clean, Flow_Inst), as.numeric))
   
   # Reshape data to long format for faceting
   combined_long <- combined_df %>%
-    select(dateTime, Temp, TSS_clean, TOC_clean, 'NO3.N_clean', NO3_clean, DOC_clean, Flow_Inst) %>%
+    select(dateTime, Temp, TSS_clean, TOC_clean, NO3N_clean, NO3_clean, DOC_clean, Flow_Inst) %>%
     pivot_longer(cols = -dateTime, names_to = "Variable", values_to = "Value")
   
   # Plot using ggplot with facet_wrap for each variable
@@ -382,7 +312,7 @@ plot_usgs_faceted <- function(df, usgs_df, label) {
 }
 
 # Plot
-print(plot_usgs_faceted(scan_filtered[[1]], santafeUSGS_12, scan_csvs$name[1]))
+print(plot_usgs_faceted(scan_filtered1[[1]], santafeUSGS_12, scan_csvs$name[1]))
 print(plot_usgs_faceted(scan_filtered[[2]], santafeUSGS_20, scan_csvs$name[2]))
 print(plot_usgs_faceted(scan_filtered[[3]], santafeUSGS_21, scan_csvs$name[3]))
 
