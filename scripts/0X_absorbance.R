@@ -7,11 +7,12 @@
 ##==============================================================================
 
 library(googledrive) #Download docs from Drive
+library(readxl) #to read excel 
 library(tidyverse)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
-library(readxl) #to read excel 
+
 library(lubridate) # Edit date format
 library(xts) # Time series
 

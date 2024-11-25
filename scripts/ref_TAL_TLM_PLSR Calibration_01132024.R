@@ -7,12 +7,12 @@
 # ---- Talladega TLP Site (Downstream)  ----
 #### ---- Download necessary packages ---- 
 
-install.packages("spectrolab") # No 
+#install.packages("spectrolab") # No 
 library(spectrolab)
 #install.packages("RcppArmadillo")
 #install.packages("dev.tools")
 #install.packages("pls")
-#library(devtools)
+library(devtools)
 library(pls)
 #install_github(repo = "meireles/spectrolab") # Install analysis package
 # Make sure to hit "no" for install
@@ -74,7 +74,7 @@ scan.spec = xts(scandat[10:220], as.POSIXct(scandat$DateTime, format = "%m/%d/%Y
 # DOC
 # ---- Lining up scan and grab sample data 
 
-grabdat = read_excel("~/Desktop/TAL_scan compiled data_2023.01.06 to 2024.01.03.xlsx",
+grabdat = read_excel("calibrating_exmpl/TAL_scan compiled data_2023.01.06 to 2024.01.03.xlsx",
                      sheet = "TLM01_2023", na = c("", "NaN", "Na")) 
 grabdat = as.data.frame(grabdat)
 #str(grabdat)
@@ -95,12 +95,15 @@ plot(grab.TSS ~ spec.TSS)
 calib.mod.TSS = lm(grab.TSS ~ spec.TSS)
 summary(calib.mod.TSS)
 
+
 # So in this case, the s::can does a pretty good job! But we will still use PLSR 
 # for more precision
 
 #### ---- STEP 4: Create matrices of GRAB spectral data - this is the training dataset ----
 # 1. Index dataset with columns with absorbances
 grab.spec.dat = grab.spec[10:220] # Full spectra, with no NAs
+
+scan.spec
 
 # 2. Create an absorbance matrix 
 # Rows = wavelength
@@ -167,7 +170,7 @@ colnames(scan.matrix) = as.numeric(wl)
 scan.matrix = as.matrix(scan.matrix)
 spec = spectra(value = abs, bands = wl, names = Num)
 #head(spec)
-#plot(spec) # Note = reflectance here = absorbance from the scans
+plot(spec) # Note = reflectance here = absorbance from the scans
 
 # NOTE: this is where you can identify problem spectra & remove them
 

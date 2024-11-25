@@ -1,5 +1,5 @@
 ##==============================================================================
-## Project: QuEST - Script to clean up scan data
+## Project: QuEST - Script to tidy up a bit scan data and plot it
 ## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
 library(dataRetrieval) # Download USGS discharge data
@@ -10,9 +10,9 @@ library(lubridate) # Edit date format
 library(xts) # Time series
 library(ggplot2)
 
-###################################
-## Clear folders that we will use ##
-###################################
+########################################
+#### Clear folders that we will use ####
+########################################
 # List and delete all files in the folder
 files <- list.files(path = "scan_figs", full.names = TRUE)
 file.remove(files)
@@ -114,7 +114,6 @@ final_count_table <- do.call(rbind, count_list)
 print(final_count_table)
 
 #### Save data to Drive ####
-
 # Save the final table to a CSV file
 # write.csv(final_count_table, "final_NAcount_table.csv", row.names = TRUE)
 
@@ -240,10 +239,12 @@ for (i in seq_along(scan_filtered)) {
 
 # Function to plot each variable separately in the same panel
 plot_variables <- function(df, file_name) {
+  # Ensure column selection works correctly
   df_long <- df %>%
-    select(dateTime, Temp, TSS_clean, TOC_clean, 'NO3N_clean', NO3_clean, DOC_clean) %>%
+    dplyr::select("dateTime", "Temp", "TSS_clean", "TOC_clean", "NO3N_clean", "NO3_clean", "DOC_clean") %>%
     pivot_longer(cols = -dateTime, names_to = "Variable", values_to = "Value")
   
+  # Generate the plot
   ggplot(data = df_long, aes(x = dateTime, y = Value, color = Variable)) +
     geom_line() +
     facet_wrap(~Variable, scales = "free_y", ncol = 1) +  # Separate plot for each variable, stacked vertically
@@ -254,7 +255,7 @@ plot_variables <- function(df, file_name) {
     theme(legend.position = "none")  # Hide legend since we have separate panels
 }
 
-# Plots
+# Generate plots
 print(plot_variables(scan_filtered1[[1]], scan_csvs$name[1]))
 print(plot_variables(scan_filtered1[[2]], scan_csvs$name[2]))
 print(plot_variables(scan_filtered1[[3]], scan_csvs$name[3]))
@@ -276,9 +277,9 @@ retrieve_usgs_data <- function(start_date, end_date, site_no = "08315480", p_cod
 }
 
 # Retrieve USGS data for different s::can sites, each has different deployment dates
-santafeUSGS_20 <- retrieve_usgs_data("2024-05-08", "2024-07-30")
-santafeUSGS_12 <- retrieve_usgs_data("2024-05-07", "2024-07-30")
-santafeUSGS_21 <- retrieve_usgs_data("2024-06-27", "2024-07-26")
+santafeUSGS_20 <- retrieve_usgs_data("2024-05-08", "2024-11-14")
+santafeUSGS_12 <- retrieve_usgs_data("2024-05-07", "2024-11-13")
+santafeUSGS_21 <- retrieve_usgs_data("2024-06-27", "2024-10-29")
 
 #####################################
 #### Plot all variables separate ####
@@ -297,7 +298,7 @@ plot_usgs_faceted <- function(df, usgs_df, label) {
   
   # Reshape data to long format for faceting
   combined_long <- combined_df %>%
-    select(dateTime, Temp, TSS_clean, TOC_clean, NO3N_clean, NO3_clean, DOC_clean, Flow_Inst) %>%
+    dplyr::select(dateTime, Temp, TSS_clean, TOC_clean, NO3N_clean, NO3_clean, DOC_clean, Flow_Inst) %>%
     pivot_longer(cols = -dateTime, names_to = "Variable", values_to = "Value")
   
   # Plot using ggplot with facet_wrap for each variable
@@ -313,8 +314,8 @@ plot_usgs_faceted <- function(df, usgs_df, label) {
 
 # Plot
 print(plot_usgs_faceted(scan_filtered1[[1]], santafeUSGS_12, scan_csvs$name[1]))
-print(plot_usgs_faceted(scan_filtered[[2]], santafeUSGS_20, scan_csvs$name[2]))
-print(plot_usgs_faceted(scan_filtered[[3]], santafeUSGS_21, scan_csvs$name[3]))
+print(plot_usgs_faceted(scan_filtered1[[2]], santafeUSGS_20, scan_csvs$name[2]))
+print(plot_usgs_faceted(scan_filtered1[[3]], santafeUSGS_21, scan_csvs$name[3]))
 
 ### Save figures to folder ###
 for (i in seq_along(scan_filtered)) {
@@ -325,7 +326,7 @@ for (i in seq_along(scan_filtered)) {
                       santafeUSGS_21)
   
   # Generate the plot
-  plot <- plot_usgs_faceted(scan_filtered[[i]], usgs_data, scan_csvs$name[i])
+  plot <- plot_usgs_faceted(scan_filtered1[[i]], usgs_data, scan_csvs$name[i])
   
   # Save the plot to a file
   ggsave(paste0("scan_figs/", scan_csvs$name[i], "_sep-outlier.png"), plot)

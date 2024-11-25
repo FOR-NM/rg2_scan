@@ -8,9 +8,9 @@ library(googledrive)
 library(readxl)
 library(dplyr)
 
-###################################
-## Clear folders that we will use ##
-###################################
+########################################
+#### Clear folders that we will use ####
+########################################
 # List and delete all files in the folder
 files <- list.files(path = "scan_figs", full.names = TRUE)
 file.remove(files)
@@ -36,7 +36,7 @@ scan_abs <- lapply(seq_along(scan_xls$id), function(i) {
   googledrive::drive_download(file = scan_xls$id[i], path = local_path, overwrite = TRUE)
   
   # Read the second sheet
-  header <- read_excel(local_path, sheet = 2, skip = 1, col_names = FALSE)  # Read sheet 2
+  header <- read_excel(local_path, sheet = 3, skip = 1, col_names = FALSE)  # Read sheet 2
   col_names <- as.character(unlist(header[1, ]))
   
   # Determine the number of columns
@@ -73,7 +73,7 @@ scan_abs <- lapply(scan_abs, function(df) {
   # Check if "Parameter:" exists and rename it to "dateTime"
   if ("Parameter:" %in% names(df)) {
     df <- df %>%
-      rename(dateTime = `Parameter:`)
+      rename(DateTime = `Parameter:`)
   }
   
   return(df)  # Return the modified dataframe
@@ -82,30 +82,29 @@ scan_abs <- lapply(scan_abs, function(df) {
 ###############################
 #### Import parameter data ####
 ###############################
-# Load data from Google Drive
-scan <- googledrive::as_id("https://drive.google.com/drive/u/1/folders/1QsjPCu8AVhePe7DGWBhRha26HXbyshcu")
 
-# List all CSV files in the folder
-csvs <- googledrive::drive_ls(path = scan, type = "csv")
-
-## Call all the files in the salt slugs folder ##
 # Create empty list to store data frames
 scan_params <- list()
 
-# Loop over each file in the `csvs` data frame
-for (i in seq_along(csvs$id)) {
-  # Define the local file path
-  local_path <- file.path("googledrive", csvs$name[i])
+# Loop over each file in scan_xls and read the data
+scan_params <- lapply(seq_along(scan_xls$id), function(i) {
+  local_path <- file.path("googledrive", scan_xls$name[i])
   
-  # Download the file
-  googledrive::drive_download(
-    file = csvs$id[i],
-    path = local_path,
-    overwrite = T
-  )
-  # Read the CSV file and add it to the list
-  scan_params[[csvs$name[i]]] <- read.csv(local_path)
-}
+  # Read the first sheet
+  header <- read_excel(local_path, sheet = 1, skip = 1, col_names = FALSE)  # Read sheet 1
+  col_names <- as.character(unlist(header[1, ]))
+  
+  # Determine the number of columns
+  num_cols <- length(col_names)
+  # Create col_types vector
+  col_types = c("date",  rep("text", num_cols - 1))
+  
+  # Read the Excel file, specifying the column types
+  df <- read_excel(local_path, skip = 1, sheet = 1, col_types = col_types)
+  
+  # Return the data frame
+  return(df)
+})
 
 # Check the contents of the list
 str(scan_params)
@@ -121,6 +120,8 @@ scan_params <- lapply(scan_params, function(df) {
   
   return(df)
 })
+
+names(scan_params) <- scan_xls$name
 
 ############################################
 #### Merge parameter and absorbance data####
