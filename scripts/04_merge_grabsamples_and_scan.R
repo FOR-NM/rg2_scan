@@ -9,6 +9,7 @@ library(googlesheets4)
 library(dplyr)
 library(xts)
 library(readxl)
+library(tidyverse)
 
 ########################################
 #### Clear folders that we will use ####
@@ -103,11 +104,11 @@ samplelogsheet$Time[samplelogsheet$Site == "USF12" &
 
 samplelogsheet$Time[samplelogsheet$Site == "USF12" & 
                       samplelogsheet$Date == "2024-07-08" & 
-                      samplelogsheet$Time == "08:30:00"] <- "07:15:00"
+                      samplelogsheet$Time == "08:30:00"] <- "10:00:00"
 
 samplelogsheet$Time[samplelogsheet$Site == "USF12" & 
                       samplelogsheet$Date == "2024-06-19" & 
-                      samplelogsheet$Time == "09:00:00"] <- "08:00:00"
+                      samplelogsheet$Time == "09:00:00"] <- "10:30:00"
 ###USF20###
 samplelogsheet$Time[samplelogsheet$Site == "USF20" & 
                       samplelogsheet$Date == "2024-05-23" & 
@@ -115,11 +116,11 @@ samplelogsheet$Time[samplelogsheet$Site == "USF20" &
 
 samplelogsheet$Time[samplelogsheet$Site == "USF20" & 
                       samplelogsheet$Date == "2024-07-08" & 
-                      samplelogsheet$Time == "14:00:00"] <- "13:30:00"
+                      samplelogsheet$Time == "14:00:00"] <- "16:00:00"
 
 samplelogsheet$Time[samplelogsheet$Site == "USF20" & 
                       samplelogsheet$Date == "2024-06-19" & 
-                      samplelogsheet$Time == "14:45:00"] <- "14:15:00"
+                      samplelogsheet$Time == "14:45:00"] <- "17:00:00"
 ###USF21###
 samplelogsheet$Time[samplelogsheet$Site == "USF21" & 
                       samplelogsheet$Date == "2024-06-27" & 
@@ -157,27 +158,32 @@ scan <- googledrive::as_id("https://drive.google.com/drive/folders/1g6aSuGnb--Qe
 merged <- googledrive::drive_ls(path = scan, type = "csv")
 
 #USF12
-googledrive::drive_download(file = merged$id[merged$name=="USF12_absparams_Buttercup.csv"], 
-                            path = "googledrive/USF12_absparams_Buttercup.csv",
+googledrive::drive_download(file = merged$id[merged$name=="USF12_filtered_Buttercup.csv"], 
+                            path = "googledrive/USF12_filtered_Buttercup.csv",
                             overwrite = T)
 #USF20
-googledrive::drive_download(file = merged$id[merged$name=="USF20_absparams_Blossom.csv"], 
-                            path = "googledrive/USF20_absparams_Blossom.csv",
+googledrive::drive_download(file = merged$id[merged$name=="USF20_filtered_Blossom.csv"], 
+                            path = "googledrive/USF20_filtered_Blossom.csv",
                             overwrite = T)
 #USF21
-googledrive::drive_download(file = merged$id[merged$name=="USF21_absparams_Bubbles.csv"], 
-                            path = "googledrive/USF21_absparams_Bubbles.csv",
+googledrive::drive_download(file = merged$id[merged$name=="USF21_filtered_Bubbles.csv"], 
+                            path = "googledrive/USF21_filtered_Bubbles.csv",
                             overwrite = T)
 
-# Let's load them separately first
-USF12 <- read.csv("googledrive/USF12_absparams_Buttercup.csv")
-USF20 <- read.csv("googledrive/USF20_absparams_Blossom.csv")
-USF21 <- read.csv("googledrive/USF21_absparams_Bubbles.csv")
+# Load them separately 
+USF12 <- read.csv("googledrive/USF12_filtered_Buttercup.csv")
+USF20 <- read.csv("googledrive/USF20_filtered_Blossom.csv")
+USF21 <- read.csv("googledrive/USF21_filtered_Bubbles.csv")
 
 # Convert the DateTime column to POSIXct
 USF12$DateTime <- as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M")
 USF20$DateTime <- as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M")
 USF21$DateTime <- as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M")
+
+# Check for duplicates
+sum(duplicated(USF12))
+sum(duplicated(USF20))
+sum(duplicated(USF21))
 
 ##################################
 #### Merge chem and scan data ####

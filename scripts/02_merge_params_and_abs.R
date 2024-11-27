@@ -60,9 +60,9 @@ USF12_abs <- USF12_abs %>%
 # Param data first
 USF12_merged <- left_join(USF12_params, USF12_abs, by = "DateTime")
 
-################################
-#### Save merged USF12 file ####
-################################
+#########################################
+#### Save merged USF12 file to Drive ####
+#########################################
 
 # Make sure it is in datetime format
 USF12_merged$DateTime <- format(USF12_merged$DateTime, "%Y-%m-%d %H:%M:%S")
@@ -173,7 +173,7 @@ USF21_abs <- USF21_abs %>%
 USF21_merged <- left_join(USF21_params, USF21_abs, by = "DateTime")
 
 ################################
-#### Save merged USF20 file ####
+#### Save merged USF21 file ####
 ################################
 
 # Make sure it is in datetime format

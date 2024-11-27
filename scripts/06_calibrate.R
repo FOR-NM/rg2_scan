@@ -11,9 +11,9 @@ library(data.table)
 
 library(xts)
 library(dplyr)
-library(devtools)
 library(pls)
 library(merTools)
+library(devtools)
 #install.packages("devtools")
 #install.packages("devtools", repos = "http://cran.us.r-project.org")
 library(spectrolab)
@@ -35,7 +35,7 @@ file.remove(files)
 # See scripts 03_merge_params_and_abs and 04_merge_grabsamples_and_scan
 
 ######################################################
-#### STEP 2: Upload scan dataframe [with spectra] ####
+#### STEP 2: Upload scan data frame [with spectra] ####
 ######################################################
 
 # This data is already matched #
@@ -69,7 +69,7 @@ USF12$DateTime <- as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")
 USF20$DateTime <- as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")
 USF21$DateTime <- as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")
 
-# Rename columns for all data frames (e.g., USF12, USF20, USF21)
+# Rename columns by removing the X in front of the spectra (that brakes the core somehow)
 rename_columns <- function(df) {
   colnames(df) <- gsub("^X|\\.nm$", "", colnames(df))
   return(df)
@@ -81,25 +81,25 @@ USF20 <- rename_columns(USF20)
 USF21 <- rename_columns(USF21)
 
 # Extract DOC NO3 NO3N and TSS data as time series objects (xts)
-scan_DOC_USF12 <- xts(USF12$DOCeq..mg.l....Measured.value, order.by = USF12$DateTime)
-scan_TSS_USF12 <- xts(USF12$TSSeq..mg.l....Measured.value, order.by = USF12$DateTime)
-scan_NO3N_USF12 <- xts(USF12$NO3.Neq..mg.l....Measured.value, order.by = USF12$DateTime)
-scan_NO3_USF12 <- xts(USF12$NO3eq..mg.l....Measured.value, order.by = USF12$DateTime)
+scan_DOC_USF12 <- xts(USF12$DOC, order.by = USF12$DateTime)
+scan_TSS_USF12 <- xts(USF12$TSS, order.by = USF12$DateTime)
+scan_NO3N_USF12 <- xts(USF12$NO3N, order.by = USF12$DateTime)
+scan_NO3_USF12 <- xts(USF12$NO3, order.by = USF12$DateTime)
 
-scan_DOC_USF20 <- xts(USF20$DOCeq..mg.l....Measured.value, order.by = USF20$DateTime)
-scan_TSS_USF20 <- xts(USF20$TSSeq..mg.l....Measured.value, order.by = USF20$DateTime)
-scan_NO3N_USF20 <- xts(USF20$NO3.Neq..mg.l....Measured.value, order.by = USF20$DateTime)
-scan_NO3_USF20 <- xts(USF20$NO3eq..mg.l....Measured.value, order.by = USF20$DateTime)
+scan_DOC_USF20 <- xts(USF20$DOC, order.by = USF20$DateTime)
+scan_TSS_USF20 <- xts(USF20$TSS, order.by = USF20$DateTime)
+scan_NO3N_USF20 <- xts(USF20$NO3N, order.by = USF20$DateTime)
+scan_NO3_USF20 <- xts(USF20$NO3, order.by = USF20$DateTime)
 
-scan_DOC_USF21 <- xts(USF21$DOCeq..mg.l....Measured.value, order.by = USF21$DateTime)
-scan_TSS_USF21 <- xts(USF21$TSSeq..mg.l....Measured.value, order.by = USF21$DateTime)
-scan_NO3N_USF21 <- xts(USF21$NO3.Neq..mg.l....Measured.value, order.by = USF21$DateTime)
-scan_NO3_USF21 <- xts(USF21$NO3eq..mg.l....Measured.value, order.by = USF21$DateTime)
+scan_DOC_USF21 <- xts(USF21$DOC, order.by = USF21$DateTime)
+scan_TSS_USF21 <- xts(USF21$TSS, order.by = USF21$DateTime)
+scan_NO3N_USF21 <- xts(USF21$NO3N, order.by = USF21$DateTime)
+scan_NO3_USF21 <- xts(USF21$NO3, order.by = USF21$DateTime)
 
 # Extract spectral data (assuming spectral columns are in range "X200.00.nm" to "X750.00.nm")
-scan.spec12 = xts(USF12[21:231], as.POSIXct(USF12$DateTime, format = "%m/%d/%Y %H:%M")) 
+scan.spec12 = xts(USF12[21:230], as.POSIXct(USF12$DateTime, format = "%m/%d/%Y %H:%M")) 
 scan.spec20 = xts(USF20[21:231], as.POSIXct(USF20$DateTime, format = "%m/%d/%Y %H:%M")) 
-scan.spec21 = xts(USF21[21:231], as.POSIXct(USF21$DateTime, format = "%m/%d/%Y %H:%M")) 
+scan.spec21 = xts(USF21[25:234], as.POSIXct(USF21$DateTime, format = "%m/%d/%Y %H:%M")) 
 # select full spectra
 # note here that if there are 0s in your spectra, this code will throw an error
 # so only use the wavelengths where you have detectable absorbance
@@ -137,46 +137,39 @@ grab_USF12 = USF12[USF12$Grab_sample == "Y",] # Ony gets data when there is a Y
 grab_USF20 = USF20[USF20$Grab_sample == "Y",] # Ony gets data when there is a Y
 grab_USF21 = USF21[USF21$Grab_sample == "Y",] # Ony gets data when there is a Y
 
-# Check for duplicates
-sum(duplicated(grab_USF12))
-sum(duplicated(grab_USF20))
-sum(duplicated(grab_USF21))
-
 grab.DOC12 = grab_USF12$NPOC..mg.C.L.
-grab.NO312 = grab_USF12$NO3eq..mg.l....Measured.value
-grab.NO3N12 = grab_USF12$NO3.Neq..mg.l....Measured.value
+grab.NO312 = grab_USF12$NO3..mg.N.L.
 
 grab.DOC20 = grab_USF20$NPOC..mg.C.L.
-grab.NO320 = grab_USF20$NO3eq..mg.l....Measured.value
-grab.NO3N20 = grab_USF20$NO3.Neq..mg.l....Measured.value
+grab.NO320 = grab_USF20$NO3..mg.N.L.
 
 grab.DOC21 = grab_USF21$NPOC..mg.C.L.
-grab.NO321 = grab_USF21$NO3eq..mg.l....Measured.value
-grab.NO3N21 = grab_USF21$NO3.Neq..mg.l....Measured.value
+grab.NO321 = grab_USF21$NO3..mg.N.L.
 
 # Compare grab vs scan DOC
-plot(grab_USF12$DOCeq..mg.l....Measured.value ~ grab_USF12$NPOC..mg.C.L.)
-calib.mod.DOC12 = lm(grab_USF12$DOCeq..mg.l....Measured.value ~ grab_USF12$NPOC..mg.C.L.)
+plot(grab_USF12$DOC ~ grab_USF12$NPOC..mg.C.L.)
+calib.mod.DOC12 = lm(grab_USF12$DOC ~ grab_USF12$NPOC..mg.C.L.)
 summary(calib.mod.DOC12)
 
-plot(grab_USF20$DOCeq..mg.l....Measured.value ~ grab_USF20$NPOC..mg.C.L.)
-calib.mod.DOC20 = lm(grab_USF20$DOCeq..mg.l....Measured.value ~ grab_USF20$NPOC..mg.C.L.)
+plot(grab_USF20$DOC ~ grab_USF20$NPOC..mg.C.L.)
+calib.mod.DOC20 = lm(grab_USF20$DOC ~ grab_USF20$NPOC..mg.C.L.)
 summary(calib.mod.DOC20)
 
-plot(grab_USF21$DOCeq..mg.l....Measured.value ~ grab_USF21$NPOC..mg.C.L.)
-calib.mod.DOC21 = lm(grab_USF21$DOCeq..mg.l....Measured.value ~ grab_USF21$NPOC..mg.C.L.)
+plot(grab_USF21$DOC ~ grab_USF21$NPOC..mg.C.L.)
+calib.mod.DOC21 = lm(grab_USF21$DOC ~ grab_USF21$NPOC..mg.C.L.)
 summary(calib.mod.DOC21)
 
 # Compare grab vs scan NO3
-plot(grab_USF12$NO3eq..mg.l....Measured.value ~ grab_USF12$NO3..mg.N.L.)
+plot(grab_USF12$NO3 ~ grab_USF12$NO3..mg.N.L.)
+calib.mod.DOC12 = lm(grab_USF12$NO3 ~ grab_USF12$NO3..mg.N.L.)
 summary(calib.mod.DOC12)
 
-plot(grab_USF20$NO3eq..mg.l....Measured.value ~ grab_USF20$NO3..mg.N.L.)
-calib.mod.DOC20 = lm(grab_USF20$NO3eq..mg.l....Measured.value ~ grab_USF20$NO3..mg.N.L.)
+plot(grab_USF20$NO3 ~ grab_USF20$NO3..mg.N.L.)
+calib.mod.DOC20 = lm(grab_USF20$NO3 ~ grab_USF20$NO3..mg.N.L.)
 summary(calib.mod.DOC20)
 
-plot(grab_USF21$NO3eq..mg.l....Measured.value ~ grab_USF21$NO3)
-calib.mod.DOC21 = lm(grab_USF21$NO3eq..mg.l....Measured.value ~ grab_USF21$NO3..mg.N.L.)
+plot(grab_USF21$NO3 ~ grab_USF21$NO3)
+calib.mod.DOC21 = lm(grab_USF21$NO3 ~ grab_USF21$NO3..mg.N.L.)
 summary(calib.mod.DOC21)
 
 #######################################################################################
@@ -185,7 +178,7 @@ summary(calib.mod.DOC21)
 # 1. Index data set with columns with absorbances
 grab.spec.dat12 = grab_USF12[21:230] # Full spectra, with no NAs
 grab.spec.dat20 = grab_USF20[21:231] # Full spectra, with no NAs
-grab.spec.dat21 = grab_USF21[21:230] # Full spectra, with no NAs
+grab.spec.dat21 = grab_USF21[25:234] # Full spectra, with no NAs
 
 # Rename columns for all data frames (e.g., USF12, USF20, USF21)
 rename_columns <- function(df) {
@@ -285,7 +278,7 @@ attributes(grab.spectra21)
 # 1. Index FULL dataset with columns with absorbances
 scan.spec12 = USF12[21:230]
 scan.spec20 = USF20[21:231]
-scan.spec21 = USF21[21:230]
+scan.spec21 = USF21[25:234]
 
 # 2. Create an absorbance matrix 
 # Rows = wavelength
@@ -318,6 +311,7 @@ colnames(scan.matrix12) = as.numeric(wl12)
 scan.matrix12 = as.matrix(scan.matrix12)
 spec12 = spectra(value = abs12, bands = wl12, names = Num12)
 plot(spec12) # Note = reflectance here = absorbance from the scans
+
 
 #USF20
 scan.matrix20 = cbind(abs20)
@@ -358,13 +352,18 @@ attr(scan.spectra21, 'wave_unit') = 'wavelength'
 attr(scan.spectra21, 'measurement_unit') = 'absorbance'
 attributes(scan.spectra21)
 
-###################################################################
-#### STEP 6: Create a new dataframe with the spectral matrices ####
-###################################################################
+####################################################################
+#### STEP 6: Create a new data frame with the spectral matrices ####
+####################################################################
 # This creates a data frame with 
 # 1. DOC (scan)
 # 2. TSS (scab)
 # 3. Full s::can spectra (from 220-750nm)
+
+length(scan_DOC_USF12)
+length(scan_NO3_USF12)
+dim(scan.spectra12) 
+class(scan.spectra12)
 
 # NOTE: We use the I() function to protect the Spectra 
 spectralcal.df12 = data.frame(DOC12 = scan_DOC_USF12, NO312 = scan_NO3_USF12, Spectra12 = I(scan.spectra12))
@@ -404,7 +403,7 @@ NTest12 = spectralcal.df12
 Cmod12 = plsr(DOC12 ~ Spectra12, ncomp = 3, data = CTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod12) # optimized for 4 components
 
-Nmod12 = plsr(NO312 ~ Spectra12, ncomp = 3, data = NTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
+Nmod12 = plsr(NO312 ~ Spectra12, ncomp = 2, data = NTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod12)
 
 # Plot RMSE of the predictions to optimize model
@@ -486,6 +485,15 @@ plot(predictedN20)
 write.csv(predictedC20, file = "PredictedC_USF20.csv") # <- this is your newly calibrated dataset!
 write.csv(predictedN20, file = "PredictedN_USF20.csv") # <- this is your newly calibrated dataset!
 
+# Invert it?
+#predictedC20 <- read.csv("predicted/PredictedC_USF20.csv")
+#predictedC20_rev <- predictedC20
+
+#predictedC20_rev$DOC20_rev <- -predictedC20_rev$DOC.compensated
+
+# Check the result
+#head(predictedC20_rev)
+#write.csv(predictedC20_rev, file = "PredictedC_USF20_inv.csv") 
 
 ## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 
 # You might need to use a moving window approach to the calibraiton (i.e., calibrate 1 month at a time)
@@ -506,7 +514,7 @@ NTest21 = spectralcal.df21
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-Cmod21 = plsr(DOC21 ~ Spectra21, ncomp = 1, data = CTrain21, validation = "LOO") # usually ncomp is N-1 grab samples you have
+Cmod21 = plsr(DOC21 ~ Spectra21, ncomp = 2, data = CTrain21, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod21) # optimized for 4 components
 
 Nmod21 = plsr(NO321 ~ Spectra21, ncomp = 3, data = NTrain21, validation = "LOO") # usually ncomp is N-1 grab samples you have
@@ -531,6 +539,7 @@ predictedC21 = predict(Cmod21, ncomp = 2, newdata = spectralcal.df21) # use redu
 str(predictedC21)
 plot(predictedC21)
 
+head(predictedC20)
 predictedT21 = predict(Nmod21, ncomp = 1, newdata = spectralcal.df21) # use reduced error model
 str(predictedN21)
 # Plot final predictions
@@ -542,9 +551,4 @@ write.csv(predictedN, file = "PredictedN_USF21.csv") # <- this is your newly cal
 
 ## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 
 # You might need to use a moving window approach to the calibraiton (i.e., calibrate 1 month at a time)
-# This is a bit more complicated, so start with this simple calibration first. 
-
-# This is a bit more complicated, so start with this simple calibration first. 
-
-
 # This is a bit more complicated, so start with this simple calibration first. 

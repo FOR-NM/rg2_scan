@@ -5,6 +5,8 @@
 ## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
 
+library(spectrolab)
+
 ##############################################
 #### Upload scan dataframe [with spectra] ####
 ##############################################
@@ -64,8 +66,8 @@ USF21_month <- USF21 %>%
 
 # 1. Index FULL dataset with columns with absorbances
 scan.spec12 = USF12_month[21:230]
-scan.spec20 = USF20_month[21:230]
-scan.spec21 = USF21_month[21:230]
+scan.spec20 = USF20_month[21:231]
+scan.spec21 = USF21_month[25:234]
 
 # 2. Create an absorbance matrix 
 # Rows = wavelength
@@ -122,72 +124,57 @@ plot(spec21) # Note = reflectance here = absorbance from the scans
 ##############################
 
 ### USF12 ###
-# Check if there are negative values
-USF12 <- USF12 %>% 
-  mutate(flag_negative = ifelse(
-    rowSums(across(21:230, ~ . < 0)) > 0,  # Check if any value in the range is < 0
-    "Y",                                     # Assign "Y" if any value is < 0
-    "N"                                      # Assign "N" otherwise
-))
-
-# Check if there are values above 100
-USF12 <- USF12 %>% 
-  mutate(flag_above100 = ifelse(
-    rowSums(across(21:230, ~ . > 100)) > 0,  # Check if any value in the range is > 100
-    "Y",                                     # Assign "Y" if any value is > 100
-    "N"                                      # Assign "N" otherwise
+USF12_test <- USF12 %>%
+  # Create flag columns
+  mutate(
+    flag_negative = ifelse(rowSums(across(21:230, ~ . < 0)) > 0, "Y", "N"),
+    flag_above100 = ifelse(rowSums(across(21:230, ~ . > 100)) > 0, "Y", "N")
+  ) %>%
+  # Replace entire row with NA if any value is flagged, except for the flag columns
+  mutate(across(
+    2:234, 
+    ~ if_else(flag_negative == "Y" | flag_above100 == "Y", NA, .)
   ))
 
 ### USF20 ###
-# Check if there are negative values
-USF20 <- USF20 %>% 
-  mutate(flag_negative = ifelse(
-    rowSums(across(21:230, ~ . < 0)) > 0,  # Check if any value in the range is < 0
-    "Y",                                     # Assign "Y" if any value is < 0
-    "N"                                      # Assign "N" otherwise
-  ))
-
-# Check if there are values above 100
-USF20 <- USF20 %>% 
-  mutate(flag_above100 = ifelse(
-    rowSums(across(21:230, ~ . > 100)) > 0,  # Check if any value in the range is > 100
-    "Y",                                     # Assign "Y" if any value is > 100
-    "N"                                      # Assign "N" otherwise
+USF20_test <- USF20 %>%
+  mutate(
+    flag_negative = ifelse(rowSums(across(21:230, ~ . < 0)) > 0, "Y", "N"),
+    flag_above100 = ifelse(rowSums(across(21:230, ~ . > 100)) > 0, "Y", "N")
+  ) %>%
+  mutate(across(
+    2:237, 
+    ~ if_else(flag_negative == "Y" | flag_above100 == "Y", NA, .)
   ))
 
 ### USF21 ###
-# Check if there are negative values
-USF21 <- USF21 %>% 
-  mutate(flag_negative = ifelse(
-    rowSums(across(21:230, ~ . < 0)) > 0,  # Check if any value in the range is < 0
-    "Y",                                     # Assign "Y" if any value is < 0
-    "N"                                      # Assign "N" otherwise
+USF21_test <- USF21 %>%
+  mutate(
+    flag_negative = ifelse(rowSums(across(25:234, ~ . < 0)) > 0, "Y", "N"),
+    flag_above100 = ifelse(rowSums(across(25:234, ~ . > 100)) > 0, "Y", "N")
+  ) %>%
+  mutate(across(
+    2:239, 
+    ~ if_else(flag_negative == "Y" | flag_above100 == "Y", NA, .)
   ))
 
-# Check if there are values above 100
-USF21 <- USF21 %>% 
-  mutate(flag_above100 = ifelse(
-    rowSums(across(21:230, ~ . > 100)) > 0,  # Check if any value in the range is > 100
-    "Y",                                     # Assign "Y" if any value is > 100
-    "N"                                      # Assign "N" otherwise
-  ))
 
 ############################
 #### Save flagged files ####
 ############################
 
 # Make sure it is in datetime format
-USF12$DateTime <- format(USF12$DateTime, "%Y-%m-%d %H:%M:%S")
+USF12_test$DateTime <- format(USF12_test$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
-write.csv(USF12,"googledrive/USF12_flagged_Buttercup.csv" , row.names=FALSE, quote=FALSE)
+write.csv(USF12_test,"googledrive/USF12_flagged_Buttercup.csv" , row.names=FALSE, quote=FALSE)
 # Make sure it is in datetime format
-USF20$DateTime <- format(USF20$DateTime, "%Y-%m-%d %H:%M:%S")
+USF20_test$DateTime <- format(USF20_test$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
-write.csv(USF20,"googledrive/USF20_flagged_Blossom.csv" , row.names=FALSE, quote=FALSE)
+write.csv(USF20_test,"googledrive/USF20_flagged_Blossom.csv" , row.names=FALSE, quote=FALSE)
 # Make sure it is in datetime format
-USF21$DateTime <- format(USF21$DateTime, "%Y-%m-%d %H:%M:%S")
+USF21_test$DateTime <- format(USF21_test$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
-write.csv(USF21,"googledrive/USF21_flagged_Bubbles.csv" , row.names=FALSE, quote=FALSE)
+write.csv(USF21_test,"googledrive/USF21_flagged_Bubbles.csv" , row.names=FALSE, quote=FALSE)
 
 # Define the target folder ID in Google Drive
 # This is the "merged" folder
