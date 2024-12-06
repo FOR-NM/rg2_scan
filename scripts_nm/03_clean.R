@@ -63,12 +63,12 @@ scan_list <- lapply(scan_list, function(df) {
   # Rename columns by matching the existing names
   df <- df %>%
     rename(
-      DOC = DOCeq..mg.l....Measured.value,
-      NO3.N = NO3.Neq..mg.l....Measured.value,
-      NO3 =  NO3eq..mg.l....Measured.value,
-      TOC = TOCeq..mg.l....Measured.value,
-      TSS = TSSeq..mg.l....Measured.value,
-      Temp = Temperature_19...C....Measured.value,
+      DOC_mg.l = DOCeq..mg.l....Measured.value,
+      NO3.N_mg.l = NO3.Neq..mg.l....Measured.value,
+      NO3_mg.l =  NO3eq..mg.l....Measured.value,
+      TOC_mg.l = TOCeq..mg.l....Measured.value,
+      TSS_mg.l = TSSeq..mg.l....Measured.value,
+      Temp_C = Temperature_19...C....Measured.value,
     )
   
   # Ensure numeric variables are converted to numeric

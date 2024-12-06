@@ -9,182 +9,162 @@ library(dplyr)
 library(openxlsx)
 
 ##==============================================================================
-## USF12
+## SSM01
 ##==============================================================================
 
 #######################################
 #### Import abs and parameter data ####
 #######################################
-# This is the "most_recent" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/u/1/folders/1np2B4bSWaNMIYE2FHL3YOnZ20FRudsEy")
+# Load data from Google drive, this is the "merged" folder
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR")
+# List all CSV files in the folder
+scan_csvs <- googledrive::drive_ls(path = scan)
 
-# List all xlsx files in the folder
-scan_xls <- googledrive::drive_ls(path = scan, type = "xlsx")
-
-googledrive::drive_download(file = scan_xls$id[scan_xls$name=="2024-11-14_NMUSF12_Buttercup.xlsx"], 
-                            path = "googledrive/2024-11-14_NMUSF12_Buttercup.xlsx",
+# Load only SSM01 files
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="SSM01_params.csv"], 
+                            path = "googledrive/SSM01_params.csv",
+                            overwrite = T)
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="SSM01_abs.csv"], 
+                            path = "googledrive/SSM01_abs.csv",
                             overwrite = T)
 
-# This excel sheet has 3 tabs
-USF12 <- openxlsx::read.xlsx("googledrive/2024-11-14_NMUSF12_Buttercup.xlsx", startRow = 2)
-
-# Load fingerprints and parameter data
-### I saved each tab as csv files before doing this ###
-USF12_params <- read.csv("googledrive/USF12_params.csv", skip = 1)
-USF12_abs <- read.csv("googledrive/USF12_abs.csv", skip = 1)
+SSM01_params <- read.csv("googledrive/SSM01_params.csv")
+SSM01_abs <- read.csv("googledrive/SSM01_abs.csv")
 
 #############################
 #### Tidy both data sets ####
 #############################
 
-# Change DateTime names for easier manipulation
-USF12_params <- USF12_params %>%
-      rename(DateTime = Parameter.)
-USF12_abs <- USF12_abs %>%
-  rename(DateTime = Parameter.)
-
-# Remove extra rows
-USF12_params <- USF12_params[-c(1:11), ] 
-USF12_abs <- USF12_abs[-c(1:11), ] 
-
 # Change datetime format
-USF12_params <- USF12_params %>%
-  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
-USF12_abs <- USF12_abs %>%
-  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
+SSM01_params <- SSM01_params %>%
+  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Central"))
+SSM01_abs <- SSM01_abs %>%
+  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Central"))
 
 #################################
 #### Merge parameter and abs ####
 #################################
 
 # Param data first
-USF12_merged <- left_join(USF12_params, USF12_abs, by = "DateTime")
+SSM01_merged <- left_join(SSM01_params, SSM01_abs, by = "DateTime")
 
 #########################################
-#### Save merged USF12 file to Drive ####
+#### Save merged SSM01 file to Drive ####
 #########################################
 
 # Make sure it is in datetime format
-USF12_merged$DateTime <- format(USF12_merged$DateTime, "%Y-%m-%d %H:%M:%S")
+SSM01_merged$DateTime <- format(SSM01_merged$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
-write.csv(USF12_merged,"googledrive/USF12_absparams_Buttercup.csv" , row.names=FALSE, quote=FALSE)
+write.csv(SSM01_merged,"data/SSM01_absparams.csv" , row.names=FALSE, quote=FALSE)
 
 # Define the target folder ID in Google Drive
 # This is the "merged" folder
-drive_folder_id <- "1g6aSuGnb--Qeyk-rceX82Y5wSNzCqFg0"
+drive_folder_id <- "1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR"
 
 # Upload the file to the specified Google Drive folder
-drive_upload(media = "googledrive/USF12_absparams_Buttercup.csv", path = as_id(drive_folder_id))
+drive_upload(media = "data/SSM01_absparams.csv", path = as_id(drive_folder_id))
 
 ##==============================================================================
-## USF20
+## SSM20
 ##==============================================================================
 
 #######################################
 #### Import abs and parameter data ####
 #######################################
 
-# Load fingerprints and parameter data
-# I saved each tab as csv files before doing this
-USF20_params <- read.csv("googledrive/USF20_params.csv", skip = 1)
-USF20_abs <- read.csv("googledrive/USF20_abs.csv", skip = 1)
+# Load only SSM01 files
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="SSM20_params.csv"], 
+                            path = "googledrive/SSM20_params.csv",
+                            overwrite = T)
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="SSM20_abs.csv"], 
+                            path = "googledrive/SSM20_abs.csv",
+                            overwrite = T)
+
+SSM20_params <- read.csv("googledrive/SSM20_params.csv")
+SSM20_abs <- read.csv("googledrive/SSM20_abs.csv")
 
 #############################
 #### Tidy both data sets ####
 #############################
 
-# Change DateTime names for easier manipulation
-USF20_params <- USF20_params %>%
-  rename(DateTime = Parameter.)
-USF20_abs <- USF20_abs %>%
-  rename(DateTime = Parameter.)
-
-# Remove extra rows
-USF20_params <- USF20_params[-c(1:95), ] 
-USF20_abs <- USF20_abs[-c(1:95), ] 
-
 # Change datetime format
-USF20_params <- USF20_params %>%
-  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
-USF20_abs <- USF20_abs %>%
-  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
+SSM20_params <- SSM20_params %>%
+  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Central"))
+SSM20_abs <- SSM20_abs %>%
+  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Central"))
 
 #################################
 #### Merge parameter and abs ####
 #################################
 
 # Param data first
-USF20_merged <- left_join(USF20_params, USF20_abs, by = "DateTime")
+SSM20_merged <- left_join(SSM20_params, SSM20_abs, by = "DateTime")
 
-################################
-#### Save merged USF20 file ####
-################################
+#########################################
+#### Save merged SSM20 file to Drive ####
+#########################################
 
 # Make sure it is in datetime format
-USF20_merged$DateTime <- format(USF20_merged$DateTime, "%Y-%m-%d %H:%M:%S")
+SSM20_merged$DateTime <- format(SSM20_merged$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
-write.csv(USF20_merged,"googledrive/USF20_absparams_Blossom.csv" , row.names=FALSE, quote=FALSE)
+write.csv(SSM20_merged,"data/SSM20_absparams.csv" , row.names=FALSE, quote=FALSE)
 
 # Define the target folder ID in Google Drive
 # This is the "merged" folder
-drive_folder_id <- "1g6aSuGnb--Qeyk-rceX82Y5wSNzCqFg0"
+drive_folder_id <- "1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR"
 
 # Upload the file to the specified Google Drive folder
-drive_upload(media = "googledrive/USF20_absparams_Blossom.csv", path = as_id(drive_folder_id))
+drive_upload(media = "data/SSM20_absparams.csv", path = as_id(drive_folder_id))
 
 ##==============================================================================
-## USF21
+## SST13
 ##==============================================================================
 
 #######################################
 #### Import abs and parameter data ####
 #######################################
 
-# Load fingerprints and parameter data
-# I saved each tab as csv files befor doing this
-USF21_params <- read.csv("googledrive/USF21_params.csv", skip = 1)
-USF21_abs <- read.csv("googledrive/USF21_abs.csv", skip = 1)
+# Load only SST13 files
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="SST13_params.csv"], 
+                            path = "googledrive/SST13_params.csv",
+                            overwrite = T)
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="SST13_abs.csv"], 
+                            path = "googledrive/SST13_abs.csv",
+                            overwrite = T)
+
+SST13_params <- read.csv("googledrive/SST13_params.csv")
+SST13_abs <- read.csv("googledrive/SST13_abs.csv")
 
 #############################
 #### Tidy both data sets ####
 #############################
 
-# Change DateTime names for easier manipulation
-USF21_params <- USF21_params %>%
-  rename(DateTime = Parameter.)
-USF21_abs <- USF21_abs %>%
-  rename(DateTime = Parameter.)
-
-# Remove extra rows
-USF21_params <- USF21_params[-c(1:30), ] 
-USF21_abs <- USF21_abs[-c(1:30), ] 
-
 # Change datetime format
-USF21_params <- USF21_params %>%
-  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
-USF21_abs <- USF21_abs %>%
-  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
+SST13_params <- SST13_params %>%
+  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Central"))
+SST13_abs <- SST13_abs %>%
+  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Central"))
 
 #################################
 #### Merge parameter and abs ####
 #################################
 
 # Param data first
-USF21_merged <- left_join(USF21_params, USF21_abs, by = "DateTime")
+SST13_merged <- left_join(SST13_params, SST13_abs, by = "DateTime")
 
-################################
-#### Save merged USF21 file ####
-################################
+#########################################
+#### Save merged SSM01 file to Drive ####
+#########################################
 
 # Make sure it is in datetime format
-USF21_merged$DateTime <- format(USF21_merged$DateTime, "%Y-%m-%d %H:%M:%S")
+SST13_merged$DateTime <- format(SST13_merged$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
-write.csv(USF21_merged,"googledrive/USF21_absparams_Bubbles.csv" , row.names=FALSE, quote=FALSE)
+write.csv(SST13_merged,"data/SST13_absparams.csv" , row.names=FALSE, quote=FALSE)
 
 # Define the target folder ID in Google Drive
 # This is the "merged" folder
-drive_folder_id <- "1g6aSuGnb--Qeyk-rceX82Y5wSNzCqFg0"
+drive_folder_id <- "1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR"
 
 # Upload the file to the specified Google Drive folder
-drive_upload(media = "googledrive/USF21_absparams_Bubbles.csv", path = as_id(drive_folder_id))
+drive_upload(media = "data/SST13_absparams.csv", path = as_id(drive_folder_id))
 
