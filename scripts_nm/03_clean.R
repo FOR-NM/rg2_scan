@@ -73,7 +73,7 @@ scan_list <- lapply(scan_list, function(df) {
   
   # Ensure numeric variables are converted to numeric
   df <- df %>%
-    mutate(across(c(DOC, NO3.N, NO3, TOC, TSS, Temp), as.numeric)) %>%
+    mutate(across(c(DOC_mg.l, NO3.N_mg.l, NO3_mg.l, TOC_mg.l, TSS_mg.l, Temp_C), as.numeric)) %>%
     mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
   
   return(df)
@@ -143,7 +143,7 @@ scan_list <- lapply(scan_list, function(df) {
   
   # Ensure numeric variables are converted to numeric
   df <- df %>%
-    mutate(across(c(DOC, NO3.N, NO3, TOC, TSS, Temp), as.numeric)) %>%
+    mutate(across(c(DOC_mg.l, NO3.N_mg.l, NO3_mg.l, TOC_mg.l, TSS_mg.l, Temp_C), as.numeric)) %>%
     mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
   
   # Define status values to replace with NA
@@ -152,11 +152,11 @@ scan_list <- lapply(scan_list, function(df) {
   # Create new cleaned columns (e.g., DOC_clean, NO3_clean) and set to NA if the status column has invalid values
   df <- df %>%
     mutate(
-      DOC_clean = ifelse(DOC_status %in% status_values_to_replace, NA, DOC),
-      NO3.N_clean = ifelse(NO3.N_status %in% status_values_to_replace, NA, NO3.N),
-      NO3_clean = ifelse(NO3_status %in% status_values_to_replace, NA, NO3),
-      TOC_clean = ifelse(TOC_status %in% status_values_to_replace, NA, TOC),
-      TSS_clean = ifelse(TSS_status %in% status_values_to_replace, NA, TSS)
+      DOC_clean = ifelse(DOC_status %in% status_values_to_replace, NA, DOC_mg.l),
+      NO3.N_clean = ifelse(NO3.N_status %in% status_values_to_replace, NA, NO3.N_mg.l),
+      NO3_clean = ifelse(NO3_status %in% status_values_to_replace, NA, NO3_mg.l),
+      TOC_clean = ifelse(TOC_status %in% status_values_to_replace, NA, TOC_mg.l),
+      TSS_clean = ifelse(TSS_status %in% status_values_to_replace, NA, TSS_mg.l)
     )
   
   # Find all spectral columns (those starting with "X" and ending with ".nm")
@@ -193,7 +193,7 @@ scan_list <- lapply(scan_list, function(df) {
 ###############################
 
 # get data from googledrive
-service_tibble <- googledrive::drive_ls("https://drive.google.com/drive/folders/1KdjN1nmeeqtgxk6k3rImtb-wpVXVyLk4")
+service_tibble <- googledrive::drive_ls("https://drive.google.com/drive/folders/1DZktlQUHaot_r4e_fD9ip6zcxHWqslMP")
 googledrive::drive_download(as_id(service_tibble$id[service_tibble$name=="sensor_event_log"]), overwrite = TRUE,path="googledrive/sensor_event_log.xlsx")
 
 # read in file and filter to s::can service days and deployments
@@ -252,7 +252,7 @@ scan_filtered1 <- lapply(scan_filtered, function(df) {
 # Plot after filtering pre-deployed and out of water times
 plot_variables <- function(df, file_name) {
   ggplot(data = df) +
-    geom_line(aes(x = DateTime, y = Temp, color = 'Temp')) +
+    geom_line(aes(x = DateTime, y = Temp_C, color = 'Temp')) +
     geom_line(aes(x = DateTime, y = TSS_clean, color = 'TSS')) +
     geom_line(aes(x = DateTime, y = TOC_clean, color = 'TOC')) +
     geom_line(aes(x = DateTime, y = NO3.N_clean, color = 'NO3.N')) +
@@ -282,7 +282,7 @@ print(plot_variables(scan_filtered1[[3]], scan_csvs$name[3]))
 plot_variables <- function(df, file_name) {
   # Ensure column selection works correctly
   df_long <- df %>%
-    dplyr::select("DateTime", "Temp", "TSS_clean", "TOC_clean", "NO3.N_clean", "NO3_clean", "DOC_clean") %>%
+    dplyr::select("DateTime", "Temp_C", "TSS_clean", "TOC_clean", "NO3.N_clean", "NO3_clean", "DOC_clean") %>%
     pivot_longer(cols = -DateTime, names_to = "Variable", values_to = "Value")
   
   # Generate the plot

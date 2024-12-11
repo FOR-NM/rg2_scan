@@ -22,104 +22,139 @@ file.remove(files)
 
 #### Import abs and parameter data ####
 # This is the "merged" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1g6aSuGnb--Qeyk-rceX82Y5wSNzCqFg0")
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR")
 
 # List all the files in the folder
 merged <- googledrive::drive_ls(path = scan, type = "csv")
 
-#USF12
-googledrive::drive_download(file = merged$id[merged$name=="USF12_absparams_Buttercup_clean.csv"], 
-                            path = "googledrive/USF12_absparams_Buttercup_clean.csv",
+#SSM20
+googledrive::drive_download(file = merged$id[merged$name=="SSM20_absparams_clean.csv"], 
+                            path = "googledrive/SSM20_absparams_clean.csv",
                             overwrite = T)
-#USF20
-googledrive::drive_download(file = merged$id[merged$name=="USF20_absparams_Blossom_clean.csv"], 
-                            path = "googledrive/USF20_absparams_Blossom_clean.csv",
+#SST13
+googledrive::drive_download(file = merged$id[merged$name=="SST13_absparams_clean.csv"], 
+                            path = "googledrive/SST13_absparams_clean.csv",
                             overwrite = T)
-#USF21
-googledrive::drive_download(file = merged$id[merged$name=="USF21_absparams_Bubbles_clean.csv"], 
-                            path = "googledrive/USF21_absparams_Bubbles_clean.csv",
+#SSM01
+googledrive::drive_download(file = merged$id[merged$name=="SSM01_absparams_clean.csv"], 
+                            path = "googledrive/SSM01_absparams_clean.csv",
                             overwrite = T)
 
 # Load them separately 
-USF12 <- read.csv("googledrive/USF12_absparams_Buttercup_clean.csv")
-USF20 <- read.csv("googledrive/USF20_absparams_Blossom_clean.csv")
-USF21 <- read.csv("googledrive/USF21_absparams_Bubbles_clean.csv")
+SSM20 <- read.csv("googledrive/SSM20_absparams_clean.csv")
+SST13 <- read.csv("googledrive/SST13_absparams_clean.csv")
+SSM01 <- read.csv("googledrive/SSM01_absparams_clean.csv")
 
 # Convert the DateTime column to POSIXct
-USF12$DateTime <- as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M")
-USF20$DateTime <- as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M")
-USF21$DateTime <- as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M")
+SSM20$DateTime <- as.POSIXct(SSM20$DateTime, format = "%Y-%m-%d %H:%M")
+SST13$DateTime <- as.POSIXct(SST13$DateTime, format = "%Y-%m-%d %H:%M")
+SSM01$DateTime <- as.POSIXct(SSM01$DateTime, format = "%Y-%m-%d %H:%M")
 
 # Check for duplicates
-sum(duplicated(USF12))
-sum(duplicated(USF20))
-sum(duplicated(USF21))
+sum(duplicated(SSM20))
+sum(duplicated(SST13))
+sum(duplicated(SSM01))
 
 ##################
 #### Clean up ####
 ##################
 
-#### Keep rows with only 15-minute intervals ####
-USF12 <- USF12 %>%
-  filter(format(USF12$DateTime, "%M") %in% c("00", "15", "30", "45"))
+# #### Keep rows with only 15-minute intervals ####
+# SSM20 <- SSM20 %>%
+#   filter(format(SSM20$DateTime, "%M") %in% c("00", "15", "30", "45"))
+# 
+# SST13 <- SST13 %>%
+#   filter(format(SST13$DateTime, "%M") %in% c("00", "15", "30", "45"))
+# 
+# SSM01 <- SSM01 %>%
+#   filter(format(SSM01$DateTime, "%M") %in% c("00", "15", "30", "45"))
 
-USF20 <- USF20 %>%
-  filter(format(USF20$DateTime, "%M") %in% c("00", "15", "30", "45"))
+# #### Remove error section from USF20 ####
+# USF20 <- USF20 %>%
+#   mutate(across(
+#     c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean", 21:230),
+#     ~ ifelse(between(DateTime, as.Date("2024-09-25"), as.Date("2024-10-17")), NA, .)
+#   ))
 
-USF21 <- USF21 %>%
-  filter(format(USF21$DateTime, "%M") %in% c("00", "15", "30", "45"))
-
-#### Remove error section from USF20 ###
-USF20 <- USF20 %>%
-  mutate(across(
-    c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean", 21:230),
-    ~ ifelse(between(DateTime, as.Date("2024-09-25"), as.Date("2024-10-17")), NA, .)
-  ))
-
-#### Remove low volt at end of USF21 ###
-USF21 <- USF21[-c(11889:11961),]
-
-USF21 <- USF21 %>%
-  mutate(across(
-    c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean"),
-    ~ if_else(row_number() %in% c(1812, 97, 1810), NA, .)
-  ))
+# #### Remove low volt at end of USF21 ####
+# USF21 <- USF21[-c(11889:11961),]
+# 
+# USF21 <- USF21 %>%
+#   mutate(across(
+#     c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean"),
+#     ~ if_else(row_number() %in% c(1812, 97, 1810), NA, .)
+#   ))
 
 
 #### Clean values by standard deviation ####
 # Define the columns to clean
-columns_to_clean <- c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean")
+columns_to_clean <- c("DOC_mg.l_clean", "NO3.N_mg.l_clean", "NO3_mg.l_clean", "TOC_mg.l_clean", "TSS_mg.l_clean")
 
 # Define the number of standard deviations to consider as outliers
-sd <- 3  # Adjust as needed
+sd <- 4  # Adjust as needed
 
-# Apply cleaning USF12
-data12_clean <- USF12 %>%
+# ifelse() function checks whether the absolute deviation from the column's mean is greater than X times its standard deviation. 
+# If this condition is true, the value is considered an outlier and replaced with NA; otherwise, the original value is retained.
+
+# Apply cleaning SSM20
+SSM20_clean <- SSM20 %>%
   mutate(TSS_clean = ifelse(abs(TSS_clean - mean(TSS_clean, na.rm = TRUE)) > 4 * sd(TSS_clean, na.rm = TRUE), 
                             NA, TSS_clean)) %>%
   mutate(TOC_clean = ifelse(abs(TOC_clean - mean(TOC_clean, na.rm = TRUE)) > 6 * sd(TOC_clean, na.rm = TRUE), 
                             NA, TOC_clean))
 
-# Apply cleaning USF20
-data20_clean <- USF20 %>%
+SSM20_clean <- SSM20 %>%
+  # pipes all of the columns in columns to clean
   mutate(across(all_of(columns_to_clean), 
-                .fns = ~ ifelse(abs(. - mean(., na.rm = TRUE)) > 6 * sd(., na.rm = TRUE), 
+                # . represents the current column being processed.
+                # mean(., na.rm = TRUE) calculates the mean of the column, ignoring missing values (NA).
+                # sd(., na.rm = TRUE) calculates the standard deviation of the column.
+                # abs(. - mean(...)) computes the absolute deviation of each value from the column mean.
+                .fns = ~ ifelse(abs(. - mean(., na.rm = TRUE)) > 2 * sd(., na.rm = TRUE), 
                                 NA, 
                                 .), 
-                .names = "{.col}_clean"))
+                # names of the new columns where the cleaned values will be stored
+                .names = "{.col}"))
 
-# Apply cleaning USF21
-data21_clean <- USF21 %>%
-  mutate(DOC_clean = ifelse(abs(DOC_clean - mean(DOC_clean, na.rm = TRUE)) > 5 * sd(DOC_clean, na.rm = TRUE), 
-                            NA, DOC_clean)) %>%
-  mutate(NO3_clean = ifelse(abs(NO3_clean - mean(NO3_clean, na.rm = TRUE)) > 6 * sd(NO3_clean, na.rm = TRUE), 
-                            NA, NO3_clean)) %>%
-  mutate(NO3N_clean = ifelse(abs(NO3.N_clean - mean(NO3.N_clean, na.rm = TRUE)) > 3 * sd(NO3.N_clean, na.rm = TRUE), 
-                          NA, NO3.N_clean)) %>%
-  mutate(TOC_clean = ifelse(abs(TOC_clean - mean(TOC_clean, na.rm = TRUE)) > 4 * sd(TOC_clean, na.rm = TRUE), 
-                            NA, TOC_clean)) %>%
-  mutate(TSS_clean = ifelse(abs(TSS_clean - mean(TSS_clean, na.rm = TRUE)) > 1.5 * sd(TSS_clean, na.rm = TRUE), 
-                            NA, TSS_clean))
+# Apply cleaning SST13
+SST13_clean <- SST13 %>%
+  # pipes all of the columns in columns to clean
+  mutate(across(all_of(columns_to_clean), 
+                # . represents the current column being processed.
+                # mean(., na.rm = TRUE) calculates the mean of the column, ignoring missing values (NA).
+                # sd(., na.rm = TRUE) calculates the standard deviation of the column.
+                # abs(. - mean(...)) computes the absolute deviation of each value from the column mean.
+                .fns = ~ ifelse(abs(. - mean(., na.rm = TRUE)) > 2 * sd(., na.rm = TRUE), 
+                                NA, 
+                                .), 
+                # names of the new columns where the cleaned values will be stored
+                .names = "{.col}"))
+
+# Apply cleaning SSM01
+SSM01_clean <- SSM01 %>%
+  mutate(DOC_mg.l_clean = ifelse(abs(DOC_mg.l_clean - mean(DOC_mg.l_clean, na.rm = TRUE)) > 4 * sd(DOC_mg.l_clean, na.rm = TRUE), 
+                            NA, DOC_mg.l_clean)) %>%
+  mutate(NO3_mg.l_clean = ifelse(abs(NO3_mg.l_clean - mean(NO3_mg.l_clean, na.rm = TRUE)) > 2.5 * sd(NO3_mg.l_clean, na.rm = TRUE), 
+                            NA, NO3_mg.l_clean)) %>%
+  mutate(NO3.N_mg.l_clean = ifelse(abs(NO3.N_mg.l_clean - mean(NO3.N_mg.l_clean, na.rm = TRUE)) > 2.5 * sd(NO3.N_mg.l_clean, na.rm = TRUE), 
+                          NA, NO3.N_mg.l_clean)) %>%
+  mutate(TOC_mg.l_clean = ifelse(abs(TOC_mg.l_clean - mean(TOC_mg.l_clean, na.rm = TRUE)) > 4 * sd(TOC_mg.l_clean, na.rm = TRUE), 
+                            NA, TOC_mg.l_clean)) %>%
+  mutate(TSS_mg.l_clean = ifelse(abs(TSS_mg.l_clean - mean(TSS_mg.l_clean, na.rm = TRUE)) > 4 * sd(TSS_mg.l_clean, na.rm = TRUE), 
+                            NA, TSS_mg.l_clean))
+
+SSM01_clean <- SSM01 %>%
+  # pipes all of the columns in columns to clean
+  mutate(across(all_of(columns_to_clean), 
+                # . represents the current column being processed.
+                # mean(., na.rm = TRUE) calculates the mean of the column, ignoring missing values (NA).
+                # sd(., na.rm = TRUE) calculates the standard deviation of the column.
+                # abs(. - mean(...)) computes the absolute deviation of each value from the column mean.
+                .fns = ~ ifelse(abs(. - mean(., na.rm = TRUE)) > 2 * sd(., na.rm = TRUE), 
+                                NA, 
+                                .), 
+                # names of the new columns where the cleaned values will be stored
+                .names = "{.col}"))
 
 #####################################
 #### Plot all variables separate ####
@@ -129,7 +164,7 @@ data21_clean <- USF21 %>%
 plot_variables <- function(df) {
   # Ensure column selection works correctly
   df_long <- df %>%
-    dplyr::select("DateTime", "Temp", "TSS_clean", "TOC_clean", "NO3.N_clean", "NO3_clean", "DOC_clean") %>%
+    dplyr::select("DateTime", "Temp_C", "TSS_mg.l_clean", "TOC_mg.l_clean", "NO3.N_mg.l_clean", "NO3_mg.l_clean", "DOC_mg.l_clean") %>%
     pivot_longer(cols = -DateTime, names_to = "Variable", values_to = "Value")
   
   # Generate the plot
@@ -143,37 +178,38 @@ plot_variables <- function(df) {
 }
 
 # Generate plots
-print(plot_variables(USF12))
-print(plot_variables(USF20))
-print(plot_variables(USF21))
+print(plot_variables(SSM01))
+print(plot_variables(SSM01_clean))
 
-print(plot_variables(data12_clean))
-print(plot_variables(data20_clean))
-print(plot_variables(data21_clean))
+print(plot_variables(SSM20))
+print(plot_variables(SSM20_clean))
+ 
+print(plot_variables(SST13))
+print(plot_variables(SST13_clean))
 
 #############################
 #### Save filtered files ####
 #############################
 
 # Make sure it is in datetime format
-data12_clean$DateTime <- format(data12_clean$DateTime, "%Y-%m-%d %H:%M:%S")
+SSM01_clean$DateTime <- format(SSM01_clean$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
-write.csv(data12_clean,"googledrive/USF12_filtered_Buttercup.csv" , row.names=FALSE, quote=FALSE)
+write.csv(SSM01_clean,"googledrive/SSM01_filtered.csv" , row.names=FALSE, quote=FALSE)
 # Make sure it is in datetime format
-data20_clean$DateTime <- format(data20_clean$DateTime, "%Y-%m-%d %H:%M:%S")
+SSM20_clean$DateTime <- format(SSM20_clean$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
-write.csv(data20_clean,"googledrive/USF20_filtered_Blossom.csv" , row.names=FALSE, quote=FALSE)
+write.csv(SSM20_clean,"googledrive/SSM20_filtered.csv" , row.names=FALSE, quote=FALSE)
 # Make sure it is in datetime format
-data21_clean$DateTime <- format(data21_clean$DateTime, "%Y-%m-%d %H:%M:%S")
+SST13_clean$DateTime <- format(SST13_clean$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
-write.csv(data21_clean,"googledrive/USF21_filtered_Bubbles.csv" , row.names=FALSE, quote=FALSE)
+write.csv(SST13_clean,"googledrive/SST13_filtered.csv" , row.names=FALSE, quote=FALSE)
 
 # Define the target folder ID in Google Drive
 # This is the "merged" folder
-drive_folder_id <- "1g6aSuGnb--Qeyk-rceX82Y5wSNzCqFg0"
+drive_folder_id <- "1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR"
 
 # Upload the file to the specified Google Drive folder
-drive_upload(media = "googledrive/USF12_filtered_Buttercup.csv", path = as_id(drive_folder_id))
-drive_upload(media = "googledrive/USF20_filtered_Blossom.csv", path = as_id(drive_folder_id))
-drive_upload(media = "googledrive/USF21_filtered_Bubbles.csv", path = as_id(drive_folder_id))
+drive_upload(media = "googledrive/SSM01_filtered.csv", path = as_id(drive_folder_id))
+drive_upload(media = "googledrive/SSM20_filtered.csv", path = as_id(drive_folder_id))
+drive_upload(media = "googledrive/SST13_filtered.csv", path = as_id(drive_folder_id))
 

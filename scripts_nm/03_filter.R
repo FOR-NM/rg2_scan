@@ -129,7 +129,7 @@ data21_clean <- USF21 %>%
 plot_variables <- function(df) {
   # Ensure column selection works correctly
   df_long <- df %>%
-    dplyr::select("DateTime", "Temp", "TSS_clean", "TOC_clean", "NO3.N_clean", "NO3_clean", "DOC_clean") %>%
+    dplyr::select("DateTime", "Temp_C", "TSS_clean", "TOC_clean", "NO3.N_clean", "NO3_clean", "DOC_clean") %>%
     pivot_longer(cols = -DateTime, names_to = "Variable", values_to = "Value")
   
   # Generate the plot

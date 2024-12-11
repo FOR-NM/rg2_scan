@@ -7,7 +7,6 @@
 ##==============================================================================
 
 library(googledrive) #Download docs from Drive
-library(dataRetrieval) # Download USGS discharge data
 library(dplyr)
 library(ggplot2)
 library(tidyr)
@@ -27,7 +26,7 @@ file.remove(files)
 scan <- googledrive::as_id("https://drive.google.com/drive/folders/1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR")
 # List all CSV files in the folder
 scan_csvs <- googledrive::drive_ls(path = scan)
-
+3
 # Create empty list to store data frames
 scan_list <- list()
 
@@ -77,7 +76,7 @@ str(scan_list)
 #################
 #### Tidying #### 
 #################
-### Rename columns and change to values to numeric ###
+## Rename columns
 # Loop through each data frame in the list
 for (i in seq_along(scan_list)) {
   # Access the current data frame
@@ -99,17 +98,17 @@ for (i in seq_along(scan_list)) {
 }
 
 ### Keep rows with only 15-minute intervals ###
-# Loop through each data frame in the list
-#for (i in seq_along(scan_list)) {
-# Access the current data frame
-  #df <- scan_list[[i]]
-  
-  # Filter function 
-  #df <- df %>%
-    #filter(format(df$dateTime, "%M") %in% c("00", "15", "30", "45"))
-  # Update the data frame in the list
-  #scan_list[[i]] <- df
-#}
+# # Loop through each data frame in the list
+# for (i in seq_along(scan_list)) {
+# # Access the current data frame
+#   df <- scan_list[[i]]
+#   
+#   # Filter function 
+#   df <- df %>%
+#     filter(format(df$dateTime, "%M") %in% c("00", "15", "30", "45"))
+#   # Update the data frame in the list
+#   scan_list[[i]] <- df
+# #}
 
 # #### Clean out by specifics of each data set ####
 # #Look at your data and decide if you need to do anything else with it
