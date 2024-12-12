@@ -1,11 +1,20 @@
 ##==============================================================================
 ## Project: QuEST
 ## This script will help you if you have to use the moving window approach to do the calibration
-## Then you can flag spectra if they are too low or too high 
+## Then you can flag spectra if they are too low or too high. This is for South Sandy
 ## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
 
 library(spectrolab)
+library(dplyr)
+
+########################################
+#### Clear folders that we will use ####
+########################################
+# List and delete all files in the folder
+files <- list.files(path = "googledrive", full.names = TRUE)
+file.remove(files)
+
 
 ##############################################
 #### Upload scan dataframe [with spectra] ####
@@ -13,95 +22,105 @@ library(spectrolab)
 
 # This data is already matched #
 # This is the "merged" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1g6aSuGnb--Qeyk-rceX82Y5wSNzCqFg0")
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR")
 
-# List all xlsx files in the folder
+# List all CSVs files in the folder
 merged <- googledrive::drive_ls(path = scan, type = "csv")
 3
 
-#USF12
-googledrive::drive_download(file = merged$id[merged$name=="USF12_merged_Buttercup.csv"], 
-                            path = "googledrive/USF12_merged_Buttercup.csv",
+#SSM01
+googledrive::drive_download(file = merged$id[merged$name=="05_SSM01_merged.csv"], 
+                            path = "googledrive/05_SSM01_merged.csv",
                             overwrite = T)
-#USF20
-googledrive::drive_download(file = merged$id[merged$name=="USF20_merged_Blossom.csv"], 
-                            path = "googledrive/USF20_merged_Blossom.csv",
+#SSM20
+googledrive::drive_download(file = merged$id[merged$name=="05_SSM20_merged.csv"], 
+                            path = "googledrive/05_SSM20_merged.csv",
                             overwrite = T)
-#USF21
-googledrive::drive_download(file = merged$id[merged$name=="USF21_merged_Bubbles.csv"], 
-                            path = "googledrive/USF21_merged_Bubbles.csv",
+#SST13
+googledrive::drive_download(file = merged$id[merged$name=="05_SST13_merged.csv"], 
+                            path = "googledrive/05_SST13_merged.csv",
                             overwrite = T)
 
 # Let's load them separately first
-USF12 <- read.csv("googledrive/USF12_merged_Buttercup.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
-USF20 <- read.csv("googledrive/USF20_merged_Blossom.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
-USF21 <- read.csv("googledrive/USF21_merged_Bubbles.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+SSM01 <- read.csv("googledrive/05_SSM01_merged.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+SSM20 <- read.csv("googledrive/05_SSM20_merged.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+SST13 <- read.csv("googledrive/05_SST13_merged.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
 
 # Convert the DateTime column to POSIXct
-USF12$DateTime <- as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")
-USF20$DateTime <- as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")
-USF21$DateTime <- as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")
+SSM01$DateTime <- as.POSIXct(SSM01$DateTime, format = "%Y-%m-%d %H:%M:%S")
+SSM20$DateTime <- as.POSIXct(SSM20$DateTime, format = "%Y-%m-%d %H:%M:%S")
+SST13$DateTime <- as.POSIXct(SST13$DateTime, format = "%Y-%m-%d %H:%M:%S")
 
-# Rename columns for all data frames (e.g., USF12, USF20, USF21)
+# Rename columns for all data frames (e.g., SSM01, SSM20, SST13)
+# This removes the X in front of all the spectra column names
 rename_columns <- function(df) {
   colnames(df) <- gsub("^X|\\.nm$", "", colnames(df))
   return(df)
 }
 
 # Apply the renaming to each data frame
-USF12 <- rename_columns(USF12)
-USF20 <- rename_columns(USF20)
-USF21 <- rename_columns(USF21)
+SSM01 <- rename_columns(SSM01)
+SSM20 <- rename_columns(SSM20)
+SST13 <- rename_columns(SST13)
+
+# Drop empty column names
+SSM01 <- SSM01[, !(is.na(colnames(SSM01)) | colnames(SSM01) == "")]
+SSM20 <- SSM20[, !(is.na(colnames(SSM20)) | colnames(SSM20) == "")]
+SST13 <- SST13[, !(is.na(colnames(SST13)) | colnames(SST13) == "")]
 
 ################################################
 #### Edit data to look at it month by month ####
 ################################################
 
-USF21_month <- USF21 %>%
-  filter(format(DateTime, "%B") == "October")
+SSM01_month <- SSM01 %>%
+  dplyr::filter(format(DateTime, "%B") == "November")
+SSM20_month <- SSM20 %>%
+  dplyr::filter(format(DateTime, "%B") == "November")
+SST13_month <- SST13 %>%
+  dplyr::filter(format(DateTime, "%B") == "November")
 
 ################################################################################
 #### Create matrices of ALL spectral data - raw data that needs calibration ####
 ################################################################################
 
 # 1. Index FULL dataset with columns with absorbances
-scan.spec12 = USF12_month[21:230]
-scan.spec20 = USF20_month[21:231]
-scan.spec21 = USF21_month[25:234]
+scan.spec01 = SSM01_month[20:230]
+scan.spec20 = SSM20_month[22:231]
+scan.spec13 = SST13_month[23:232]
 
 # 2. Create an absorbance matrix 
 # Rows = wavelength
 # Columns = date/time
-abs12 = (scan.spec12)
+abs01 = (scan.spec01)
 abs20 = (scan.spec20) 
-abs21 = (scan.spec21) 
+abs13 = (scan.spec13) 
 
 # 3. Create a vector with wavelength labels that match the absorbance matrix columns.
-wl12 = as.numeric(colnames(abs12))
+wl01 = as.numeric(colnames(abs01))
 wl20 = as.numeric(colnames(abs20))
-wl21 = as.numeric(colnames(abs21))
+wl13 = as.numeric(colnames(abs13))
 
 # 4. Create a vector with sample labels that match the absorbance matrix rows. 
-lastrow12 = as.numeric(nrow(abs12))
-Num12 = c(1:lastrow12)
+lastrow01 = as.numeric(nrow(abs01))
+Num01 = c(1:lastrow01)
 
 lastrow20 = as.numeric(nrow(abs20))
 Num20 = c(1:lastrow20)
 
-lastrow21 = as.numeric(nrow(abs21))
-Num21 = c(1:lastrow21)
+lastrow13 = as.numeric(nrow(abs13))
+Num13 = c(1:lastrow13)
 
 # 5. Create the final matrix 
-#USF12
-scan.matrix12 = cbind(abs12)
-rownames(scan.matrix12) = as.numeric(Num12)
-colnames(scan.matrix12) = as.numeric(wl12)
+#SSM01
+scan.matrix01 = cbind(abs01)
+rownames(scan.matrix01) = as.numeric(Num01)
+colnames(scan.matrix01) = as.numeric(wl01)
 
-scan.matrix12 = as.matrix(scan.matrix12)
-spec12 = spectra(value = abs12, bands = wl12, names = Num12)
-plot(spec12) # Note = reflectance here = absorbance from the scans
+scan.matrix01 = as.matrix(scan.matrix01)
+spec01 = spectra(value = abs01, bands = wl01, names = Num01)
+plot(spec01) # Note = reflectance here = absorbance from the scans
 
-#USF20
+#SSM20
 scan.matrix20 = cbind(abs20)
 rownames(scan.matrix20) = as.numeric(Num20)
 colnames(scan.matrix20) = as.numeric(wl20)
@@ -110,78 +129,95 @@ scan.matrix20 = as.matrix(scan.matrix20)
 spec20 = spectra(value = abs20, bands = wl20, names = Num20)
 plot(spec20) # Note = reflectance here = absorbance from the scans
 
-#USF21
-scan.matrix21 = cbind(abs21)
-rownames(scan.matrix21) = as.numeric(Num21)
-colnames(scan.matrix21) = as.numeric(wl21)
+#USF13
+scan.matrix13 = cbind(abs13)
+rownames(scan.matrix13) = as.numeric(Num13)
+colnames(scan.matrix13) = as.numeric(wl13)
 
-scan.matrix21 = as.matrix(scan.matrix21)
-spec21 = spectra(value = abs21, bands = wl21, names = Num21)
-plot(spec21) # Note = reflectance here = absorbance from the scans
+scan.matrix13 = as.matrix(scan.matrix13)
+spec13 = spectra(value = abs13, bands = wl13, names = Num13)
+plot(spec13) # Note = reflectance here = absorbance from the scans
 
 ##############################
 #### Flagging absorbances ####
 ##############################
 
-### USF12 ###
-USF12_test <- USF12 %>%
+ #### HERE I AM HAVING A PROBLEM WHERE A LOT OF THE SPECTRA ARE  NEGATIVE (OR SOMETHING)
+    # BECAUSE THIS FLAGGING IS NOT WORKING, BUT I DON'T WANT TO JUST NA A BUNCH OF ROWS
+    # DOUBLE CHECK! 
+
+### SSM01 ###
+colnames(SSM01)[20:230]
+
+SSM01_test <- SSM01 %>%
   # Create flag columns
   mutate(
-    flag_negative = ifelse(rowSums(across(21:230, ~ . < 0)) > 0, "Y", "N"),
-    flag_above100 = ifelse(rowSums(across(21:230, ~ . > 100)) > 0, "Y", "N")
+    # checks if each value in columns 20 to 230 is negative and adds a flag column
+    # and assigns "Y" if there is at least one negative value in the row, otherwise "N"
+    flag_negative = ifelse(rowSums(across(20:230, ~ . < -1, .names = "col_{col}")) > 0, "Y", "N"),
+    # checks if each value in columns 20 to 230 is greater than 100 and adds a flag column
+    # assigns "Y" if there is at least one value greater than 100 in the row, otherwise "N"
+    flag_above100 = ifelse(rowSums(across(20:230, ~ . > 100, .names = "col_{col}")) > 0, "Y", "N")
   ) %>%
   # Replace entire row with NA if any value is flagged, except for the flag columns
+  # replaces all values in the flagged rows with NA if flags = "Y"
   mutate(across(
-    2:234, 
-    ~ if_else(flag_negative == "Y" | flag_above100 == "Y", NA, .)
+    where(is.numeric),
+    ~ if_else(flag_negative == "Y" | flag_above100 == "Y", NA_real_, .)
+    # NA_real_ ensures numeric NA
   ))
 
-### USF20 ###
-USF20_test <- USF20 %>%
+### SSM20 ###
+colnames(SSM20)[22:231]
+
+SSM20_test <- SSM20 %>%
   mutate(
-    flag_negative = ifelse(rowSums(across(21:230, ~ . < 0)) > 0, "Y", "N"),
-    flag_above100 = ifelse(rowSums(across(21:230, ~ . > 100)) > 0, "Y", "N")
+    # Flag negative values
+    flag_negative = ifelse(rowSums(across(22:231, ~ . < -1)) > 0, "Y", "N"),
+    # Flag values above 100
+    flag_above100 = ifelse(rowSums(across(22:231, ~ . > 100)) > 0, "Y", "N")
   ) %>%
   mutate(across(
-    2:237, 
-    ~ if_else(flag_negative == "Y" | flag_above100 == "Y", NA, .)
+    where(is.numeric),
+    ~ if_else(flag_negative == "Y" | flag_above100 == "Y", NA_real_, .)
   ))
 
-### USF21 ###
-USF21_test <- USF21 %>%
+### SST13 ###
+colnames(SST13)[23:232]
+
+SST13_test <- SST13 %>%
   mutate(
-    flag_negative = ifelse(rowSums(across(25:234, ~ . < 0)) > 0, "Y", "N"),
-    flag_above100 = ifelse(rowSums(across(25:234, ~ . > 100)) > 0, "Y", "N")
+    flag_negative = ifelse(rowSums(across(23:232, ~ . < -1)) > 0, "Y", "N"),
+    flag_above100 = ifelse(rowSums(across(23:232, ~ . > 100)) > 0, "Y", "N")
   ) %>%
   mutate(across(
-    2:239, 
+    where(is.numeric),
     ~ if_else(flag_negative == "Y" | flag_above100 == "Y", NA, .)
   ))
-
 
 ############################
 #### Save flagged files ####
 ############################
 
 # Make sure it is in datetime format
-USF12_test$DateTime <- format(USF12_test$DateTime, "%Y-%m-%d %H:%M:%S")
+SSM01_test$DateTime <- format(SSM01_test$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
-write.csv(USF12_test,"googledrive/USF12_flagged_Buttercup.csv" , row.names=FALSE, quote=FALSE)
+write.csv(SSM01_test,"googledrive/SSM01_flagged.csv" , row.names=FALSE, quote=FALSE)
 # Make sure it is in datetime format
-USF20_test$DateTime <- format(USF20_test$DateTime, "%Y-%m-%d %H:%M:%S")
+SSM20_test$DateTime <- format(SSM20_test$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
-write.csv(USF20_test,"googledrive/USF20_flagged_Blossom.csv" , row.names=FALSE, quote=FALSE)
+write.csv(SSM20_test,"googledrive/SSM20_flagged.csv" , row.names=FALSE, quote=FALSE)
 # Make sure it is in datetime format
-USF21_test$DateTime <- format(USF21_test$DateTime, "%Y-%m-%d %H:%M:%S")
+SST13_test$DateTime <- format(SST13_test$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
-write.csv(USF21_test,"googledrive/USF21_flagged_Bubbles.csv" , row.names=FALSE, quote=FALSE)
+write.csv(SST13_test,"googledrive/SST13_flagged.csv" , row.names=FALSE, quote=FALSE)
 
 # Define the target folder ID in Google Drive
 # This is the "merged" folder
 drive_folder_id <- "1g6aSuGnb--Qeyk-rceX82Y5wSNzCqFg0"
 
 # Upload the file to the specified Google Drive folder
-drive_upload(media = "googledrive/USF12_flagged_Buttercup.csv", path = as_id(drive_folder_id))
-drive_upload(media = "googledrive/USF20_flagged_Blossom.csv", path = as_id(drive_folder_id))
-drive_upload(media = "googledrive/USF21_flagged_Bubbles.csv", path = as_id(drive_folder_id))
+drive_upload(media = "googledrive/SSM01_flagged.csv", path = as_id(drive_folder_id))
+drive_upload(media = "googledrive/SSM20_flagged.csv", path = as_id(drive_folder_id))
+drive_upload(media = "googledrive/SST13_flagged.csv", path = as_id(drive_folder_id))
 

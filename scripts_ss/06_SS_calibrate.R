@@ -40,34 +40,39 @@ file.remove(files)
 
 # This data is already matched #
 # This is the "merged" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1g6aSuGnb--Qeyk-rceX82Y5wSNzCqFg0")
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR")
 
-# List all xlsx files in the folder
+# List all CSVs files in the folder
 merged <- googledrive::drive_ls(path = scan, type = "csv")
 3
 
-#USF12
-googledrive::drive_download(file = merged$id[merged$name=="USF12_flagged_Buttercup.csv"], 
-                            path = "googledrive/USF12_flagged_Buttercup.csv",
+#SSM01
+googledrive::drive_download(file = merged$id[merged$name=="05_SSM01_merged.csv"], 
+                            path = "googledrive/05_SSM01_merged.csv",
                             overwrite = T)
-#USF20
-googledrive::drive_download(file = merged$id[merged$name=="USF20_flagged_Blossom.csv"], 
-                            path = "googledrive/USF20_flagged_Blossom.csv",
+#SSM20
+googledrive::drive_download(file = merged$id[merged$name=="05_SSM20_merged.csv"], 
+                            path = "googledrive/05_SSM20_merged.csv",
                             overwrite = T)
-#USF21
-googledrive::drive_download(file = merged$id[merged$name=="USF21_flagged_Bubbles.csv"], 
-                            path = "googledrive/USF21_flagged_Bubbles.csv",
+#SST13
+googledrive::drive_download(file = merged$id[merged$name=="05_SST13_merged.csv"], 
+                            path = "googledrive/05_SST13_merged.csv",
                             overwrite = T)
 
 # Let's load them separately first
-USF12 <- read.csv("googledrive/USF12_flagged_Buttercup.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
-USF20 <- read.csv("googledrive/USF20_flagged_Blossom.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
-USF21 <- read.csv("googledrive/USF21_flagged_Bubbles.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+SSM01 <- read.csv("googledrive/05_SSM01_merged.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+SSM20 <- read.csv("googledrive/05_SSM20_merged.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+SST13 <- read.csv("googledrive/05_SST13_merged.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
 
 # Convert the DateTime column to POSIXct
-USF12$DateTime <- as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")
-USF20$DateTime <- as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")
-USF21$DateTime <- as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")
+SSM01$DateTime <- as.POSIXct(SSM01$DateTime, format = "%Y-%m-%d %H:%M:%S")
+SSM20$DateTime <- as.POSIXct(SSM20$DateTime, format = "%Y-%m-%d %H:%M:%S")
+SST13$DateTime <- as.POSIXct(SST13$DateTime, format = "%Y-%m-%d %H:%M:%S")
+
+# Drop empty column names
+SSM01 <- SSM01[, !(is.na(colnames(SSM01)) | colnames(SSM01) == "")]
+SSM20 <- SSM20[, !(is.na(colnames(SSM20)) | colnames(SSM20) == "")]
+SST13 <- SST13[, !(is.na(colnames(SST13)) | colnames(SST13) == "")]
 
 # Rename columns by removing the X in front of the spectra (that brakes the core somehow)
 rename_columns <- function(df) {
@@ -76,30 +81,30 @@ rename_columns <- function(df) {
 }
 
 # Apply the renaming to each data frame
-USF12 <- rename_columns(USF12)
-USF20 <- rename_columns(USF20)
-USF21 <- rename_columns(USF21)
+SSM01 <- rename_columns(SSM01)
+SSM20 <- rename_columns(SSM20)
+SST13 <- rename_columns(SST13)
 
 # Extract DOC NO3 NO3N and TSS data as time series objects (xts)
-scan_DOC_USF12 <- xts(USF12$DOC, order.by = USF12$DateTime)
-scan_TSS_USF12 <- xts(USF12$TSS, order.by = USF12$DateTime)
-scan_NO3N_USF12 <- xts(USF12$NO3N, order.by = USF12$DateTime)
-scan_NO3_USF12 <- xts(USF12$NO3, order.by = USF12$DateTime)
+scan_DOC_SSM01 <- xts(SSM01$DOC, order.by = SSM01$DateTime)
+scan_TSS_SSM01 <- xts(SSM01$TSS, order.by = SSM01$DateTime)
+scan_NO3N_SSM01 <- xts(SSM01$NO3N, order.by = SSM01$DateTime)
+scan_NO3_SSM01 <- xts(SSM01$NO3, order.by = SSM01$DateTime)
 
-scan_DOC_USF20 <- xts(USF20$DOC, order.by = USF20$DateTime)
-scan_TSS_USF20 <- xts(USF20$TSS, order.by = USF20$DateTime)
-scan_NO3N_USF20 <- xts(USF20$NO3N, order.by = USF20$DateTime)
-scan_NO3_USF20 <- xts(USF20$NO3, order.by = USF20$DateTime)
+scan_DOC_SSM20 <- xts(SSM20$DOC, order.by = SSM20$DateTime)
+scan_TSS_SSM20 <- xts(SSM20$TSS, order.by = SSM20$DateTime)
+scan_NO3N_SSM20 <- xts(SSM20$NO3N, order.by = SSM20$DateTime)
+scan_NO3_SSM20 <- xts(SSM20$NO3, order.by = SSM20$DateTime)
 
-scan_DOC_USF21 <- xts(USF21$DOC, order.by = USF21$DateTime)
-scan_TSS_USF21 <- xts(USF21$TSS, order.by = USF21$DateTime)
-scan_NO3N_USF21 <- xts(USF21$NO3N, order.by = USF21$DateTime)
-scan_NO3_USF21 <- xts(USF21$NO3, order.by = USF21$DateTime)
+scan_DOC_SST13 <- xts(SST13$DOC, order.by = SST13$DateTime)
+scan_TSS_SST13 <- xts(SST13$TSS, order.by = SST13$DateTime)
+scan_NO3N_SST13 <- xts(SST13$NO3N, order.by = SST13$DateTime)
+scan_NO3_SST13 <- xts(SST13$NO3, order.by = SST13$DateTime)
 
 # Extract spectral data (assuming spectral columns are in range "X200.00.nm" to "X750.00.nm")
-scan.spec12 = xts(USF12[21:230], as.POSIXct(USF12$DateTime, format = "%m/%d/%Y %H:%M")) 
-scan.spec20 = xts(USF20[21:231], as.POSIXct(USF20$DateTime, format = "%m/%d/%Y %H:%M")) 
-scan.spec21 = xts(USF21[25:234], as.POSIXct(USF21$DateTime, format = "%m/%d/%Y %H:%M")) 
+scan.spec01 = xts(SSM01[13:230], as.POSIXct(SSM01$DateTime, format = "%m/%d/%Y %H:%M")) 
+scan.spec20 = xts(SSM20[13:231], as.POSIXct(SSM20$DateTime, format = "%m/%d/%Y %H:%M")) 
+scan.spec13 = xts(SST13[25:234], as.POSIXct(SST13$DateTime, format = "%m/%d/%Y %H:%M")) 
 # select full spectra
 # note here that if there are 0s in your spectra, this code will throw an error
 # so only use the wavelengths where you have detectable absorbance
@@ -114,114 +119,114 @@ scan.spec21 = xts(USF21[25:234], as.POSIXct(USF21$DateTime, format = "%m/%d/%Y %
 
 # Creating "Grab_sample" column based on values in "Sample.Name"
 # Modify the Grab_sample column
-USF12 <- USF12 %>% 
+SSM01 <- SSM01 %>% 
   mutate(Grab_sample = case_when(
     !is.na(Sample.Name) & Sample.Name != "" ~ "Y",  # Assign "Y" if data exists
     TRUE ~ NA_character_  # Leave as NA otherwise
   ))
 
-USF20 <- USF20 %>% 
+SSM20 <- SSM20 %>% 
   mutate(Grab_sample = case_when(
     !is.na(Sample.Name) & Sample.Name != "" ~ "Y",
     TRUE ~ NA_character_
   ))
 
-USF21 <- USF21 %>% 
+SST13 <- SST13 %>% 
   mutate(Grab_sample = case_when(
     !is.na(Sample.Name) & Sample.Name != "" ~ "Y",
     TRUE ~ NA_character_
   ))
 
 # Filter using "Grab_sample" column
-grab_USF12 = USF12[USF12$Grab_sample == "Y",] # Ony gets data when there is a Y
-grab_USF20 = USF20[USF20$Grab_sample == "Y",] # Ony gets data when there is a Y
-grab_USF21 = USF21[USF21$Grab_sample == "Y",] # Ony gets data when there is a Y
+grab_SSM01 = SSM01[SSM01$Grab_sample == "Y",] # Ony gets data when there is a Y
+grab_SSM20 = SSM20[SSM20$Grab_sample == "Y",] # Ony gets data when there is a Y
+grab_SST13 = SST13[SST13$Grab_sample == "Y",] # Ony gets data when there is a Y
 
-grab.DOC12 = grab_USF12$NPOC..mg.C.L.
-grab.NO312 = grab_USF12$NO3..mg.N.L.
+grab.DOC01 = grab_SSM01$NPOC..mg.C.L.
+grab.NO301 = grab_SSM01$NO3..mg.N.L.
 
-grab.DOC20 = grab_USF20$NPOC..mg.C.L.
-grab.NO320 = grab_USF20$NO3..mg.N.L.
+grab.DOC20 = grab_SSM20$NPOC..mg.C.L.
+grab.NO320 = grab_SSM20$NO3..mg.N.L.
 
-grab.DOC21 = grab_USF21$NPOC..mg.C.L.
-grab.NO321 = grab_USF21$NO3..mg.N.L.
+grab.DOC13 = grab_SST13$NPOC..mg.C.L.
+grab.NO313 = grab_SST13$NO3..mg.N.L.
 
 # Compare grab vs scan DOC
-plot(grab_USF12$DOC ~ grab_USF12$NPOC..mg.C.L.)
-calib.mod.DOC12 = lm(grab_USF12$DOC ~ grab_USF12$NPOC..mg.C.L.)
-summary(calib.mod.DOC12)
+plot(grab_SSM01$DOC_mg.l_clean ~ grab_SSM01$NPOC..mg.C.L.)
+calib.mod.DOC01 = lm(grab_SSM01$DOC_mg.l_clean ~ grab_SSM01$NPOC..mg.C.L.)
+summary(calib.mod.DOC01)
 
-plot(grab_USF20$DOC ~ grab_USF20$NPOC..mg.C.L.)
-calib.mod.DOC20 = lm(grab_USF20$DOC ~ grab_USF20$NPOC..mg.C.L.)
+plot(grab_SSM20$DOC_mg.l_clean ~ grab_SSM20$NPOC..mg.C.L.)
+calib.mod.DOC20 = lm(grab_SSM20$DOC_mg.l_clean ~ grab_SSM20$NPOC..mg.C.L.)
 summary(calib.mod.DOC20)
 
-plot(grab_USF21$DOC ~ grab_USF21$NPOC..mg.C.L.)
-calib.mod.DOC21 = lm(grab_USF21$DOC ~ grab_USF21$NPOC..mg.C.L.)
-summary(calib.mod.DOC21)
+plot(grab_SST13$DOC_mg.l_clean ~ grab_SST13$NPOC..mg.C.L.)
+calib.mod.DOC13 = lm(grab_SST13$DOC_mg.l_clean ~ grab_SST13$NPOC..mg.C.L.)
+summary(calib.mod.DOC13)
 
 # Compare grab vs scan NO3
-plot(grab_USF12$NO3 ~ grab_USF12$NO3..mg.N.L.)
-calib.mod.DOC12 = lm(grab_USF12$NO3 ~ grab_USF12$NO3..mg.N.L.)
-summary(calib.mod.DOC12)
+plot(grab_SSM01$NO3_mg.l_clean ~ grab_SSM01$NO3..mg.N.L.)
+calib.mod.DOC01 = lm(grab_SSM01$NO3_mg.l_clean ~ grab_SSM01$NO3..mg.N.L.)
+summary(calib.mod.DOC01)
 
-plot(grab_USF20$NO3 ~ grab_USF20$NO3..mg.N.L.)
-calib.mod.DOC20 = lm(grab_USF20$NO3 ~ grab_USF20$NO3..mg.N.L.)
+plot(grab_SSM20$NO3_mg.l_clean ~ grab_SSM20$NO3..mg.N.L.)
+calib.mod.DOC20 = lm(grab_SSM20$NO3_mg.l_clean ~ grab_SSM20$NO3..mg.N.L.)
 summary(calib.mod.DOC20)
 
-plot(grab_USF21$NO3 ~ grab_USF21$NO3)
-calib.mod.DOC21 = lm(grab_USF21$NO3 ~ grab_USF21$NO3..mg.N.L.)
-summary(calib.mod.DOC21)
+plot(grab_SST13$NO3_mg.l_clean ~ grab_SST13$NO3..mg.N.L.)
+calib.mod.DOC13 = lm(grab_SST13$NO3_mg.l_clean ~ grab_SST13$NO3..mg.N.L.)
+summary(calib.mod.DOC13)
 
 #######################################################################################
 #### STEP 4: Create matrices of GRAB spectral data - this is the training data set ####
 #######################################################################################
 # 1. Index data set with columns with absorbances
-grab.spec.dat12 = grab_USF12[21:230] # Full spectra, with no NAs
-grab.spec.dat20 = grab_USF20[21:231] # Full spectra, with no NAs
-grab.spec.dat21 = grab_USF21[25:234] # Full spectra, with no NAs
+grab.spec.dat01 = grab_SSM01[20:230] # Full spectra, with no NAs
+grab.spec.dat20 = grab_SSM20[22:231] # Full spectra, with no NAs
+grab.spec.dat13 = grab_SST13[23:232] # Full spectra, with no NAs
 
-# Rename columns for all data frames (e.g., USF12, USF20, USF21)
+# Rename columns for all data frames (e.g., SSM01, SSM20, SST13)
 rename_columns <- function(df) {
   colnames(df) <- gsub("^X|\\.nm$", "", colnames(df))
   return(df)
 }
 
 # Apply the renaming to each data frame
-grab.spec.dat12 <- rename_columns(grab.spec.dat12)
+grab.spec.dat01 <- rename_columns(grab.spec.dat01)
 grab.spec.dat20 <- rename_columns(grab.spec.dat20)
-grab.spec.dat21 <- rename_columns(grab.spec.dat21)
+grab.spec.dat13 <- rename_columns(grab.spec.dat13)
 
 # 2. Create an absorbance matrix 
 # Rows = wavelength
 # Columns = date/time
-abs12 = (grab.spec.dat12)  # this is not doing anything and just copying grab.spec.dat12 again as abs12
+abs01 = (grab.spec.dat01)  # this is not doing anything and just copying grab.spec.dat01 again as abs01
 abs20 = (grab.spec.dat20)
-abs21 = (grab.spec.dat21)
+abs13 = (grab.spec.dat13)
 #str(abs)
 
 # 3. Create a vector with wavelength labels that match the absorbance matrix columns.
-wl12 = as.numeric(colnames(abs12))
+wl01 = as.numeric(colnames(abs01))
 wl20 = as.numeric(colnames(abs20))
-wl21 = as.numeric(colnames(abs21))
-str(wl21)
+wl13 = as.numeric(colnames(abs13))
+str(wl13)
 
 # 4. Create a vector with sample labels that match the absorbance matrix rows. 
-lastrow12 = as.numeric(nrow(abs12))
-Num12 = c(1:lastrow12)
+lastrow01 = as.numeric(nrow(abs01))
+Num01 = c(1:lastrow01)
 
 lastrow20 = as.numeric(nrow(abs20))
 Num20 = c(1:lastrow20)
 
-lastrow21 = as.numeric(nrow(abs21))
-Num21 = c(1:lastrow21)
+lastrow13 = as.numeric(nrow(abs13))
+Num13 = c(1:lastrow13)
 
 # 5. Create the final matrix 
-grab.matrix12 = cbind(abs12) # this is not binding anything and just copying abs12 again as grab.matrix12 
-rownames(grab.matrix12) = as.numeric(Num12)
-colnames(grab.matrix12) = as.numeric(wl12)
-grab.matrix12 = as.matrix(grab.matrix12)
-str(grab.matrix12)
-attributes(grab.matrix12)
+grab.matrix01 = cbind(abs01) # this is not binding anything and just copying abs01 again as grab.matrix01 
+rownames(grab.matrix01) = as.numeric(Num01)
+colnames(grab.matrix01) = as.numeric(wl01)
+grab.matrix01 = as.matrix(grab.matrix01)
+str(grab.matrix01)
+attributes(grab.matrix01)
 
 grab.matrix20 = cbind(abs20)
 rownames(grab.matrix20) = as.numeric(Num20)
@@ -230,90 +235,90 @@ grab.matrix20 = as.matrix(grab.matrix20)
 str(grab.matrix20)
 attributes(grab.matrix20)
 
-grab.matrix21 = cbind(abs21)
-rownames(grab.matrix21) = as.numeric(Num21)
-colnames(grab.matrix21) = as.numeric(wl21)
-grab.matrix21 = as.matrix(grab.matrix21)
-str(grab.matrix21)
-attributes(grab.matrix21)
+grab.matrix13 = cbind(abs13)
+rownames(grab.matrix13) = as.numeric(Num13)
+colnames(grab.matrix13) = as.numeric(wl13)
+grab.matrix13 = as.matrix(grab.matrix13)
+str(grab.matrix13)
+attributes(grab.matrix13)
 
 # 6. Make this into spectral matrix for model
 # Must be in format: grab.spectra = spectra(value = abs, bands = wl, names = Num)
-grab.spectra12 = spectra(value = abs12, bands = wl12, names = Num12)
-attributes(grab.spectra12)
-plot(grab.spectra12) # Note, bands here = absorbance from the scans
+grab.spectra01 = spectra(value = abs01, bands = wl01, names = Num01)
+attributes(grab.spectra01)
+plot(grab.spectra01) # Note, bands here = absorbance from the scans
 
 grab.spectra20 = spectra(value = abs20, bands = wl20, names = Num20)
 attributes(grab.spectra20)
 plot(grab.spectra20) # Note, bands here = absorbance from the scans
 
-grab.spectra21 = spectra(value = abs21, bands = wl21, names = Num21)
-attributes(grab.spectra21)
-plot(grab.spectra21) # Note, bands here = absorbance from the scans
+grab.spectra13 = spectra(value = abs13, bands = wl13, names = Num13)
+attributes(grab.spectra13)
+plot(grab.spectra13) # Note, bands here = absorbance from the scans
 
 #grab.spectra = as_spectra.list(grab.spectra, wave_unit = "wavenumber", measurement_nit = "absorbance")
 
-grab.spectra12 = as.matrix(grab.spectra12)
+grab.spectra01 = as.matrix(grab.spectra01)
 grab.spectra20 = as.matrix(grab.spectra20)
-grab.spectra21 = as.matrix(grab.spectra21)
+grab.spectra13 = as.matrix(grab.spectra13)
 #str(grab.spectra)
 
 # Change attributes so this is correct for scan data
-attr(grab.spectra12, 'wave_unit') = 'wavelength'
-attr(grab.spectra12, 'measurement_unit') = 'absorbance'
-attributes(grab.spectra12)
+attr(grab.spectra01, 'wave_unit') = 'wavelength'
+attr(grab.spectra01, 'measurement_unit') = 'absorbance'
+attributes(grab.spectra01)
 
 attr(grab.spectra20, 'wave_unit') = 'wavelength'
 attr(grab.spectra20, 'measurement_unit') = 'absorbance'
 attributes(grab.spectra20)
 
-attr(grab.spectra21, 'wave_unit') = 'wavelength'
-attr(grab.spectra21, 'measurement_unit') = 'absorbance'
-attributes(grab.spectra21)
+attr(grab.spectra13, 'wave_unit') = 'wavelength'
+attr(grab.spectra13, 'measurement_unit') = 'absorbance'
+attributes(grab.spectra13)
 
 ########################################################################################
 #### STEP 5: Create matrices of ALL spectral data - raw data that needs calibration ####
 ########################################################################################
 
 # 1. Index FULL dataset with columns with absorbances
-scan.spec12 = USF12[21:230]
-scan.spec20 = USF20[21:231]
-scan.spec21 = USF21[25:234]
+scan.spec01 = SSM01[13:230]
+scan.spec20 = SSM20[13:231]
+scan.spec13 = SST13[25:234]
 
 # 2. Create an absorbance matrix 
 # Rows = wavelength
 # Columns = date/time
-abs12 = (scan.spec12)
+abs01 = (scan.spec01)
 abs20 = (scan.spec20) 
-abs21 = (scan.spec21) 
+abs13 = (scan.spec13) 
 
 # 3. Create a vector with wavelength labels that match the absorbance matrix columns.
-wl12 = as.numeric(colnames(abs12))
+wl01 = as.numeric(colnames(abs01))
 wl20 = as.numeric(colnames(abs20))
-wl21 = as.numeric(colnames(abs21))
+wl13 = as.numeric(colnames(abs13))
 
 # 4. Create a vector with sample labels that match the absorbance matrix rows. 
-lastrow12 = as.numeric(nrow(abs12))
-Num12 = c(1:lastrow12)
+lastrow01 = as.numeric(nrow(abs01))
+Num01 = c(1:lastrow01)
 
 lastrow20 = as.numeric(nrow(abs20))
 Num20 = c(1:lastrow20)
 
-lastrow21 = as.numeric(nrow(abs21))
-Num21 = c(1:lastrow21)
+lastrow13 = as.numeric(nrow(abs13))
+Num13 = c(1:lastrow13)
 
 # 5. Create the final matrix 
-#USF12
-scan.matrix12 = cbind(abs12)
-rownames(scan.matrix12) = as.numeric(Num12)
-colnames(scan.matrix12) = as.numeric(wl12)
+#SSM01
+scan.matrix01 = cbind(abs01)
+rownames(scan.matrix01) = as.numeric(Num01)
+colnames(scan.matrix01) = as.numeric(wl01)
 
-scan.matrix12 = as.matrix(scan.matrix12)
-spec12 = spectra(value = abs12, bands = wl12, names = Num12)
-plot(spec12) # Note = reflectance here = absorbance from the scans
+scan.matrix01 = as.matrix(scan.matrix01)
+spec01 = spectra(value = abs01, bands = wl01, names = Num01)
+plot(spec01) # Note = reflectance here = absorbance from the scans
 
 
-#USF20
+#SSM20
 scan.matrix20 = cbind(abs20)
 rownames(scan.matrix20) = as.numeric(Num20)
 colnames(scan.matrix20) = as.numeric(wl20)
@@ -322,23 +327,23 @@ scan.matrix20 = as.matrix(scan.matrix20)
 spec20 = spectra(value = abs20, bands = wl20, names = Num20)
 plot(spec20) # Note = reflectance here = absorbance from the scans
 
-#USF21
-scan.matrix21 = cbind(abs21)
-rownames(scan.matrix21) = as.numeric(Num21)
-colnames(scan.matrix21) = as.numeric(wl21)
+#SST13
+scan.matrix13 = cbind(abs13)
+rownames(scan.matrix13) = as.numeric(Num13)
+colnames(scan.matrix13) = as.numeric(wl13)
 
-scan.matrix21 = as.matrix(scan.matrix21)
-spec21 = spectra(value = abs21, bands = wl21, names = Num21)
-plot(spec21) # Note = reflectance here = absorbance from the scans
+scan.matrix13 = as.matrix(scan.matrix13)
+spec13 = spectra(value = abs13, bands = wl13, names = Num13)
+plot(spec13) # Note = reflectance here = absorbance from the scans
 
 # NOTE: this is where you can identify problem spectra & remove them
 
 # = as.spectra.list(spec)
-scan.spectra12 = as.matrix(spec12)
-str(scan.spectra12)
-attr(scan.spectra12, 'wave_unit') = 'wavelength'
-attr(scan.spectra12, 'measurement_unit') = 'absorbance'
-attributes(scan.spectra12)
+scan.spectra01 = as.matrix(spec01)
+str(scan.spectra01)
+attr(scan.spectra01, 'wave_unit') = 'wavelength'
+attr(scan.spectra01, 'measurement_unit') = 'absorbance'
+attributes(scan.spectra01)
 
 scan.spectra20 = as.matrix(spec20)
 str(scan.spectra20)
@@ -346,11 +351,11 @@ attr(scan.spectra20, 'wave_unit') = 'wavelength'
 attr(scan.spectra20, 'measurement_unit') = 'absorbance'
 attributes(scan.spectra20)
 
-scan.spectra21 = as.matrix(spec21)
-str(scan.spectra21)
-attr(scan.spectra21, 'wave_unit') = 'wavelength'
-attr(scan.spectra21, 'measurement_unit') = 'absorbance'
-attributes(scan.spectra21)
+scan.spectra13 = as.matrix(spec13)
+str(scan.spectra13)
+attr(scan.spectra13, 'wave_unit') = 'wavelength'
+attr(scan.spectra13, 'measurement_unit') = 'absorbance'
+attributes(scan.spectra13)
 
 ####################################################################
 #### STEP 6: Create a new data frame with the spectral matrices ####
@@ -360,30 +365,30 @@ attributes(scan.spectra21)
 # 2. TSS (scab)
 # 3. Full s::can spectra (from 220-750nm)
 
-length(scan_DOC_USF12)
-length(scan_NO3_USF12)
-dim(scan.spectra12) 
-class(scan.spectra12)
+length(scan_DOC_SSM01)
+length(scan_NO3_SSM01)
+dim(scan.spectra01) 
+class(scan.spectra01)
 
 # NOTE: We use the I() function to protect the Spectra 
-spectralcal.df12 = data.frame(DOC12 = scan_DOC_USF12, NO312 = scan_NO3_USF12, Spectra12 = I(scan.spectra12))
-str(spectralcal.df12)
+spectralcal.df01 = data.frame(DOC01 = scan_DOC_SSM01, NO301 = scan_NO3_SSM01, Spectra01 = I(scan.spectra01))
+str(spectralcal.df01)
 
-spectralcal.df20 = data.frame(DOC20 = scan_DOC_USF20, NO320 = scan_NO3_USF20, Spectra20 = I(scan.spectra20))
+spectralcal.df20 = data.frame(DOC20 = scan_DOC_SSM20, NO320 = scan_NO3_SSM20, Spectra20 = I(scan.spectra20))
 str(spectralcal.df20)
 
-spectralcal.df21 = data.frame(DOC21 = scan_DOC_USF21, NO321 = scan_NO3_USF21, Spectra21 = I(scan.spectra21))
-str(spectralcal.df21)
+spectralcal.df13 = data.frame(DOC13 = scan_DOC_SST13, NO313 = scan_NO3_SST13, Spectra13 = I(scan.spectra13))
+str(spectralcal.df13)
 
 # Also do this for the GRAB sample data
-grabcal.df12 = data.frame(DOC12 = grab.DOC12, NO312 = grab.NO312, Spectra12 = I(grab.spectra12))
-str(grabcal.df12)
+grabcal.df01 = data.frame(DOC01 = grab.DOC01, NO301 = grab.NO301, Spectra01 = I(grab.spectra01))
+str(grabcal.df01)
 
 grabcal.df20 = data.frame(DOC20 = grab.DOC20, NO320 = grab.NO320, Spectra20 = I(grab.spectra20))
 str(grabcal.df20)
 
-grabcal.df21 = data.frame(DOC21 = grab.DOC21, NO321 = grab.NO321, Spectra21 = I(grab.spectra21))
-str(grabcal.df21)
+grabcal.df13 = data.frame(DOC13 = grab.DOC13, NO313 = grab.NO313, Spectra13 = I(grab.spectra13))
+str(grabcal.df13)
 
 #################################################
 #### STEP 7: Develop PLSR training data sets ####
@@ -391,47 +396,47 @@ str(grabcal.df21)
 
 # Create a training and test dataset
 # Carbon
-CTrain12 = grabcal.df12
-CTest12 = spectralcal.df12
+CTrain01 = grabcal.df01
+CTest01 = spectralcal.df01
 
 # NO3
-NTrain12 = grabcal.df12
-NTest12 = spectralcal.df12
+NTrain01 = grabcal.df01
+NTest01 = spectralcal.df01
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-Cmod12 = plsr(DOC12 ~ Spectra12, ncomp = 3, data = CTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
-summary(Cmod12) # optimized for 4 components
+Cmod01 = plsr(DOC01 ~ Spectra01, ncomp = 3, data = CTrain01, validation = "LOO") # usually ncomp is N-1 grab samples you have
+summary(Cmod01) # optimized for 4 components
 
-Nmod12 = plsr(NO312 ~ Spectra12, ncomp = 2, data = NTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
-summary(Cmod12)
+Nmod01 = plsr(NO301 ~ Spectra01, ncomp = 2, data = NTrain01, validation = "LOO") # usually ncomp is N-1 grab samples you have
+summary(Cmod01)
 
 # Plot RMSE of the predictions to optimize model
-plot(RMSEP(Cmod12), legendpos = "topright")
-plot(RMSEP(Nmod12), legendpos = "topright")
+plot(RMSEP(Cmod01), legendpos = "topright")
+plot(RMSEP(Nmod01), legendpos = "topright")
 
 # Plot predicted vs. measured from optimized model
 # Pick the number of components with the least error (in this case, 1)
 # NOTE: This plot may be messy, given low number of grab samples 
-plot(Cmod12, ncomp = 2, asp = 1, line = TRUE)
-plot(Nmod12, ncomp = 1, asp = 1, line = TRUE)
+plot(Cmod01, ncomp = 2, asp = 1, line = TRUE)
+plot(Nmod01, ncomp = 1, asp = 1, line = TRUE)
 
 ####################################################################
 #### STEP 8: Make predictions based on reduced-error PLSR model #### 
 ####################################################################
 
 # Predict model!
-predictedC12 = predict(Cmod12, ncomp = 2, newdata = spectralcal.df12) # use reduced error model
-str(predictedC12)
-plot(predictedC12)
+predictedC01 = predict(Cmod01, ncomp = 2, newdata = spectralcal.df01) # use reduced error model
+str(predictedC01)
+plot(predictedC01)
 
-predictedN12 = predict(Nmod12, ncomp = 1, newdata = spectralcal.df12) # use reduced error model
-str(predictedN12)
+predictedN01 = predict(Nmod01, ncomp = 1, newdata = spectralcal.df01) # use reduced error model
+str(predictedN01)
 # Plot final predictions
-plot(predictedN12)
+plot(predictedN01)
 
-write.csv(predictedC12, file = "PredictedC_USF12.csv") # <- this is your newly calibrated dataset!
-write.csv(predictedN12, file = "PredictedN_USF12.csv") # <- this is your newly calibrated dataset!
+write.csv(predictedC01, file = "PredictedC_SSM01.csv") # <- this is your newly calibrated dataset!
+write.csv(predictedN01, file = "PredictedN_SSM01.csv") # <- this is your newly calibrated dataset!
 
 
 ## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 
@@ -482,18 +487,18 @@ str(predictedN20)
 # Plot final predictions
 plot(predictedN20)
 
-write.csv(predictedC20, file = "PredictedC_USF20.csv") # <- this is your newly calibrated dataset!
-write.csv(predictedN20, file = "PredictedN_USF20.csv") # <- this is your newly calibrated dataset!
+write.csv(predictedC20, file = "PredictedC_SSM20.csv") # <- this is your newly calibrated dataset!
+write.csv(predictedN20, file = "PredictedN_SSM20.csv") # <- this is your newly calibrated dataset!
 
 # Invert it?
-#predictedC20 <- read.csv("predicted/PredictedC_USF20.csv")
+#predictedC20 <- read.csv("predicted/PredictedC_SSM20.csv")
 #predictedC20_rev <- predictedC20
 
 #predictedC20_rev$DOC20_rev <- -predictedC20_rev$DOC.compensated
 
 # Check the result
 #head(predictedC20_rev)
-#write.csv(predictedC20_rev, file = "PredictedC_USF20_inv.csv") 
+#write.csv(predictedC20_rev, file = "PredictedC_SSM20_inv.csv") 
 
 ## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 
 # You might need to use a moving window approach to the calibraiton (i.e., calibrate 1 month at a time)
@@ -505,48 +510,48 @@ write.csv(predictedN20, file = "PredictedN_USF20.csv") # <- this is your newly c
 
 # Create a training and test dataset
 # Carbon
-CTrain21 = grabcal.df21
-CTest21 = spectralcal.df21
+CTrain13 = grabcal.df13
+CTest13 = spectralcal.df13
 
 # NO3
-NTrain21 = grabcal.df21
-NTest21 = spectralcal.df21
+NTrain13 = grabcal.df13
+NTest13 = spectralcal.df13
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-Cmod21 = plsr(DOC21 ~ Spectra21, ncomp = 2, data = CTrain21, validation = "LOO") # usually ncomp is N-1 grab samples you have
-summary(Cmod21) # optimized for 4 components
+Cmod13 = plsr(DOC13 ~ Spectra13, ncomp = 2, data = CTrain13, validation = "LOO") # usually ncomp is N-1 grab samples you have
+summary(Cmod13) # optimized for 4 components
 
-Nmod21 = plsr(NO321 ~ Spectra21, ncomp = 3, data = NTrain21, validation = "LOO") # usually ncomp is N-1 grab samples you have
-summary(Cmod21)
+Nmod13 = plsr(NO313 ~ Spectra13, ncomp = 3, data = NTrain13, validation = "LOO") # usually ncomp is N-1 grab samples you have
+summary(Cmod13)
 
 # Plot RMSE of the predictions to optimize model
-plot(RMSEP(Cmod21), legendpos = "topright")
-plot(RMSEP(Nmod21), legendpos = "topright")
+plot(RMSEP(Cmod13), legendpos = "topright")
+plot(RMSEP(Nmod13), legendpos = "topright")
 
 # Plot predicted vs. measured from optimized model
 # Pick the number of components with the least error (in this case, 1)
 # NOTE: This plot may be messy, given low number of grab samples 
-plot(Cmod21, ncomp = 2, asp = 1, line = TRUE)
-plot(Nmod21, ncomp = 1, asp = 1, line = TRUE)
+plot(Cmod13, ncomp = 2, asp = 1, line = TRUE)
+plot(Nmod13, ncomp = 1, asp = 1, line = TRUE)
 
 ####################################################################
 #### STEP 8: Make predictions based on reduced-error PLSR model #### 
 ####################################################################
 
 # Predict model!
-predictedC21 = predict(Cmod21, ncomp = 2, newdata = spectralcal.df21) # use reduced error model
-str(predictedC21)
-plot(predictedC21)
+predictedC13 = predict(Cmod13, ncomp = 2, newdata = spectralcal.df13) # use reduced error model
+str(predictedC13)
+plot(predictedC13)
 
 head(predictedC20)
-predictedT21 = predict(Nmod21, ncomp = 1, newdata = spectralcal.df21) # use reduced error model
-str(predictedN21)
+predictedT13 = predict(Nmod13, ncomp = 1, newdata = spectralcal.df13) # use reduced error model
+str(predictedN13)
 # Plot final predictions
-plot(predictedN21)
+plot(predictedN13)
 
-write.csv(predictedC, file = "PredictedC_USF21.csv") # <- this is your newly calibrated dataset!
-write.csv(predictedN, file = "PredictedN_USF21.csv") # <- this is your newly calibrated dataset!
+write.csv(predictedC, file = "PredictedC_SST13.csv") # <- this is your newly calibrated dataset!
+write.csv(predictedN, file = "PredictedN_SST13.csv") # <- this is your newly calibrated dataset!
 
 
 ## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 

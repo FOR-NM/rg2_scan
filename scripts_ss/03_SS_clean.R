@@ -261,11 +261,11 @@ scan_list <- lapply(scan_list, function(df) {
 })
 
 lapply(names(scan_list), function(site) {
-  write.csv(scan_list[[site]], file.path("data", paste0(site, "_clean.csv")))
+  write.csv(scan_list[[site]], file.path("data/03_", paste0(site, "_clean.csv")))
 })
 
 lapply(names(scan_list), function(site) {
-  file <- paste0("data/", site, "_clean.csv")
+  file <- paste0("data/03_", site, "_clean.csv")
   # this is the in use folder
   drive_folder_id <- "1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR"
   # Upload file to the specified Google Drive folder
