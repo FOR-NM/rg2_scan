@@ -1,5 +1,5 @@
 ##==============================================================================
-## Project: QuEST - Script to tidy up South Sandy scan data and plot it
+## Project: QuEST - Script to tidy up Lamprey River scan data and plot it
 ## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
 library(googledrive) # Download docs from Drive

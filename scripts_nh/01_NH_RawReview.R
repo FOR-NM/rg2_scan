@@ -1,6 +1,6 @@
 ##==============================================================================
 ## Project: QuEST
-## Script to visualize raw scan data from South Sandy
+## Script to visualize raw scan data from Lamprey River
 ## Here we will plot some images but will not be saving cleaned data back. 
 ## It is just so see what your data looks like and understand what needs to get done
 ## press Command+Option+O to collapse all sections and get an overview of the workflow!

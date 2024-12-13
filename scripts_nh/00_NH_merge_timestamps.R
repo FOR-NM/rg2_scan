@@ -1,6 +1,8 @@
 ##==============================================================================
 ## Project: QuEST
 ## Script to merge scan files in one (using timestamp)
+
+## haven't edited this one yet, have not needed it
 ##==============================================================================
 
 library(readxl) #to read excel 

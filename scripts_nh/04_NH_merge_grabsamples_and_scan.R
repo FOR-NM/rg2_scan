@@ -23,7 +23,7 @@ file.remove(files)
 ##########################
 
 #### Load chem data ####
-# Chem data is for all the sites
+# Chem data is for all the sites, this is the chem data folder
 chem <- googledrive::as_id("https://drive.google.com/drive/folders/1ZCVAoIamyMMtwh-Cy3SpeQx2IWYu6gg2")
 
 # List all CSV files in the folder
@@ -48,19 +48,19 @@ drops <- c("X", "Project", "Sub_ProjectA", "pH", "Cond", "Spec_Cond", "DO_Conc",
 wqual <- wqual[ , !(names(wqual) %in% drops)]
 
 # Filter to get just SS data
-SS <- filter(wqual, Sub_Project == "Alabama")
+NH <- filter(wqual, Sub_Project == "QuEST")
 
 #### Combine same day-same site samples (reps and bottles) ####
 
 # When there are reps per site per date we need to average them and use the average chem to calculate leverage
-head(SS)
+head(NH)
 # Define the columns that need to be averaged
 columns_to_average <- c("NPOC..mg.C.L.", "NO3..mg.N.L.", "NH4..ug.N.L.", "TDN..mg.N.L.", 
                         "PO4..ug.P.L.", "Cl..mg.Cl.L.", "SO4..mg.S.L.", "Na..mg.Na.L.", 
                         "K..mg.K.L.", "Mg..mg.Mg.L.", "Ca..mg.Ca.L.")
 
 # Calculate averages or fill non-NA values for each Site and Date
-data_avg <- SS %>%
+data_avg <- NH %>%
   # Group by columns Date and Site, and other unique identifiers if necessary
   group_by(Date, Site) %>%
   
@@ -74,6 +74,9 @@ data_avg <- SS %>%
 # Count non-NA values in Q column using dplyr
 nonna_counts_dplyr <- data_avg %>%
   summarise_all(~ sum(!is.na(.)))
+
+#### VAS AQUI, HAY QUE BUSCAR DONDE ESTAN LOS TIEMPOS DE LAS MUESTRAS DE NH ####
+
 
 #### Load sample info to get grab sample collection time ####
 samplelogsheet <- drive_get("https://docs.google.com/spreadsheets/d/1JVDwzSoHetQGHhYPoeoTOHzlmRrcWNPs-i5b8t2U754/edit?gid=1408689713#gid=1408689713")
