@@ -22,7 +22,7 @@ file.remove(files)
 #### Import Data ####
 #####################
 # Load data from Google Drive. his is the "merged" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR")
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1llXcmKVhauTAHcnTuXuhhatPtEaMoeW2")
 scan_csvs <- googledrive::drive_ls(path = scan, type = "csv")
 3
 
@@ -53,11 +53,6 @@ for (i in seq_along(scan_csvs$id)) {
 
 head(scan_list)
 
-#### Remove abs files from list ####
-# We just want merged parameters and abs file
-# Check position of abs and params files
-scan_list = scan_list[-c(3:8)]
-
 #################
 #### Tidying ####
 #################
@@ -76,7 +71,7 @@ scan_list <- lapply(scan_list, function(df) {
   # Ensure numeric variables are converted to numeric
   df <- df %>%
     mutate(across(c(DOC_mg.l, NO3.N_mg.l, NO3_mg.l, TOC_mg.l, TSS_mg.l, Temp_C), as.numeric)) %>%
-    mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
+    mutate(datetime = as.POSIXct(datetime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
   
   return(df)
 })
@@ -127,9 +122,9 @@ print(final_count_table)
 # Save the final table to a CSV file
 # write.csv(final_count_table, "final_NAcount_table.csv", row.names = TRUE)
 
-##################################################
-#### Clean  service dates (out of water days) ####
-##################################################
+#################################################
+#### Clean service dates (out of water days) ####
+#################################################
 # Apply changes to status columns across all data frames in the list
 scan_list <- lapply(scan_list, function(df) {
   
@@ -146,10 +141,10 @@ scan_list <- lapply(scan_list, function(df) {
   # Ensure numeric variables are converted to numeric
   df <- df %>%
     mutate(across(c(DOC_mg.l, NO3.N_mg.l, NO3_mg.l, TOC_mg.l, TSS_mg.l, Temp_C), as.numeric)) %>%
-    mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
+    mutate(datetime = as.POSIXct(datetime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
   
   # Define status values to replace with NA
-  status_values_to_replace <- c("NO_MEDIUM", "VAL_BELOW:NO_MEDIUM", "VAL_BELOW", "VAL_ABOVE")
+  status_values_to_replace <- c("NO_MEDIUM", "VAL_BELOW:NO_MEDIUM")
   
   # Create new cleaned columns (e.g., DOC_clean, NO3_clean) and set to NA if the status column has invalid values
   df <- df %>%
@@ -196,12 +191,12 @@ scan_list <- lapply(scan_list, function(df) {
 # Plot after filtering pre-deployed and out of water times
 plot_variables <- function(df, file_name) {
   ggplot(data = df) +
-    geom_line(aes(x = DateTime, y = Temp_C, color = 'Temp')) +
-    geom_line(aes(x = DateTime, y = TSS_mg.l_clean, color = 'TSS')) +
-    geom_line(aes(x = DateTime, y = TOC_mg.l_clean, color = 'TOC')) +
-    geom_line(aes(x = DateTime, y = NO3.N_mg.l_clean, color = 'NO3.N')) +
-    geom_line(aes(x = DateTime, y = NO3_mg.l_clean, color = 'NO3')) +
-    geom_line(aes(x = DateTime, y = DOC_mg.l_clean, color = 'DOC')) +
+    geom_line(aes(x = datetime, y = Temp_C, color = 'Temp')) +
+    geom_line(aes(x = datetime, y = TSS_mg.l_clean, color = 'TSS')) +
+    geom_line(aes(x = datetime, y = TOC_mg.l_clean, color = 'TOC')) +
+    geom_line(aes(x = datetime, y = NO3.N_mg.l_clean, color = 'NO3.N')) +
+    geom_line(aes(x = datetime, y = NO3_mg.l_clean, color = 'NO3')) +
+    geom_line(aes(x = datetime, y = DOC_mg.l_clean, color = 'DOC')) +
     scale_x_datetime(date_breaks = "2 days", date_labels = "%m/%d") +
     ggtitle(file_name) +
     theme(axis.text.x = element_text(angle = 45)) +
@@ -212,6 +207,7 @@ plot_variables <- function(df, file_name) {
 print(plot_variables(scan_list[[1]], scan_csvs$name[1]))
 print(plot_variables(scan_list[[2]], scan_csvs$name[2]))
 print(plot_variables(scan_list[[3]], scan_csvs$name[3]))
+print(plot_variables(scan_list[[4]], scan_csvs$name[4]))
 
 # Save figures to folder
 #for (i in seq_along(scan_filtered)) {
@@ -226,11 +222,11 @@ print(plot_variables(scan_list[[3]], scan_csvs$name[3]))
 plot_variables <- function(df, file_name) {
   # Ensure column selection works correctly
   df_long <- df %>%
-    dplyr::select("DateTime", "Temp_C", "TSS_mg.l_clean", "TOC_mg.l_clean", "NO3.N_mg.l_clean", "NO3_mg.l_clean", "DOC_mg.l_clean") %>%
-    pivot_longer(cols = -DateTime, names_to = "Variable", values_to = "Value")
+    dplyr::select("datetime", "Temp_C", "TSS_mg.l_clean", "TOC_mg.l_clean", "NO3.N_mg.l_clean", "NO3_mg.l_clean", "DOC_mg.l_clean") %>%
+    pivot_longer(cols = -datetime, names_to = "Variable", values_to = "Value")
   
   # Generate the plot
-  ggplot(data = df_long, aes(x = DateTime, y = Value, color = Variable)) +
+  ggplot(data = df_long, aes(x = datetime, y = Value, color = Variable)) +
     geom_line() +
     facet_wrap(~Variable, scales = "free_y", ncol = 1) +  # Separate plot for each variable, stacked vertically
     scale_x_datetime(date_breaks = "7 days", date_labels = "%m/%d") +
@@ -244,6 +240,7 @@ plot_variables <- function(df, file_name) {
 print(plot_variables(scan_list[[1]], scan_csvs$name[1]))
 print(plot_variables(scan_list[[2]], scan_csvs$name[2]))
 print(plot_variables(scan_list[[3]], scan_csvs$name[3]))
+print(plot_variables(scan_list[[4]], scan_csvs$name[4]))
 
 ### Save figures to folder ###
 #for (i in seq_along(scan_filtered)) {
@@ -255,19 +252,20 @@ print(plot_variables(scan_list[[3]], scan_csvs$name[3]))
 ####################################
 
 # Ensure DateTime column is properly formatted
-scan_list <- lapply(scan_list, function(df) {
-  df$DateTime <- format(df$DateTime, "%Y-%m-%d %H:%M:%S") 
-  return(df)
+# scan_list <- lapply(scan_list, function(df) {
+#   df$datetime <- format(df$datetime, "%Y-%m-%d %H:%M:%S")
+#   return(df)
+# })
+
+
+lapply (names(scan_list), function(site) {
+  write.csv(scan_list[[site]], file.path("data/", paste0(site, "_clean.csv")))
 })
 
 lapply(names(scan_list), function(site) {
-  write.csv(scan_list[[site]], file.path("data/03_", paste0(site, "_clean.csv")))
-})
-
-lapply(names(scan_list), function(site) {
-  file <- paste0("data/03_", site, "_clean.csv")
+  file <- paste0("data/", site, "_clean.csv")
   # this is the in use folder
-  drive_folder_id <- "1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR"
+  drive_folder_id <- "1llXcmKVhauTAHcnTuXuhhatPtEaMoeW2"
   # Upload file to the specified Google Drive folder
   drive_put(
     media = file,
