@@ -193,7 +193,7 @@ scan_list <- lapply(scan_list, function(df) {
 ###############################
 
 # get data from googledrive
-service_tibble <- googledrive::drive_ls("https://drive.google.com/drive/folders/1DZktlQUHaot_r4e_fD9ip6zcxHWqslMP")
+service_tibble <- googledrive::drive_ls("https://drive.google.com/drive/folders/1KdjN1nmeeqtgxk6k3rImtb-wpVXVyLk4")
 googledrive::drive_download(as_id(service_tibble$id[service_tibble$name=="sensor_event_log"]), overwrite = TRUE,path="googledrive/sensor_event_log.xlsx")
 
 # read in file and filter to s::can service days and deployments
@@ -327,7 +327,7 @@ for (i in seq_along(scan_filtered1)) {
   # Save the new data frame to a CSV file
   write.csv(df, file_name, row.names=FALSE, quote=FALSE)
   
-  # Define the target folder ID in Google Drive
+  # Define the target folder ID in Google Drive, this is the "mreged" folder
   drive_folder_id <- "1g6aSuGnb--Qeyk-rceX82Y5wSNzCqFg0"
   
   # Upload the file to the specified Google Drive folder

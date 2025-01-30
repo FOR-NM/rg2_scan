@@ -235,7 +235,7 @@ for (i in seq_along(scan_list)) {
     geom_line(aes(x=DateTime, y=NO3.N_mg.l, color='NO3-N')) +
     geom_line(aes(x=DateTime, y=NO3_mg.l, color='NO3')) +
     geom_line(aes(x=DateTime, y=DOC_mg.l, color='DOC')) +
-    scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
+    scale_x_datetime(date_breaks = "7 day", date_labels = "%m/%d") +
     ggtitle(paste(scan_csvs$name[i])) +
     theme(axis.text.x = element_text(angle=45)) +
     ylab("Measured")

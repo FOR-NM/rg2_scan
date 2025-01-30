@@ -1,6 +1,7 @@
 ##==============================================================================
 ## Project: QuEST
 ## Script to merge scan files in one (using timestamp)
+
 ##==============================================================================
 
 library(readxl) #to read excel 
@@ -19,8 +20,8 @@ file.remove(files)
 ##########################
 
 #### List and download all files in the folder ####
-# This is the "raw" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1Txv_Q6wLuCzhD-7cWMDWueuv85uC8BIw")
+# This is the "03_merge_timestamps" folder
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1-dUxVn1hBWy2MpHeIjVt-2QSujpVhijy")
 # List all CSV files in the folder
 scan_csvs <- googledrive::drive_ls(path = scan)
 3
@@ -46,13 +47,14 @@ for (i in seq_along(scan_csvs$id)) {
   col_names <- as.character(unlist(header[1, ]))
   col_names[col_names == ""] <- paste0("X", seq_along(col_names[col_names == ""]))
   
-  # Read the data starting from row 2 using the header as column names
-  data <- read_excel(local_path, skip = 2, col_names = col_names)
+  # Read the data starting from row 4 using the header as column names
+  data <- read_excel(local_path, skip = 4, col_names = col_names)
   
   # Store the data in the list
   scan_list[[scan_csvs$name[i]]] <- data
 }
 
+head(scan_list)
 
 ####################################
 #### Combine data for each site ####
@@ -71,7 +73,7 @@ for (i in seq_along(scan_list)) {
 }
 
 # Site names
-site_names <- c("SSM01", "SSM20", "SST13")
+site_names <- c("USF12", "USF20", "USF21")
 
 # Group files in `scan_list` by matching `site_names` in file names
 
@@ -86,6 +88,9 @@ scan_list_by_site <- lapply(site_names, function(site) {
 
 # Name the list by site
 names(scan_list_by_site) <- site_names
+
+# TEMPORARY REMOVE 20 AND 21
+# scan_list_by_site <- scan_list_by_site[-c(2,3)]
 
 # Combine data for each site
 combined_by_site <- lapply(scan_list_by_site, function(site_data_list) {
@@ -108,18 +113,18 @@ combined_by_site <- lapply(combined_by_site, function(df) {
 lapply(names(combined_by_site), function(site) {
   write.csv(combined_by_site[[site]], file.path("data", paste0(site, "_params.csv")))
 })
-  
+
 lapply(names(combined_by_site), function(site) {
   file <- paste0("data/", site, "_params.csv")
   # this is the in use folder
-  drive_folder_id <- "1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR"
+  drive_folder_id <- "1np2B4bSWaNMIYE2FHL3YOnZ20FRudsEy"
   # Upload file to the specified Google Drive folder
   drive_put(
     media = file,
     path = as_id(drive_folder_id)
   )
 })
-  
+
 ##==============================================================================
 ## Now we need to do the same thing but for the compensated abs tab
 ## abs file is in the same excel in second tab of file
@@ -174,7 +179,7 @@ for (i in seq_along(scan_list)) {
 }
 
 # Site names
-site_names <- c("SSM01", "SSM20", "SST13")
+site_names <- c("USF12", "USF20", "USF21")
 
 # Group files in `scan_list` by matching `site_names` in file names
 scan_list_by_site <- lapply(site_names, function(site) {
@@ -188,6 +193,9 @@ scan_list_by_site <- lapply(site_names, function(site) {
 
 # Name the list by site
 names(scan_list_by_site) <- site_names
+
+# TEMPORARY REMOVE 20 AND 21
+#scan_list_by_site <- scan_list_by_site[-c(2,3)]
 
 # Combine data for each site
 combined_by_site <- lapply(scan_list_by_site, function(site_data_list) {
@@ -213,11 +221,12 @@ lapply(names(combined_by_site), function(site) {
 
 lapply(names(combined_by_site), function(site) {
   file <- paste0("data/", site, "_abs.csv")
-  # this is the in use folder
-  drive_folder_id <- "1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR"
+  # this is the "most recent" folder
+  drive_folder_id <- "1np2B4bSWaNMIYE2FHL3YOnZ20FRudsEy"
   # Upload file to the specified Google Drive folder
   drive_put(
     media = file,
     path = as_id(drive_folder_id)
   )
 })
+

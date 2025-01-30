@@ -16,36 +16,34 @@ library(openxlsx)
 #### Import abs and parameter data ####
 #######################################
 # This is the "most_recent" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/u/1/folders/1np2B4bSWaNMIYE2FHL3YOnZ20FRudsEy")
+#### Import abs and parameter data ####
+# This is the "merged" folder
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1np2B4bSWaNMIYE2FHL3YOnZ20FRudsEy")
 
-# List all xlsx files in the folder
-scan_xls <- googledrive::drive_ls(path = scan, type = "xlsx")
+# List all the files in the folder
+scan_csvs <- googledrive::drive_ls(path = scan, type = "csv")
 
-googledrive::drive_download(file = scan_xls$id[scan_xls$name=="2024-11-14_NMUSF12_Buttercup.xlsx"], 
-                            path = "googledrive/2024-11-14_NMUSF12_Buttercup.xlsx",
+#USF12 parameters
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="USF12_params.csv"], 
+                            path = "googledrive/USF12_params.csv",
+                            overwrite = T)
+#USF12 abs
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="USF12_abs.csv"], 
+                            path = "googledrive/USF12_abs.csv",
                             overwrite = T)
 
-# This excel sheet has 3 tabs
-USF12 <- openxlsx::read.xlsx("googledrive/2024-11-14_NMUSF12_Buttercup.xlsx", startRow = 2)
 
 # Load fingerprints and parameter data
-### I saved each tab as csv files before doing this ###
-USF12_params <- read.csv("googledrive/USF12_params.csv", skip = 1)
-USF12_abs <- read.csv("googledrive/USF12_abs.csv", skip = 1)
+USF12_params <- read.csv("googledrive/USF12_params.csv")
+USF12_abs <- read.csv("googledrive/USF12_abs.csv")
 
 #############################
 #### Tidy both data sets ####
 #############################
 
-# Change DateTime names for easier manipulation
-USF12_params <- USF12_params %>%
-      rename(DateTime = Parameter.)
-USF12_abs <- USF12_abs %>%
-  rename(DateTime = Parameter.)
-
 # Remove extra rows
-USF12_params <- USF12_params[-c(1:11), ] 
-USF12_abs <- USF12_abs[-c(1:11), ] 
+USF12_params <- USF12_params[-c(1:9), ] 
+#USF12_abs <- USF12_abs[-c(1:9), ] 
 
 # Change datetime format
 USF12_params <- USF12_params %>%
@@ -83,25 +81,26 @@ drive_upload(media = "googledrive/USF12_absparams_Buttercup.csv", path = as_id(d
 #######################################
 #### Import abs and parameter data ####
 #######################################
+#USF20 parameters
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="USF20_params.csv"], 
+                            path = "googledrive/USF20_params.csv",
+                            overwrite = T)
+#USF20 abs
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="USF20_abs.csv"], 
+                            path = "googledrive/USF20_abs.csv",
+                            overwrite = T)
 
 # Load fingerprints and parameter data
-# I saved each tab as csv files before doing this
-USF20_params <- read.csv("googledrive/USF20_params.csv", skip = 1)
-USF20_abs <- read.csv("googledrive/USF20_abs.csv", skip = 1)
+USF20_params <- read.csv("googledrive/USF20_params.csv")
+USF20_abs <- read.csv("googledrive/USF20_abs.csv")
 
 #############################
 #### Tidy both data sets ####
 #############################
 
-# Change DateTime names for easier manipulation
-USF20_params <- USF20_params %>%
-  rename(DateTime = Parameter.)
-USF20_abs <- USF20_abs %>%
-  rename(DateTime = Parameter.)
-
 # Remove extra rows
-USF20_params <- USF20_params[-c(1:95), ] 
-USF20_abs <- USF20_abs[-c(1:95), ] 
+USF20_params <- USF20_params[-c(1:85), ] 
+USF20_abs <- USF20_abs[-c(1:85), ] 
 
 # Change datetime format
 USF20_params <- USF20_params %>%
@@ -139,25 +138,28 @@ drive_upload(media = "googledrive/USF20_absparams_Blossom.csv", path = as_id(dri
 #######################################
 #### Import abs and parameter data ####
 #######################################
+#USF21 parameters
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="USF21_params.csv"], 
+                            path = "googledrive/USF21_params.csv",
+                            overwrite = T)
+#USF21 abs
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="USF21_abs.csv"], 
+                            path = "googledrive/USF21_abs.csv",
+                            overwrite = T)
 
 # Load fingerprints and parameter data
-# I saved each tab as csv files befor doing this
-USF21_params <- read.csv("googledrive/USF21_params.csv", skip = 1)
-USF21_abs <- read.csv("googledrive/USF21_abs.csv", skip = 1)
+USF21_params <- read.csv("googledrive/USF21_params.csv")
+USF21_abs <- read.csv("googledrive/USF21_abs.csv")
 
 #############################
 #### Tidy both data sets ####
 #############################
 
 # Change DateTime names for easier manipulation
-USF21_params <- USF21_params %>%
-  rename(DateTime = Parameter.)
-USF21_abs <- USF21_abs %>%
-  rename(DateTime = Parameter.)
 
 # Remove extra rows
-USF21_params <- USF21_params[-c(1:30), ] 
-USF21_abs <- USF21_abs[-c(1:30), ] 
+USF21_params <- USF21_params[-c(1:28), ] 
+USF21_abs <- USF21_abs[-c(1:28), ] 
 
 # Change datetime format
 USF21_params <- USF21_params %>%

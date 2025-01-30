@@ -53,6 +53,10 @@ for (i in seq_along(scan_csvs$id)) {
   scan_list[[scan_csvs$name[i]]] <- data
 }
 
+
+#remove extra files for this
+scan_list <- scan_list[-c(4:9)]
+
 #################
 #### Tidying ####
 #################
@@ -81,8 +85,12 @@ retrieve_usgs_data <- function(start_date, end_date, site_no = "08315480", p_cod
 
 # Retrieve USGS data for different s::can sites, each has different deployment dates
 santafeUSGS_20 <- retrieve_usgs_data("2024-05-08", "2024-11-14")
-santafeUSGS_12 <- retrieve_usgs_data("2024-05-07", "2024-11-13")
-santafeUSGS_21 <- retrieve_usgs_data("2024-06-27", "2024-10-29")
+santafeUSGS_12 <- retrieve_usgs_data("2024-05-07", "2025-01-02")
+santafeUSGS_21 <- retrieve_usgs_data("2024-06-27", "2024-11-15")
+
+santafeUSGS_12$DateTime <- santafeUSGS_12$dateTime
+santafeUSGS_20$DateTime <- santafeUSGS_20$dateTime
+santafeUSGS_21$DateTime <- santafeUSGS_21$dateTime
 
 #####################################
 #### Plot all variables separate ####
@@ -91,21 +99,21 @@ santafeUSGS_21 <- retrieve_usgs_data("2024-06-27", "2024-10-29")
 # Function to retrieve and plot USGS data with separate facets for each variable
 plot_usgs_faceted <- function(df, usgs_df, label) {
   # Convert to xts and merge data frames
-  df_xts <- xts(df, order.by = df$dateTime)
-  usgs_xts <- xts(usgs_df, order.by = usgs_df$dateTime)
+  df_xts <- xts(df, order.by = df$DateTime)
+  usgs_xts <- xts(usgs_df, order.by = usgs_df$DateTime)
   combined_xts <- merge(df_xts, usgs_xts, join = "outer")
-  combined_df <- data.frame(dateTime = index(combined_xts), coredata(combined_xts))
+  combined_df <- data.frame(DateTime = index(combined_xts), coredata(combined_xts))
   
   # Convert columns to numeric, if necessary
-  combined_df <- combined_df %>% mutate(across(c(Temp, TSS_clean, TOC_clean, NO3N_clean, NO3_clean, DOC_clean, Flow_Inst), as.numeric))
+  combined_df <- combined_df %>% mutate(across(c(Temp, TSS_clean, TOC_clean, NO3.N_clean, NO3_clean, DOC_clean, Flow_Inst), as.numeric))
   
   # Reshape data to long format for faceting
   combined_long <- combined_df %>%
-    dplyr::select(dateTime, Temp, TSS_clean, TOC_clean, NO3N_clean, NO3_clean, DOC_clean, Flow_Inst) %>%
-    pivot_longer(cols = -dateTime, names_to = "Variable", values_to = "Value")
+    dplyr::select(DateTime, Temp, TSS_clean, TOC_clean, NO3.N_clean, NO3_clean, DOC_clean, Flow_Inst) %>%
+    pivot_longer(cols = -DateTime, names_to = "Variable", values_to = "Value")
   
   # Plot using ggplot with facet_wrap for each variable
-  ggplot(data = combined_long, aes(x = dateTime, y = Value, color = Variable)) +
+  ggplot(data = combined_long, aes(x = DateTime, y = Value, color = Variable)) +
     geom_line() +
     facet_wrap(~Variable, scales = "free_y", ncol = 1) +  # Separate facet for each variable
     scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
@@ -116,9 +124,9 @@ plot_usgs_faceted <- function(df, usgs_df, label) {
 }
 
 # Plot
-print(plot_usgs_faceted(scan_filtered1[[1]], santafeUSGS_12, scan_csvs$name[1]))
-print(plot_usgs_faceted(scan_filtered1[[2]], santafeUSGS_20, scan_csvs$name[2]))
-print(plot_usgs_faceted(scan_filtered1[[3]], santafeUSGS_21, scan_csvs$name[3]))
+print(plot_usgs_faceted(scan_list[[1]], santafeUSGS_12, scan_csvs$name[1]))
+print(plot_usgs_faceted(scan_list[[2]], santafeUSGS_21, scan_csvs$name[2]))
+print(plot_usgs_faceted(scan_list[[3]], santafeUSGS_20, scan_csvs$name[3]))
 
 ### Save figures to folder ###
 for (i in seq_along(scan_filtered)) {
@@ -143,14 +151,14 @@ for (i in seq_along(scan_filtered)) {
 merge_usgs_with_scan <- function(scan_df, usgs_df) {
   
   # Convert both data frames to xts objects
-  scan_xts <- xts(scan_df, order.by = scan_df$dateTime)
-  usgs_xts <- xts(usgs_df, order.by = usgs_df$dateTime)
+  scan_xts <- xts(scan_df, order.by = scan_df$DateTime)
+  usgs_xts <- xts(usgs_df, order.by = usgs_df$DateTime)
   
   # Merge the xts objects
   combined_xts <- merge(scan_xts, usgs_xts, join = "outer")
   
   # Convert back to data frame
-  combined_df <- data.frame(dateTime = index(combined_xts), coredata(combined_xts))
+  combined_df <- data.frame(DateTime = index(combined_xts), coredata(combined_xts))
   
   return(combined_df)
 }
