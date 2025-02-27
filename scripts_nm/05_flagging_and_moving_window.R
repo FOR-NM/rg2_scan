@@ -5,6 +5,7 @@
 ## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
 
+library(dplyr)
 library(spectrolab)
 
 ##############################################
@@ -57,6 +58,10 @@ USF21 <- rename_columns(USF21)
 #### Edit data to look at it month by month ####
 ################################################
 
+USF12_month <- USF12 %>%
+  filter(format(DateTime, "%B") == "December")
+USF20_month <- USF20 %>%
+  filter(format(DateTime, "%B") == "October")
 USF21_month <- USF21 %>%
   filter(format(DateTime, "%B") == "October")
 
@@ -65,9 +70,9 @@ USF21_month <- USF21 %>%
 ################################################################################
 
 # 1. Index FULL dataset with columns with absorbances
-scan.spec12 = USF12_month[21:230]
-scan.spec20 = USF20_month[21:231]
-scan.spec21 = USF21_month[25:234]
+scan.spec12 = USF12_month[27:236]
+scan.spec20 = USF20_month[23:234]
+scan.spec21 = USF21_month[27:236]
 
 # 2. Create an absorbance matrix 
 # Rows = wavelength
@@ -123,38 +128,50 @@ plot(spec21) # Note = reflectance here = absorbance from the scans
 #### Flagging absorbances ####
 ##############################
 
+# FLAG SI NOT WORKING!!!!!!!!!!!!!!!!!!!!!!
+
 ### USF12 ###
+# First check column numbers, look for spectral columns
+data.frame(colnames(USF12))
+
 USF12_test <- USF12 %>%
-  # Create flag columns
   mutate(
-    flag_negative = ifelse(rowSums(across(21:230, ~ . < 0)) > 0, "Y", "N"),
-    flag_above100 = ifelse(rowSums(across(21:230, ~ . > 100)) > 0, "Y", "N")
+    # Identify spectral absorbance columns dynamically
+    flag_negative = if_any(where(is.numeric) & c(27:236), ~ . < 0, na.rm = TRUE),
+    flag_above100 = if_any(where(is.numeric) & c(27:236), ~ . > 100, na.rm = TRUE)
   ) %>%
-  # Replace entire row with NA if any value is flagged, except for the flag columns
-  mutate(across(
-    2:234, 
-    ~ if_else(flag_negative == "Y" | flag_above100 == "Y", NA, .)
-  ))
+  mutate(
+    # Replace entire row with NA in selected numeric columns
+    across(where(is.numeric) & c(3:241), ~ if_else(flag_negative | flag_above100, NA_real_, .))
+  )
+
 
 ### USF20 ###
+# First check column numbers, look for spectral columns
+data.frame(colnames(USF20))
+
 USF20_test <- USF20 %>%
   mutate(
-    flag_negative = ifelse(rowSums(across(21:230, ~ . < 0)) > 0, "Y", "N"),
-    flag_above100 = ifelse(rowSums(across(21:230, ~ . > 100)) > 0, "Y", "N")
+    # Identify spectral absorbance columns dynamically
+    flag_negative = if_any(where(is.numeric) & c(23:234), ~ . < 0, na.rm = TRUE),
+    flag_above100 = if_any(where(is.numeric) & c(23:234), ~ . > 100, na.rm = TRUE)
   ) %>%
-  mutate(across(
-    2:237, 
-    ~ if_else(flag_negative == "Y" | flag_above100 == "Y", NA, .)
-  ))
+  mutate(
+    # Replace entire row with NA in selected numeric columns
+    across(where(is.numeric) & c(3:239), ~ if_else(flag_negative | flag_above100, NA_real_, .))
+  )
 
 ### USF21 ###
+# First check column numbers, look for spectral columns
+data.frame(colnames(USF21))
+
 USF21_test <- USF21 %>%
   mutate(
-    flag_negative = ifelse(rowSums(across(25:234, ~ . < 0)) > 0, "Y", "N"),
-    flag_above100 = ifelse(rowSums(across(25:234, ~ . > 100)) > 0, "Y", "N")
+    flag_negative = ifelse(rowSums(across(27:236, ~ . < 0)) > 0, "Y", "N"),
+    flag_above100 = ifelse(rowSums(across(27:236, ~ . > 100)) > 0, "Y", "N")
   ) %>%
   mutate(across(
-    2:239, 
+    2:241, 
     ~ if_else(flag_negative == "Y" | flag_above100 == "Y", NA, .)
   ))
 

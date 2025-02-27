@@ -46,6 +46,7 @@ scan <- googledrive::as_id("https://drive.google.com/drive/folders/1g6aSuGnb--Qe
 merged <- googledrive::drive_ls(path = scan, type = "csv")
 3
 
+# FLAG SI NOT WORKING!!!!!!!!!!!!!!!!!!!!!!
 #USF12
 googledrive::drive_download(file = merged$id[merged$name=="USF12_flagged_Buttercup.csv"], 
                             path = "googledrive/USF12_flagged_Buttercup.csv",

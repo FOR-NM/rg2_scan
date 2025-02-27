@@ -55,6 +55,9 @@ for (i in seq_along(scan_csvs$id)) {
 
 head(scan_list)
 
+# TEMPORARY REMOVE extra files
+#scan_list <- scan_list[-c(2:12)]
+
 #################
 #### Tidying ####
 #################
@@ -120,6 +123,7 @@ final_count_table <- do.call(rbind, count_list)
 
 # Print the final table
 print(final_count_table)
+
 
 #### Save data ####
 # Save the final table to a CSV file
@@ -201,7 +205,6 @@ service = readxl::read_excel("googledrive/sensor_event_log.xlsx")
 service = service[service$model=="s::can",]
 service = service[service$observation=="out of water" | service$observation=="deployed",]
 
-
 # format date and time
 service$date = as.Date(service$date)
 service$time <- format(as.POSIXct(service$time, format="%H:%M:%S"), "%H:%M:%S")
@@ -228,6 +231,9 @@ scan_filtered <- mapply(function(df, file_name) {
   df <- add_column(df, serial_number = extract_id(file_name))
   return(df)
 }, scan_list, scan_csvs$name, SIMPLIFY = FALSE)
+
+# TEMPORARY REMOVE extra files
+#scan_filtered <- scan_filtered[-c(4:16)]
 
 #############################################################
 #### Delete all the rows before the deployment date-time ####
@@ -258,7 +264,7 @@ plot_variables <- function(df, file_name) {
     geom_line(aes(x = DateTime, y = NO3.N_clean, color = 'NO3.N')) +
     geom_line(aes(x = DateTime, y = NO3_clean, color = 'NO3')) +
     geom_line(aes(x = DateTime, y = DOC_clean, color = 'DOC')) +
-    scale_x_datetime(date_breaks = "2 days", date_labels = "%m/%d") +
+    scale_x_datetime(date_breaks = "15 days", date_labels = "%m/%d") +
     ggtitle(file_name) +
     theme(axis.text.x = element_text(angle = 45)) +
     ylab("Measured")
@@ -305,6 +311,8 @@ print(plot_variables(scan_filtered1[[3]], scan_csvs$name[3]))
 #for (i in seq_along(scan_filtered)) {
  # ggsave(paste0("scan_figs/", scan_csvs$name[i], "_separate.png"), plot_variables(scan_filtered[[i]], scan_csvs$name[i]))
 #}
+
+tail(scan_filtered1[[1]])
 
 ####################################
 #### Save cleaned data to Drive ####

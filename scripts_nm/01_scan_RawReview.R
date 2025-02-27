@@ -21,7 +21,7 @@ library(xts) # Time series
 #################################
 #### Import & Visualize Data ####
 #################################
-# Load data from Google drive
+# Load data from Google drive. This is the "in use" folder
 scan <- googledrive::as_id("https://drive.google.com/drive/u/1/folders/1np2B4bSWaNMIYE2FHL3YOnZ20FRudsEy")
 # List all CSV files in the folder
 scan_csvs <- googledrive::drive_ls(path = scan)
