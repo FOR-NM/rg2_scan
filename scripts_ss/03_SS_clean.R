@@ -2,16 +2,16 @@
 ## Project: QuEST - Script to tidy up South Sandy scan data and plot it
 ## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
-library(googledrive) # Download docs from Drive
+library(googledrive) # download docs from Drive
 library(tidyverse)
 library(readxl) # to read Excel
-library(lubridate) # Edit date format
+library(lubridate) # edit date format
 library(ggplot2)
 
 ########################################
 #### Clear folders that we will use ####
 ########################################
-# List and delete all files in the folder
+# list and delete all files in the folder
 files <- list.files(path = "scan_figs", full.names = TRUE)
 file.remove(files)
 
@@ -21,49 +21,49 @@ file.remove(files)
 #####################
 #### Import Data ####
 #####################
-# Load data from Google Drive. his is the "merged" folder
+# load data from Google Drive. his is the "merged" folder
 scan <- googledrive::as_id("https://drive.google.com/drive/folders/1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR")
 scan_csvs <- googledrive::drive_ls(path = scan, type = "csv")
 3
 
-# Create empty list to store data frames
+# create empty list to store data frames
 scan_list <- list()
 
-# Loop over each file in the `scan_csvs` data frame
+# loop over each file in the `scan_csvs` data frame
 for (i in seq_along(scan_csvs$id)) {
-  # Define the local file path
+  # define the local file path
   local_path <- file.path("googledrive", scan_csvs$name[i])
   
-  # Download the file
+  # download the file
   googledrive::drive_download(
     file = scan_csvs$id[i],
     path = local_path,
     overwrite = TRUE
   )
   
-  # Read the header row (row 2)
+  # read the header row (row 2)
   header <- read.csv(local_path)
   
-  # Read the data starting from row 4 using the header as column names
+  # read the data starting from row 4 using the header as column names
   data <- read.csv(local_path)
   
-  # Store the data in the list
+  # store the data in the list
   scan_list[[scan_csvs$name[i]]] <- data
 }
 
 head(scan_list)
 
-#### Remove abs files from list ####
-# We just want merged parameters and abs file
-# Check position of abs and params files
+#### remove abs files from list ####
+# we just want merged parameters and abs file
+# check position of abs and params files
 scan_list = scan_list[-c(3:8)]
 
 #################
 #### Tidying ####
 #################
-# Change some names for easier manipulation
+# change some names for easier manipulation
 scan_list <- lapply(scan_list, function(df) {
-  # Rename columns by matching the existing names
+  # rename columns by matching the existing names
   df <- df %>%
     dplyr::rename(
       DOC_mg.l = DOCeq..mg.l....Measured.value,
@@ -73,7 +73,7 @@ scan_list <- lapply(scan_list, function(df) {
       TSS_mg.l = TSSeq..mg.l....Measured.value,
       Temp_C = Temperature_19...C....Measured.value
     )
-  # Ensure numeric variables are converted to numeric
+  # ensure numeric variables are converted to numeric
   df <- df %>%
     mutate(across(c(DOC_mg.l, NO3.N_mg.l, NO3_mg.l, TOC_mg.l, TSS_mg.l, Temp_C), as.numeric)) %>%
     mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
@@ -84,31 +84,30 @@ scan_list <- lapply(scan_list, function(df) {
 ##################################################################################
 #### Count number of service dates (No Medium) and 'ABOVE' and 'BELOW' values ####
 ##################################################################################
+# when scan is out of water it records as NO_MEDIUM
+# replace 'NO_MEDIUM' values with NA 
+# also when it reads < lower error limit or  > upper error limit, it flags as 'VAL_BELOW' or 'VAL_ABOVE'
+# replace 'VAL_BELOW' or 'VAL_ABOVE' flagged values with NA 
 
-# When scan is out of water it records as NO_MEDIUM
-# Replace 'NO_MEDIUM' values with NA 
-# Also when it reads < lower error limit or  > upper error limit, it flags as 'VAL_BELOW' or 'VAL_ABOVE'
-# Replace 'VAL_BELOW' or 'VAL_ABOVE' flagged values with NA 
-
-### First, count how many logs with , 'VAL_BELOW' or 'VAL_ABOVE' each one has ###
-# Initialize a list to store the counts for each file
+### first, count how many logs with , 'VAL_BELOW' or 'VAL_ABOVE' each one has ###
+# initialize a list to store the counts for each file
 count_list <- list()
 
-# Loop over each data frame in the list
+# loop over each data frame in the list
 for (file_name in names(scan_list)) {
   
   # Get the data frame
   data <- scan_list[[file_name]]
   
-  # Filter to only character columns
+  # filter to only character columns
   char_data <- data[, sapply(data, is.character)]
   
-  # Count the number of rows that contain VAL_BELOW, VAL_ABOVE, or NO_MEDIUM
+  # count the number of rows that contain VAL_BELOW, VAL_ABOVE, or NO_MEDIUM
   val_below_count <- sum(apply(char_data, 1, function(row) any(row == "VAL_BELOW", na.rm = TRUE)))
   val_above_count <- sum(apply(char_data, 1, function(row) any(row == "VAL_ABOVE", na.rm = TRUE)))
   no_medium_count <- sum(apply(char_data, 1, function(row) any(row == "NO_MEDIUM", na.rm = TRUE)))
   
-  # Store the counts in a data frame
+  # store the counts in a data frame
   count_list[[file_name]] <- data.frame(
     File = file_name,
     VAL_BELOW = val_below_count,
@@ -117,41 +116,41 @@ for (file_name in names(scan_list)) {
   )
 }
 
-# Combine all the individual data frames into one
+# combine all the individual data frames into one
 final_count_table <- do.call(rbind, count_list)
 
-# Print the final table
+# print the final table
 print(final_count_table)
 
-#### Save data ####
-# Save the final table to a CSV file
+#### save data ####
+# save the final table to a CSV file
 # write.csv(final_count_table, "final_NAcount_table.csv", row.names = TRUE)
 
 ##################################################
 #### Clean  service dates (out of water days) ####
 ##################################################
-# Apply changes to status columns across all data frames in the list
+# apply changes to status columns across all data frames in the list
 scan_list <- lapply(scan_list, function(df) {
   
-  # Rename columns by matching the existing names
+  # rename columns by matching the existing names
   df <- df %>%
     rename(
-      DOC_status = DOCeq..mg.l....Measured.status,  # Rename the status column for DOC
-      NO3.N_status = NO3.Neq..mg.l....Measured.status,  # Rename the status column for NO3.N
-      NO3_status = NO3eq..mg.l....Measured.status,  # Rename the status column for NO3
-      TOC_status = TOCeq..mg.l....Measured.status,  # Rename the status column for TOC
-      TSS_status = TSSeq..mg.l....Measured.status  # Rename the status column for TSS
+      DOC_status = DOCeq..mg.l....Measured.status,  # rename the status column for DOC
+      NO3.N_status = NO3.Neq..mg.l....Measured.status,  # rename the status column for NO3.N
+      NO3_status = NO3eq..mg.l....Measured.status,  # rename the status column for NO3
+      TOC_status = TOCeq..mg.l....Measured.status,  # rename the status column for TOC
+      TSS_status = TSSeq..mg.l....Measured.status  # rename the status column for TSS
     )
   
-  # Ensure numeric variables are converted to numeric
+  # ensure numeric variables are converted to numeric
   df <- df %>%
     mutate(across(c(DOC_mg.l, NO3.N_mg.l, NO3_mg.l, TOC_mg.l, TSS_mg.l, Temp_C), as.numeric)) %>%
     mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
   
-  # Define status values to replace with NA
+  # define status values to replace with NA
   status_values_to_replace <- c("NO_MEDIUM", "VAL_BELOW:NO_MEDIUM", "VAL_BELOW", "VAL_ABOVE")
   
-  # Create new cleaned columns (e.g., DOC_clean, NO3_clean) and set to NA if the status column has invalid values
+  # create new cleaned columns (e.g., DOC_clean, NO3_clean) and set to NA if the status column has invalid values
   df <- df %>%
     mutate(
       DOC_mg.l_clean = ifelse(DOC_status %in% status_values_to_replace, NA, DOC_mg.l),
@@ -161,20 +160,20 @@ scan_list <- lapply(scan_list, function(df) {
       TSS_mg.l_clean = ifelse(TSS_status %in% status_values_to_replace, NA, TSS_mg.l)
     )
   
-  # Find all spectral columns (those starting with "X" and ending with ".nm")
+  # find all spectral columns (those starting with "X" and ending with ".nm")
   spectra_cols <- grep("^X[0-9]+\\.[0-9]+\\.nm$", colnames(df), value = TRUE)
   
-  # Debug: Print the spectral columns found
+  # debug: Print the spectral columns found
   print(paste("Spectral columns in", deparse(substitute(df)), ":", toString(spectra_cols)))
   
-  # If there are spectral columns, clean them
+  # if there are spectral columns, clean them
   if (length(spectra_cols) > 0) {
-    # Loop through each spectral column and apply the NA logic based on status
+    # loop through each spectral column and apply the NA logic based on status
     for (col in spectra_cols) {
-      # Debug: Check which column is being processed
+      # debug: Check which column is being processed
       print(paste("Processing spectral column:", col))
       
-      # Apply the NA logic based on status values
+      # apply the NA logic based on status values
       df[[col]] <- ifelse(
         df$DOC_status %in% status_values_to_replace |
           df$NO3.N_status %in% status_values_to_replace |
@@ -186,14 +185,14 @@ scan_list <- lapply(scan_list, function(df) {
     }
   }
   
-  # Return the cleaned dataframe
+  # return the cleaned dataframe
   return(df)
 })
 
 #####################################
 #### Plot all variables together ####
 #####################################
-# Plot after filtering pre-deployed and out of water times
+# plot after filtering pre-deployed and out of water times
 plot_variables <- function(df, file_name) {
   ggplot(data = df) +
     geom_line(aes(x = DateTime, y = Temp_C, color = 'Temp')) +
@@ -208,12 +207,12 @@ plot_variables <- function(df, file_name) {
     ylab("Measured")
 }
 
-# Plot
+# plot
 print(plot_variables(scan_list[[1]], scan_csvs$name[1]))
 print(plot_variables(scan_list[[2]], scan_csvs$name[2]))
 print(plot_variables(scan_list[[3]], scan_csvs$name[3]))
 
-# Save figures to folder
+# save figures to folder
 #for (i in seq_along(scan_filtered)) {
  # ggsave(paste0("scan_figs/", scan_csvs$name[i], "_Measured.png"), plot_variables(scan_filtered[[i]], scan_csvs$name[i]))
 #}
@@ -221,18 +220,17 @@ print(plot_variables(scan_list[[3]], scan_csvs$name[3]))
 #####################################
 #### Plot all variables separate ####
 #####################################
-
-# Function to plot each variable separately in the same panel
+# function to plot each variable separately in the same panel
 plot_variables <- function(df, file_name) {
-  # Ensure column selection works correctly
+  # ensure column selection works correctly
   df_long <- df %>%
     dplyr::select("DateTime", "Temp_C", "TSS_mg.l_clean", "TOC_mg.l_clean", "NO3.N_mg.l_clean", "NO3_mg.l_clean", "DOC_mg.l_clean") %>%
     pivot_longer(cols = -DateTime, names_to = "Variable", values_to = "Value")
   
-  # Generate the plot
+  # generate the plot
   ggplot(data = df_long, aes(x = DateTime, y = Value, color = Variable)) +
     geom_line() +
-    facet_wrap(~Variable, scales = "free_y", ncol = 1) +  # Separate plot for each variable, stacked vertically
+    facet_wrap(~Variable, scales = "free_y", ncol = 1) +  # separate plot for each variable, stacked vertically
     scale_x_datetime(date_breaks = "7 days", date_labels = "%m/%d") +
     ggtitle(file_name) +
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
@@ -240,12 +238,12 @@ plot_variables <- function(df, file_name) {
     theme(legend.position = "none")  # Hide legend since we have separate panels
 }
 
-# Generate plots
+# generate plots
 print(plot_variables(scan_list[[1]], scan_csvs$name[1]))
 print(plot_variables(scan_list[[2]], scan_csvs$name[2]))
 print(plot_variables(scan_list[[3]], scan_csvs$name[3]))
 
-### Save figures to folder ###
+### save figures to folder ###
 #for (i in seq_along(scan_filtered)) {
  # ggsave(paste0("scan_figs/", scan_csvs$name[i], "_separate.png"), plot_variables(scan_filtered[[i]], scan_csvs$name[i]))
 #}
@@ -253,8 +251,7 @@ print(plot_variables(scan_list[[3]], scan_csvs$name[3]))
 ####################################
 #### Save cleaned data to Drive ####
 ####################################
-
-# Ensure DateTime column is properly formatted
+# ensure DateTime column is properly formatted
 scan_list <- lapply(scan_list, function(df) {
   df$DateTime <- format(df$DateTime, "%Y-%m-%d %H:%M:%S") 
   return(df)
