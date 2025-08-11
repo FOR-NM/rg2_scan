@@ -21,8 +21,8 @@ library(xts) # time series
 #################################
 #### Import & Visualize Data ####
 #################################
-# load data from Google drive. This is the "in use" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/u/1/folders/1np2B4bSWaNMIYE2FHL3YOnZ20FRudsEy")
+# load data from Google drive. This is the "merge timestamps" folder
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1-dUxVn1hBWy2MpHeIjVt-2QSujpVhijy")
 # list all CSV files in the folder
 scan_csvs <- googledrive::drive_ls(path = scan)
 
@@ -60,7 +60,7 @@ for (i in seq_along(scan_csvs$id)) {
 ### rename columns and change to values to numeric ###
 # loop through each data frame in the list
 for (i in seq_along(scan_list)) {
-  # Access the current data frame
+  # access the current data frame
   df <- scan_list[[i]]
   
   # change names for easier handling
@@ -88,13 +88,13 @@ for (i in seq_along(scan_list)) {
 ### keep rows with only 15-minute intervals ###
 # loop through each data frame in the list
 #for (i in seq_along(scan_list)) {
-# Access the current data frame
+# access the current data frame
   #df <- scan_list[[i]]
   
   # filter function 
   #df <- df %>%
     #filter(format(df$dateTime, "%M") %in% c("00", "15", "30", "45"))
-  # Update the data frame in the list
+  # update the data frame in the list
   #scan_list[[i]] <- df
 #}
 
@@ -121,9 +121,9 @@ scan_list[[3]] <- scan_list[[3]][-c(1:9), ]
 ##################
 ### DOC ###
 for (i in seq_along(scan_list)) {
-  # Access the current data frame
+  # access the current data frame
   df <- scan_list[[i]]
-  # Plot
+  # plot
   p <- ggplot(data = df, aes(x = dateTime, y = DOC)) + 
     geom_line() + 
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
@@ -134,9 +134,9 @@ for (i in seq_along(scan_list)) {
 
 ### NO3 ###
 for (i in seq_along(scan_list)) {
-  # Access the current data frame
+  # access the current data frame
   df <- scan_list[[i]]
-  # Plot
+  # plot
   p <- ggplot(data = df, aes(x = dateTime, y = NO3)) + 
     geom_line() + 
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
@@ -147,9 +147,9 @@ for (i in seq_along(scan_list)) {
 
 ### NO3N ###
 for (i in seq_along(scan_list)) {
-  # Access the current data frame
+  # access the current data frame
   df <- scan_list[[i]]
-  # Plot
+  # plot
   p <- ggplot(data = df, aes(x = dateTime, y = NO3N)) + 
     geom_line() + 
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
@@ -161,9 +161,9 @@ for (i in seq_along(scan_list)) {
 
 ### TOC ###
 for (i in seq_along(scan_list)) {
-  # Access the current data frame
+  # access the current data frame
   df <- scan_list[[i]]
-  # Plot
+  # plot
   p <- ggplot(data = df, aes(x = dateTime, y = TOC)) + 
     geom_line() + 
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
@@ -175,9 +175,9 @@ for (i in seq_along(scan_list)) {
 
 ### TSS ###
 for (i in seq_along(scan_list)) {
-  # Access the current data frame
+  # access the current data frame
   df <- scan_list[[i]]
-  # Plot
+  # plot
   p <- ggplot(data = df, aes(x = dateTime, y = TSS)) + 
     geom_line() + 
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
@@ -189,9 +189,9 @@ for (i in seq_along(scan_list)) {
 
 ### Temp ###
 for (i in seq_along(scan_list)) {
-  # Access the current data frame
+  # access the current data frame
   df <- scan_list[[i]]
-  # Plot
+  # plot
   p <- ggplot(data = df, aes(x = dateTime, y = Temp)) + 
     geom_line() + 
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
@@ -202,9 +202,9 @@ for (i in seq_along(scan_list)) {
 
 ### Voltage ###
 for (i in seq_along(scan_list)) {
-  # Access the current data frame
+  # access the current data frame
   df <- scan_list[[i]]
-  # Plot
+  # plot
   p <- ggplot(data = df, aes(x = dateTime, y = Voltage)) + 
     geom_line() + 
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +

@@ -45,7 +45,6 @@ USF12 <- read.csv("googledrive/USF12_absparams_Buttercup_clean.csv")
 USF20 <- read.csv("googledrive/USF20_absparams_Blossom_clean.csv")
 USF21 <- read.csv("googledrive/USF21_absparams_Bubbles_clean.csv")
 
-
 # DateTime at midnight is missing 00:00:00 time, so filling in that time using grep                     
 USF12$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF12$DateTime)] <- paste(
   USF12$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF12$DateTime)],"00:00:00")

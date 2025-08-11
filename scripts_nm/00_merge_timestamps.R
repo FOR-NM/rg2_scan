@@ -18,8 +18,8 @@ file.remove(files)
 #### Import scan data ####
 ##########################
 #### list and download all files in the folder ####
-# this is the "01_merge_timestamps" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1-dUxVn1hBWy2MpHeIjVt-2QSujpVhijy")
+# this is the in use" folder
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1np2B4bSWaNMIYE2FHL3YOnZ20FRudsEy")
 # list all CSV files in the folder
 scan_csvs <- googledrive::drive_ls(path = scan)
 3
@@ -112,8 +112,8 @@ lapply(names(combined_by_site), function(site) {
 
 lapply(names(combined_by_site), function(site) {
   file <- paste0("data/", site, "_params.csv")
-  # this is the "in use" folder
-  drive_folder_id <- "1np2B4bSWaNMIYE2FHL3YOnZ20FRudsEy"
+  # this is the "merged timestamps" folder
+  drive_folder_id <- "1-dUxVn1hBWy2MpHeIjVt-2QSujpVhijy"
   # Upload file to the specified Google Drive folder
   drive_put(
     media = file,
@@ -215,7 +215,7 @@ lapply(names(combined_by_site), function(site) {
 lapply(names(combined_by_site), function(site) {
   file <- paste0("data/", site, "_abs.csv")
   # this is the "in use" folder
-  drive_folder_id <- "1np2B4bSWaNMIYE2FHL3YOnZ20FRudsEy"
+  drive_folder_id <- "1-dUxVn1hBWy2MpHeIjVt-2QSujpVhijy"
   # upload file to the specified Google Drive folder
   drive_put(
     media = file,

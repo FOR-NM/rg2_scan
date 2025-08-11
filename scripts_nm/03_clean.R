@@ -14,9 +14,6 @@ library(ggplot2)
 #### Clear folders that we will use ####
 ########################################
 # list and delete all files in the folder
-files <- list.files(path = "scan_figs", full.names = TRUE)
-file.remove(files)
-
 files <- list.files(path = "googledrive", full.names = TRUE)
 file.remove(files)
 
@@ -146,7 +143,7 @@ scan_list <- lapply(scan_list, function(df) {
   # ensure numeric variables are converted to numeric
   df <- df %>%
     mutate(across(c(DOC_mg.l, NO3.N_mg.l, NO3_mg.l, TOC_mg.l, TSS_mg.l, Temp_C), as.numeric)) %>%
-    mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
+    mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
   
   # define status values to replace with NA
   status_values_to_replace <- c("NO_MEDIUM", "VAL_BELOW:NO_MEDIUM", "VAL_BELOW", "VAL_ABOVE")
@@ -199,7 +196,6 @@ googledrive::drive_download(as_id(service_tibble$id[service_tibble$name=="sensor
 
 # read in file and filter to s::can service days and deployments
 service = readxl::read_excel("googledrive/sensor_event_log.xlsx")
-service = service[service$model=="s::can",]
 service = service[service$observation=="out of water" | service$observation=="deployed",]
 
 # format date and time
@@ -246,6 +242,10 @@ scan_filtered1 <- lapply(scan_filtered, function(df) {
   df <- df %>% filter(DateTime >= deployed_time)
   return(df)
 })
+
+USF12 <- scan_filtered1[["USF12_absparams_Buttercup.csv"]]
+USF21 <- scan_filtered1[["USF21_absparams_Bubbles.csv"]]
+USF20 <- scan_filtered1[["USF20_absparams_Blossom.csv"]]
 
 #####################################
 #### Plot all variables together ####

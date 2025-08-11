@@ -15,8 +15,8 @@ library(openxlsx)
 #######################################
 #### Import abs and parameter data ####
 #######################################
-# this is the "in_use" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1np2B4bSWaNMIYE2FHL3YOnZ20FRudsEy")
+# this is the "merged days" folder
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1-dUxVn1hBWy2MpHeIjVt-2QSujpVhijy")
 
 # list all the files in the folder
 scan_csvs <- googledrive::drive_ls(path = scan, type = "csv")
@@ -180,3 +180,4 @@ drive_folder_id <- "1hlc9U54d70T5-hml_F9RM8FAiUCVRFmp"
 
 # upload the file to the specified Google Drive folder
 drive_upload(media = "googledrive/USF21_absparams_Bubbles.csv", path = as_id(drive_folder_id))
+
