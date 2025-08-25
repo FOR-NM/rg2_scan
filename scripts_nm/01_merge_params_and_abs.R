@@ -15,7 +15,7 @@ library(openxlsx)
 #######################################
 #### Import abs and parameter data ####
 #######################################
-# this is the "merged days" folder
+# this is the "merge_timestamps" folder
 scan <- googledrive::as_id("https://drive.google.com/drive/folders/1-dUxVn1hBWy2MpHeIjVt-2QSujpVhijy")
 
 # list all the files in the folder

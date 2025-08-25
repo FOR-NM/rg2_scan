@@ -16,11 +16,13 @@ library(ggplot2)
 # list and delete all files in the folder
 files <- list.files(path = "googledrive", full.names = TRUE)
 file.remove(files)
+files <- list.files(path = "data", full.names = TRUE)
+file.remove(files)
 
 #####################
 #### Import Data ####
 #####################
-# load data from Google Drive. his is the "merged" folder
+# load data from Google Drive. This is the "merged" folder
 scan <- googledrive::as_id("https://drive.google.com/drive/folders/1hlc9U54d70T5-hml_F9RM8FAiUCVRFmp")
 scan_csvs <- googledrive::drive_ls(path = scan, type = "csv")
 3
@@ -49,8 +51,6 @@ for (i in seq_along(scan_csvs$id)) {
   # store the data in the list
   scan_list[[scan_csvs$name[i]]] <- data
 }
-
-head(scan_list)
 
 # TEMPORARY REMOVE extra files
 # scan_list <- scan_list[-c(4:8)]
@@ -271,9 +271,9 @@ print(plot_variables(scan_filtered1[[2]], scan_csvs$name[2]))
 print(plot_variables(scan_filtered1[[3]], scan_csvs$name[3]))
 
 # save figures to folder
-#for (i in seq_along(scan_filtered)) {
- # ggsave(paste0("scan_figs/", scan_csvs$name[i], "_Measured.png"), plot_variables(scan_filtered[[i]], scan_csvs$name[i]))
-#}
+for (i in seq_along(scan_filtered)) {
+  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_Measured.png"), plot_variables(scan_filtered[[i]], scan_csvs$name[i]))
+  }
 
 #####################################
 #### Plot all variables separate ####
@@ -302,9 +302,9 @@ print(plot_variables(scan_filtered1[[2]], scan_csvs$name[2]))
 print(plot_variables(scan_filtered1[[3]], scan_csvs$name[3]))
 
 ### save figures to folder ###
-# for (i in seq_along(scan_filtered)) {
- # ggsave(paste0("scan_figs/", scan_csvs$name[i], "_separate.png"), plot_variables(scan_filtered[[i]], scan_csvs$name[i]))
-#}
+for (i in seq_along(scan_filtered)) {
+  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_separate.png"), plot_variables(scan_filtered[[i]], scan_csvs$name[i]))
+  }
 
 tail(scan_filtered1[[1]])
 
