@@ -56,7 +56,7 @@ head(scan_list)
 #### remove abs files from list ####
 # we just want merged parameters and abs file
 # check position of abs and params files
-scan_list = scan_list[-c(3:8)]
+# scan_list = scan_list[-c(1:3)]
 
 #################
 #### Tidying ####
@@ -71,11 +71,10 @@ scan_list <- lapply(scan_list, function(df) {
       NO3_mg.l = NO3eq..mg.l....Measured.value,
       TOC_mg.l = TOCeq..mg.l....Measured.value,
       TSS_mg.l = TSSeq..mg.l....Measured.value,
-      Temp_C = Temperature_19...C....Measured.value
     )
   # ensure numeric variables are converted to numeric
   df <- df %>%
-    mutate(across(c(DOC_mg.l, NO3.N_mg.l, NO3_mg.l, TOC_mg.l, TSS_mg.l, Temp_C), as.numeric)) %>%
+    mutate(across(c(DOC_mg.l, NO3.N_mg.l, NO3_mg.l, TOC_mg.l, TSS_mg.l), as.numeric)) %>%
     mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
   
   return(df)
@@ -144,7 +143,7 @@ scan_list <- lapply(scan_list, function(df) {
   
   # ensure numeric variables are converted to numeric
   df <- df %>%
-    mutate(across(c(DOC_mg.l, NO3.N_mg.l, NO3_mg.l, TOC_mg.l, TSS_mg.l, Temp_C), as.numeric)) %>%
+    mutate(across(c(DOC_mg.l, NO3.N_mg.l, NO3_mg.l, TOC_mg.l, TSS_mg.l), as.numeric)) %>%
     mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
   
   # define status values to replace with NA
@@ -195,7 +194,6 @@ scan_list <- lapply(scan_list, function(df) {
 # plot after filtering pre-deployed and out of water times
 plot_variables <- function(df, file_name) {
   ggplot(data = df) +
-    geom_line(aes(x = DateTime, y = Temp_C, color = 'Temp')) +
     geom_line(aes(x = DateTime, y = TSS_mg.l_clean, color = 'TSS')) +
     geom_line(aes(x = DateTime, y = TOC_mg.l_clean, color = 'TOC')) +
     geom_line(aes(x = DateTime, y = NO3.N_mg.l_clean, color = 'NO3.N')) +
@@ -224,7 +222,7 @@ print(plot_variables(scan_list[[3]], scan_csvs$name[3]))
 plot_variables <- function(df, file_name) {
   # ensure column selection works correctly
   df_long <- df %>%
-    dplyr::select("DateTime", "Temp_C", "TSS_mg.l_clean", "TOC_mg.l_clean", "NO3.N_mg.l_clean", "NO3_mg.l_clean", "DOC_mg.l_clean") %>%
+    dplyr::select("DateTime", "TSS_mg.l_clean", "TOC_mg.l_clean", "NO3.N_mg.l_clean", "NO3_mg.l_clean", "DOC_mg.l_clean") %>%
     pivot_longer(cols = -DateTime, names_to = "Variable", values_to = "Value")
   
   # generate the plot

@@ -25,7 +25,7 @@ file.remove(files)
 # load data from Google drive, this is the "merged" folder
 scan <- googledrive::as_id("https://drive.google.com/drive/folders/1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR")
 # list all CSV files in the folder
-scan_csvs <- googledrive::drive_ls(path = scan)
+scan_csvs <- googledrive::drive_ls(path = scan, type = "csv")
 3
 # create empty list to store data frames
 scan_list <- list()
@@ -88,7 +88,7 @@ for (i in seq_along(scan_list)) {
       NO3_mg.l = NO3eq..mg.l....Measured.value,
       TOC_mg.l = TOCeq..mg.l....Measured.value,
       TSS_mg.l = TSSeq..mg.l....Measured.value,
-      Temp_C = Temperature_19...C....Measured.value
+      Temp_C = Temperature_21...C....Measured.value
     )
   
   # update the data frame in the list

@@ -20,7 +20,7 @@ file.remove(files)
 
 #### List and download all files in the folder ####
 # This is the "raw" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1rMyRIg6nHaqjyay9qZz-TGvImT2lLo4p")
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1YhKX_XcF50cJrhYDHX0NdxdbylE84vip")
 # List all CSV files in the folder
 scan_csvs <- googledrive::drive_ls(path = scan)
 3
