@@ -7,11 +7,11 @@
 
 library(dplyr)
 library(spectrolab)
+library(googledrive) 
 
 ##############################################
 #### Upload scan dataframe [with spectra] ####
 ##############################################
-
 # This data is already matched #
 # This is the "merged" folder
 scan <- googledrive::as_id("https://drive.google.com/drive/folders/1g6aSuGnb--Qeyk-rceX82Y5wSNzCqFg0")
@@ -21,22 +21,22 @@ merged <- googledrive::drive_ls(path = scan, type = "csv")
 3
 
 #USF12
-googledrive::drive_download(file = merged$id[merged$name=="USF12_merged_Buttercup.csv"], 
-                            path = "googledrive/USF12_merged_Buttercup.csv",
+googledrive::drive_download(file = merged$id[merged$name=="USF12_absparams_Buttercup_clean.csv"], 
+                            path = "googledrive/USF12_absparams_Buttercup_clean.csv",
                             overwrite = T)
 #USF20
-googledrive::drive_download(file = merged$id[merged$name=="USF20_merged_Blossom.csv"], 
-                            path = "googledrive/USF20_merged_Blossom.csv",
+googledrive::drive_download(file = merged$id[merged$name=="USF20_absparams_Blossom_clean.csv"], 
+                            path = "googledrive/USF20_absparams_Blossom_clean.csv",
                             overwrite = T)
 #USF21
-googledrive::drive_download(file = merged$id[merged$name=="USF21_merged_Bubbles.csv"], 
-                            path = "googledrive/USF21_merged_Bubbles.csv",
+googledrive::drive_download(file = merged$id[merged$name=="USF21_absparams_Bubbles_clean.csv"], 
+                            path = "googledrive/USF21_absparams_Bubbles_clean.csv",
                             overwrite = T)
 
 # Let's load them separately first
-USF12 <- read.csv("googledrive/USF12_merged_Buttercup.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
-USF20 <- read.csv("googledrive/USF20_merged_Blossom.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
-USF21 <- read.csv("googledrive/USF21_merged_Bubbles.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+USF12 <- read.csv("googledrive/USF12_absparams_Buttercup_clean.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+USF20 <- read.csv("googledrive/USF20_absparams_Blossom_clean.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+USF21 <- read.csv("googledrive/USF21_absparams_Bubbles_clean.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
 
 # Convert the DateTime column to POSIXct
 USF12$DateTime <- as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")
@@ -57,7 +57,6 @@ USF21 <- rename_columns(USF21)
 ################################################
 #### Edit data to look at it month by month ####
 ################################################
-
 USF12_month <- USF12 %>%
   filter(format(DateTime, "%B") == "December")
 USF20_month <- USF20 %>%
@@ -68,11 +67,11 @@ USF21_month <- USF21 %>%
 ################################################################################
 #### Create matrices of ALL spectral data - raw data that needs calibration ####
 ################################################################################
-
 # 1. Index FULL dataset with columns with absorbances
-scan.spec12 = USF12_month[27:236]
-scan.spec20 = USF20_month[23:234]
-scan.spec21 = USF21_month[27:236]
+scan.spec12 = USF12[27:236] # change for USF12_month
+scan.spec20 = USF20[23:234]
+scan.spec21 = USF21[27:236]
+
 
 # 2. Create an absorbance matrix 
 # Rows = wavelength
@@ -127,8 +126,7 @@ plot(spec21) # Note = reflectance here = absorbance from the scans
 ##############################
 #### Flagging absorbances ####
 ##############################
-
-# FLAG SI NOT WORKING!!!!!!!!!!!!!!!!!!!!!!
+# FLAG works but I can't remember why I was doing this!!!!!!!!!!!!!!!!!!!!!!
 
 ### USF12 ###
 # First check column numbers, look for spectral columns
@@ -136,15 +134,15 @@ data.frame(colnames(USF12))
 
 USF12_test <- USF12 %>%
   mutate(
-    # Identify spectral absorbance columns dynamically
-    flag_negative = if_any(where(is.numeric) & c(27:236), ~ . < 0, na.rm = TRUE),
-    flag_above100 = if_any(where(is.numeric) & c(27:236), ~ . > 100, na.rm = TRUE)
-  ) %>%
-  mutate(
-    # Replace entire row with NA in selected numeric columns
-    across(where(is.numeric) & c(3:241), ~ if_else(flag_negative | flag_above100, NA_real_, .))
+    across(
+      27:236,
+      list(
+        clean = ~ if_else(. < 0 | . > 100, NA_real_, as.numeric(.)),
+        flag  = ~ if_else(. < 0 | . > 100, TRUE, FALSE, missing = FALSE)
+      ),
+      .names = "{.col}_{.fn}"
+    )
   )
-
 
 ### USF20 ###
 # First check column numbers, look for spectral columns
@@ -152,34 +150,40 @@ data.frame(colnames(USF20))
 
 USF20_test <- USF20 %>%
   mutate(
-    # Identify spectral absorbance columns dynamically
-    flag_negative = if_any(where(is.numeric) & c(23:234), ~ . < 0, na.rm = TRUE),
-    flag_above100 = if_any(where(is.numeric) & c(23:234), ~ . > 100, na.rm = TRUE)
-  ) %>%
-  mutate(
-    # Replace entire row with NA in selected numeric columns
-    across(where(is.numeric) & c(3:239), ~ if_else(flag_negative | flag_above100, NA_real_, .))
+    across(
+      23:234,
+      list(
+        clean = ~ if_else(. < 0 | . > 100, NA_real_, as.numeric(.)),
+        flag  = ~ if_else(. < 0 | . > 100, TRUE, FALSE, missing = FALSE)
+      ),
+      .names = "{.col}_{.fn}"
+    )
   )
 
 ### USF21 ###
 # First check column numbers, look for spectral columns
 data.frame(colnames(USF21))
+# Check which columns have non-numeric entries
+sapply(USF21[27:236], function(x) sum(is.na(as.numeric(as.character(x)))))
+# Convert abs to numeric and non-numeric entries to NA.
+USF21 <- USF21 %>%
+  mutate(across(27:236, ~ suppressWarnings(as.numeric(as.character(.)))))
 
 USF21_test <- USF21 %>%
   mutate(
-    flag_negative = ifelse(rowSums(across(27:236, ~ . < 0)) > 0, "Y", "N"),
-    flag_above100 = ifelse(rowSums(across(27:236, ~ . > 100)) > 0, "Y", "N")
-  ) %>%
-  mutate(across(
-    2:241, 
-    ~ if_else(flag_negative == "Y" | flag_above100 == "Y", NA, .)
-  ))
-
+    across(
+      27:236,
+      list(
+        clean = ~ if_else(. < 0 | . > 100, NA_real_, as.numeric(.)),
+        flag  = ~ if_else(. < 0 | . > 100, TRUE, FALSE, missing = FALSE)
+      ),
+      .names = "{.col}_{.fn}"
+    )
+  )
 
 ############################
 #### Save flagged files ####
 ############################
-
 # Make sure it is in datetime format
 USF12_test$DateTime <- format(USF12_test$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
@@ -195,10 +199,10 @@ write.csv(USF21_test,"googledrive/USF21_flagged_Bubbles.csv" , row.names=FALSE, 
 
 # Define the target folder ID in Google Drive
 # This is the "merged" folder
-drive_folder_id <- "1g6aSuGnb--Qeyk-rceX82Y5wSNzCqFg0"
+drive_folder_id <- "1QsjPCu8AVhePe7DGWBhRha26HXbyshcu"
 
 # Upload the file to the specified Google Drive folder
-drive_upload(media = "googledrive/USF12_flagged_Buttercup.csv", path = as_id(drive_folder_id))
+drive_put(media = "googledrive/USF12_flagged_Buttercup.csv", path = as_id(drive_folder_id))
 drive_upload(media = "googledrive/USF20_flagged_Blossom.csv", path = as_id(drive_folder_id))
 drive_upload(media = "googledrive/USF21_flagged_Bubbles.csv", path = as_id(drive_folder_id))
 

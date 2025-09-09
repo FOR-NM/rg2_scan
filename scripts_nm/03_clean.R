@@ -308,6 +308,56 @@ for (i in seq_along(scan_filtered)) {
 
 tail(scan_filtered1[[1]])
 
+###################################
+#### Plot just a section of it ####
+###################################
+Date1 <- as.Date("2025-08-25", "%Y-%m-%d")
+Date2 <- as.Date("2025-08-30", "%Y-%m-%d")
+
+# create empty list to store data frames
+scan_subdf <- list()
+
+# loop through each data frame in the list to change DateTime column name
+for (i in seq_along(scan_filtered1)) {
+  # Access the current data frame
+  df <- scan_filtered1[[i]]
+  
+  # change time frame
+  subdf <- df[df$DateTime < Date2 & df$DateTime > Date1,]
+  
+  # update the data frame in the list
+  scan_subdf[[i]] <- subdf
+}
+
+
+# function to plot each variable separately in the same panel
+plot_variables <- function(df, file_name) {
+  # ensure column selection works correctly
+  df_long <- df %>%
+    dplyr::select("DateTime", "Temp_C", "TSS_clean", "TOC_clean", "NO3.N_clean", "NO3_clean", "DOC_clean") %>%
+    pivot_longer(cols = -DateTime, names_to = "Variable", values_to = "Value")
+  
+  # generate the plot
+  ggplot(data = df_long, aes(x = DateTime, y = Value, color = Variable)) +
+    geom_line() +
+    facet_wrap(~Variable, scales = "free_y", ncol = 1) +  # separate plot for each variable, stacked vertically
+    scale_x_datetime(date_breaks = "7 days", date_labels = "%m/%d") +
+    ggtitle(file_name) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    ylab("Measured Value") +
+    theme(legend.position = "none")  # hide legend since we have separate panels
+}
+
+# generate plots
+print(plot_variables(scan_subdf[[1]], scan_csvs$name[1]))
+print(plot_variables(scan_subdf[[2]], scan_csvs$name[2]))
+print(plot_variables(scan_subdf[[3]], scan_csvs$name[3]))
+
+### save figures to folder ###
+for (i in seq_along(scan_subdf)) {
+  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_subdf.png"), plot_variables(scan_subdf[[i]], scan_csvs$name[i]))
+}
+
 ####################################
 #### Save cleaned data to Drive ####
 ####################################
@@ -334,3 +384,5 @@ for (i in seq_along(scan_filtered1)) {
   # upload the file to the specified Google Drive folder
   drive_upload(media = file_name, path = as_id(drive_folder_id))
 }
+
+
