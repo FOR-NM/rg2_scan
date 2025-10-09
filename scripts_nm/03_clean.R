@@ -228,7 +228,7 @@ scan_filtered <- mapply(function(df, file_name) {
 #scan_filtered <- scan_filtered[-c(4:16)]
 
 #############################################################
-#### delete all the rows before the deployment date-time ####
+#### Delete all the rows before the deployment date-time ####
 #############################################################
 # the first few rows before deployment are usually junk. Let's get rid of those
 # create function 
@@ -246,6 +246,26 @@ scan_filtered1 <- lapply(scan_filtered, function(df) {
 USF12 <- scan_filtered1[["USF12_absparams_Buttercup.csv"]]
 USF21 <- scan_filtered1[["USF21_absparams_Bubbles.csv"]]
 USF20 <- scan_filtered1[["USF20_absparams_Blossom.csv"]]
+
+########################################
+#### remove error section from USF20 ###
+########################################
+USF20_test <- USF20_test %>%
+  mutate(across(
+    c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean", 21:230),
+    ~ ifelse(between(DateTime, as.Date("2024-09-25"), as.Date("2024-10-17")), NA, .)
+  ))
+
+########################################
+#### remove low volt at end of USF21 ###
+########################################
+USF21 <- USF21[-c(11889:11961),]
+
+USF21 <- USF21 %>%
+  mutate(across(
+    c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean"),
+    ~ if_else(row_number() %in% c(1812, 97, 1810), NA, .)
+  ))
 
 #####################################
 #### Plot all variables together ####

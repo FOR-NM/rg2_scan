@@ -23,8 +23,8 @@ file.remove(files)
 #####################
 #### Import Data ####
 #####################
-# load data from Google Drive. his is the "merged" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1g6aSuGnb--Qeyk-rceX82Y5wSNzCqFg0")
+# load data from Google Drive. his is the "filtered" folder
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1H7-rk99ettzbB84Ot5cj94eO-MnnjLZq")
 scan_csvs <- googledrive::drive_ls(path = scan, type = "csv")
 3
 
@@ -53,24 +53,22 @@ for (i in seq_along(scan_csvs$id)) {
   scan_list[[scan_csvs$name[i]]] <- data
 }
 
-
 # remove extra files for this
-scan_list <- scan_list[-c(4:9)]
+# scan_list <- scan_list[-c(4:9)]
 
 #################
 #### Tidying ####
 #################
 # change some names for easier manipulation
 scan_list <- lapply(scan_list, function(df) {
-  colnames(df)[c(1, 2, 6, 8, 12, 14, 16, 11)] <- c("DateTime", "DOC", "NO3N", "NO3", "TOC", "TSS", "Temp", "Voltage")
-  
   # make sure numeric variables are numeric
   df <- df %>%
-    mutate(across(c(DOC, NO3N, NO3, TOC, TSS, Temp), as.numeric)) %>%
-    mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
+    mutate(across(c(DOC_mg.l, NO3.N_mg.l, NO3_mg.l, TOC_mg.l, TSS_mg.l, Temp_C), as.numeric)) %>%
+    mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
   
   return(df)
 })
+
 
 ##################################
 #### Pull USGS discharge data ####
@@ -84,9 +82,9 @@ retrieve_usgs_data <- function(start_date, end_date, site_no = "08315480", p_cod
 }
 
 # retrieve USGS data for different s::can sites, each has different deployment dates
-santafeUSGS_20 <- retrieve_usgs_data("2024-05-08", "2024-11-14")
-santafeUSGS_12 <- retrieve_usgs_data("2024-05-07", "2025-01-02")
-santafeUSGS_21 <- retrieve_usgs_data("2024-06-27", "2024-11-15")
+santafeUSGS_20 <- retrieve_usgs_data("2024-05-08", "2025-09-01")
+santafeUSGS_12 <- retrieve_usgs_data("2024-05-07", "2025-09-01")
+santafeUSGS_21 <- retrieve_usgs_data("2024-06-27", "2025-08-07")
 
 santafeUSGS_12$DateTime <- santafeUSGS_12$dateTime
 santafeUSGS_20$DateTime <- santafeUSGS_20$dateTime
@@ -104,11 +102,11 @@ plot_usgs_faceted <- function(df, usgs_df, label) {
   combined_df <- data.frame(DateTime = index(combined_xts), coredata(combined_xts))
   
   # convert columns to numeric, if necessary
-  combined_df <- combined_df %>% mutate(across(c(Temp, TSS_clean, TOC_clean, NO3.N_clean, NO3_clean, DOC_clean, Flow_Inst), as.numeric))
+  combined_df <- combined_df %>% mutate(across(c(Temp_C, TSS_clean, TOC_clean, NO3.N_clean, NO3_clean, DOC_clean, Flow_Inst), as.numeric))
   
   # reshape data to long format for faceting
   combined_long <- combined_df %>%
-    dplyr::select(DateTime, Temp, TSS_clean, TOC_clean, NO3.N_clean, NO3_clean, DOC_clean, Flow_Inst) %>%
+    dplyr::select(DateTime, Temp_C, TSS_clean, TOC_clean, NO3.N_clean, NO3_clean, DOC_clean, Flow_Inst) %>%
     pivot_longer(cols = -DateTime, names_to = "Variable", values_to = "Value")
   
   # plot using facet_wrap for each variable
@@ -197,3 +195,12 @@ for (i in seq_along(scan_with_usgs)) {
   # upload the file to the specified Google Drive folder
   drive_upload(media = file_name, path = as_id(drive_folder_id))
 }
+
+
+  
+# plot using facet_wrap for each variable
+ggplot(data = scan_list[["USF12_filtered_Buttercup.csv"]], aes(x = DateTime, y = DOC_clean)) +
+  geom_point() +
+  scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  theme(legend.position = "none")  # Hide the legend as it's redundant with faceting

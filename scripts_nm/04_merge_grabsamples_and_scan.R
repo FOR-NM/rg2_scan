@@ -10,11 +10,12 @@ library(dplyr)
 library(xts)
 library(readxl)
 library(tidyverse)
+library(lubridate)
 
 ########################################
 #### Clear folders that we will use ####
 ########################################
-# list and delete all files in the folder
+# list and delete all files in the folder 
 files <- list.files(path = "googledrive", full.names = TRUE)
 file.remove(files)
 
@@ -30,15 +31,14 @@ chem_csv <- googledrive::drive_ls(path = chem, type = "csv")
 3
 
 # call the specific file you want (most recent one)
-googledrive::drive_download(file = chem_csv$id[chem_csv$name=="2024-11-15_chem_data.csv"], 
-                            path = "googledrive/2024-11-15_chem_data.csv",
+googledrive::drive_download(file = chem_csv$id[chem_csv$name=="2025-08-20_chem_data.csv"], 
+                            path = "googledrive/2025-08-20_chem_data.csv",
                             overwrite = T)
 # load it into R
-wqual = read.csv("googledrive/2024-11-15_chem_data.csv")
+wqual = read.csv("googledrive/2025-08-20_chem_data.csv")
 
 # format date columns
-wqual$Collection.Date <- as.Date(wqual$Collection.Date, format = "%m/%d/%y")
-
+wqual$Collection.Date <- as.Date(wqual$Collection.Date, format = "%Y-%m-%d")
 # rename Collection Date column
 wqual <- wqual %>% rename(Date = Collection.Date)
 
@@ -89,41 +89,25 @@ samplelogsheet$Time <- as.POSIXct(samplelogsheet$Time, format = "%Y-%mm-%dd %H:%
 samplelogsheet$Time <- format(as.POSIXct(samplelogsheet$Time, format = "%Y-%m-%d %H:%M:%S"), "%H:%M:%S")
 
 # clean up a bit
-drops <- c("Project", "Type", "SpC_uScm2", "temp_C pH", "DO_mg/L", "TDS", "sampled_by", 
-           "collection_notes", "status_location", "DOC_mgL",  "DOC_file", "DOC_notes", "TSS", 
-           "AFDM", "Network Role", "Discharge", "Discharge flag", "Discharge Notes", "QuEST_ID",
-           "bottle_type", "filtered_uM", "temp_C", "pH", "lat", "lon", "Location", "ID")
-samplelogsheet <- samplelogsheet[ , !(names(samplelogsheet) %in% drops)]
+samplelogsheet <- samplelogsheet[ -c(1, 5:31) ]
 
 #### change sample time to fit scan time ####
 ###USF12###
 samplelogsheet$Time[samplelogsheet$Site == "USF12" & 
                       samplelogsheet$Date == "2024-05-23" & 
                       samplelogsheet$Time == "09:30:00"] <- "09:45:00"
-
-samplelogsheet$Time[samplelogsheet$Site == "USF12" & 
-                      samplelogsheet$Date == "2024-07-08" & 
-                      samplelogsheet$Time == "08:30:00"] <- "10:00:00"
-
-samplelogsheet$Time[samplelogsheet$Site == "USF12" & 
-                      samplelogsheet$Date == "2024-06-19" & 
-                      samplelogsheet$Time == "09:00:00"] <- "10:30:00"
 ###USF20###
 samplelogsheet$Time[samplelogsheet$Site == "USF20" & 
                       samplelogsheet$Date == "2024-05-23" & 
                       samplelogsheet$Time == "12:30:00"] <- "12:45:00"
 
-samplelogsheet$Time[samplelogsheet$Site == "USF20" & 
-                      samplelogsheet$Date == "2024-07-08" & 
-                      samplelogsheet$Time == "14:00:00"] <- "16:00:00"
-
-samplelogsheet$Time[samplelogsheet$Site == "USF20" & 
-                      samplelogsheet$Date == "2024-06-19" & 
-                      samplelogsheet$Time == "14:45:00"] <- "17:00:00"
+# samplelogsheet$Time[samplelogsheet$Site == "USF20" & 
+#                       samplelogsheet$Date == "2024-06-19" & 
+#                       samplelogsheet$Time == "14:45:00"] <- "17:00:00"
 ###USF21###
 samplelogsheet$Time[samplelogsheet$Site == "USF21" & 
                       samplelogsheet$Date == "2024-06-27" & 
-                      samplelogsheet$Time == "11:00:00"] <- "13:30:00"
+                      samplelogsheet$Time == "11:00:00"] <- "18:30:00"
  
 #######################################################################
 #### Merge chem and sample log sheet to get sample collection time ####
@@ -148,39 +132,39 @@ sample_times$DateTime <- as.POSIXct(sample_times$DateTime, format = "%Y-%m-%d %H
 #### Import scan data ####
 ##########################
 #### import abs and parameter data ####
-# this is the "merged" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1g6aSuGnb--Qeyk-rceX82Y5wSNzCqFg0")
+# this is the "clean abs" folder
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1QsjPCu8AVhePe7DGWBhRha26HXbyshcu")
 
 # list all the files in the folder
 merged <- googledrive::drive_ls(path = scan, type = "csv")
 
 #USF12
-googledrive::drive_download(file = merged$id[merged$name=="USF12_filtered_Buttercup.csv"], 
-                            path = "googledrive/USF12_filtered_Buttercup.csv",
+googledrive::drive_download(file = merged$id[merged$name=="USF12_flagged_Buttercup.csv"], 
+                            path = "googledrive/USF12_flagged_Buttercup.csv",
                             overwrite = T)
 #USF20
-googledrive::drive_download(file = merged$id[merged$name=="USF20_filtered_Blossom.csv"], 
-                            path = "googledrive/USF20_filtered_Blossom.csv",
+googledrive::drive_download(file = merged$id[merged$name=="USF20_flagged_Blossom.csv"], 
+                            path = "googledrive/USF20_flagged_Blossom.csv",
                             overwrite = T)
 #USF21
-googledrive::drive_download(file = merged$id[merged$name=="USF21_filtered_Bubbles.csv"], 
-                            path = "googledrive/USF21_filtered_Bubbles.csv",
+googledrive::drive_download(file = merged$id[merged$name=="USF21_flagged_Bubbles.csv"], 
+                            path = "googledrive/USF21_flagged_Bubbles.csv",
                             overwrite = T)
 
 # load them separately 
-USF12 <- read.csv("googledrive/USF12_filtered_Buttercup.csv")
-USF20 <- read.csv("googledrive/USF20_filtered_Blossom.csv")
-USF21 <- read.csv("googledrive/USF21_filtered_Bubbles.csv")
+USF12 <- read.csv("googledrive/USF12_flagged_Buttercup.csv")
+USF20 <- read.csv("googledrive/USF20_flagged_Blossom.csv")
+USF21 <- read.csv("googledrive/USF21_flagged_Bubbles.csv")
 
 # convert the DateTime column to POSIXct
-USF12$DateTime <- as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M")
-USF20$DateTime <- as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M")
-USF21$DateTime <- as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M")
+USF12$DateTime <- as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")
+USF20$DateTime <- as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")
+USF21$DateTime <- as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")
 
-# check for duplicates
-sum(duplicated(USF12))
-sum(duplicated(USF20))
-sum(duplicated(USF21))
+# # check for duplicates
+# sum(duplicated(USF12))
+# sum(duplicated(USF20))
+# sum(duplicated(USF21))
 
 ##################################
 #### Merge chem and scan data ####
@@ -200,10 +184,10 @@ data12 <- merge(USF12, U12, by = "DateTime", all.x = TRUE)
 data20 <- merge(USF20, U20, by = "DateTime", all.x = TRUE)
 data21 <- merge(USF21, U21, by = "DateTime", all.x = TRUE)
 
-# check for duplicates in the original datasets
-sum(duplicated(data12))
-sum(duplicated(data20))
-sum(duplicated(data21))
+# # check for duplicates in the original datasets
+# sum(duplicated(data12))
+# sum(duplicated(data20))
+# sum(duplicated(data21))
 
 ############################
 #### Save matched files ####
@@ -211,22 +195,22 @@ sum(duplicated(data21))
 # make sure it is in datetime format
 data12$DateTime <- format(data12$DateTime, "%Y-%m-%d %H:%M:%S")
 # save the new data frame to a CSV file
-write.csv(data12,"googledrive/USF12_merged_Buttercup.csv" , row.names=FALSE, quote=FALSE)
+write.csv(data12,"googledrive/USF12_chem_Buttercup.csv" , row.names=FALSE, quote=FALSE)
 # make sure it is in datetime format
 data20$DateTime <- format(data20$DateTime, "%Y-%m-%d %H:%M:%S")
 # save the new data frame to a CSV file
-write.csv(data20,"googledrive/USF20_merged_Blossom.csv" , row.names=FALSE, quote=FALSE)
+write.csv(data20,"googledrive/USF20_chem_Blossom.csv" , row.names=FALSE, quote=FALSE)
 # make sure it is in datetime format
 data21$DateTime <- format(data21$DateTime, "%Y-%m-%d %H:%M:%S")
 # save the new data frame to a CSV file
-write.csv(data21,"googledrive/USF21_merged_Bubbles.csv" , row.names=FALSE, quote=FALSE)
+write.csv(data21,"googledrive/USF21_chem_Bubbles.csv" , row.names=FALSE, quote=FALSE)
 
 # define the target folder ID in Google Drive
-# this is the "merged" folder
-drive_folder_id <- "1g6aSuGnb--Qeyk-rceX82Y5wSNzCqFg0"
+# this is the "with chem" folder
+drive_folder_id <- "1qjM3Zze-I5ycFCHNcd997UG6gYXBUoX8"
 
 # upload the file to the specified Google Drive folder
-drive_upload(media = "googledrive/USF12_merged_Buttercup.csv", path = as_id(drive_folder_id))
-drive_upload(media = "googledrive/USF20_merged_Blossom.csv", path = as_id(drive_folder_id))
-drive_upload(media = "googledrive/USF21_merged_Bubbles.csv", path = as_id(drive_folder_id))
+drive_put(media = "googledrive/USF12_chem_Buttercup.csv", path = as_id(drive_folder_id))
+drive_put(media = "googledrive/USF20_chem_Blossom.csv", path = as_id(drive_folder_id))
+drive_put(media = "googledrive/USF21_chem_Bubbles.csv", path = as_id(drive_folder_id))
 
