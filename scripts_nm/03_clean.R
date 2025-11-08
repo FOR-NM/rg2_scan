@@ -250,7 +250,7 @@ USF20 <- scan_filtered1[["USF20_absparams_Blossom.csv"]]
 ########################################
 #### remove error section from USF20 ###
 ########################################
-USF20_test <- USF20_test %>%
+USF20_test <- USF20 %>%
   mutate(across(
     c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean", 21:230),
     ~ ifelse(between(DateTime, as.Date("2024-09-25"), as.Date("2024-10-17")), NA, .)
@@ -309,7 +309,7 @@ plot_variables <- function(df, file_name) {
   ggplot(data = df_long, aes(x = DateTime, y = Value, color = Variable)) +
     geom_line() +
     facet_wrap(~Variable, scales = "free_y", ncol = 1) +  # separate plot for each variable, stacked vertically
-    scale_x_datetime(date_breaks = "7 days", date_labels = "%m/%d") +
+    scale_x_datetime(date_breaks = "15 days", date_labels = "%m/%d") +
     ggtitle(file_name) +
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
     ylab("Measured Value") +

@@ -1,6 +1,6 @@
 ##==============================================================================
 ## Project: QuEST
-## Here we will be Calibrating s::can data using Partial Least Squares Regression (PLSR) 
+## Here we will be Calibrating s::can data using Partial Least Squares Regression (PLSR) for South Sandy
 ## Following Arial's s::can guide
 ## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
@@ -14,6 +14,7 @@ library(dplyr)
 library(pls)
 library(merTools)
 library(devtools)
+library(tidyr)
 #install.packages("devtools")
 #install.packages("devtools", repos = "http://cran.us.r-project.org")
 library(spectrolab)
@@ -37,32 +38,31 @@ file.remove(files)
 ######################################################
 #### STEP 2: Upload scan data frame [with spectra] ####
 ######################################################
-
 # This data is already matched #
-# This is the "merged" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR")
+# This is the "with grab" folder
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1Wju54VbyACZ_RFtfeInSvBCiVDKFScGj")
 
 # List all CSVs files in the folder
 merged <- googledrive::drive_ls(path = scan, type = "csv")
 3
 
 #SSM01
-googledrive::drive_download(file = merged$id[merged$name=="05_SSM01_merged.csv"], 
-                            path = "googledrive/05_SSM01_merged.csv",
+googledrive::drive_download(file = merged$id[merged$name=="SSM01_merged.csv"], 
+                            path = "googledrive/SSM01_merged.csv",
                             overwrite = T)
 #SSM20
-googledrive::drive_download(file = merged$id[merged$name=="05_SSM20_merged.csv"], 
-                            path = "googledrive/05_SSM20_merged.csv",
+googledrive::drive_download(file = merged$id[merged$name=="SSM20_merged.csv"], 
+                            path = "googledrive/SSM20_merged.csv",
                             overwrite = T)
 #SST13
-googledrive::drive_download(file = merged$id[merged$name=="05_SST13_merged.csv"], 
-                            path = "googledrive/05_SST13_merged.csv",
+googledrive::drive_download(file = merged$id[merged$name=="SST13_merged.csv"], 
+                            path = "googledrive/SST13_merged.csv",
                             overwrite = T)
 
-# Let's load them separately first
-SSM01 <- read.csv("googledrive/05_SSM01_merged.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
-SSM20 <- read.csv("googledrive/05_SSM20_merged.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
-SST13 <- read.csv("googledrive/05_SST13_merged.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+# Load them separately 
+SSM01 <- read.csv("googledrive/SSM01_merged.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+SSM20 <- read.csv("googledrive/SSM20_merged.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+SST13 <- read.csv("googledrive/SST13_merged.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
 
 # Convert the DateTime column to POSIXct
 SSM01$DateTime <- as.POSIXct(SSM01$DateTime, format = "%Y-%m-%d %H:%M:%S")
@@ -85,6 +85,11 @@ SSM01 <- rename_columns(SSM01)
 SSM20 <- rename_columns(SSM20)
 SST13 <- rename_columns(SST13)
 
+# Remove some NA DateTimes
+SSM01 <- SSM01 %>% drop_na(DateTime)
+SSM20 <- SSM20 %>% drop_na(DateTime)
+SST13 <- SST13 %>% drop_na(DateTime)
+
 # Extract DOC NO3 NO3N and TSS data as time series objects (xts)
 scan_DOC_SSM01 <- xts(SSM01$DOC, order.by = SSM01$DateTime)
 scan_TSS_SSM01 <- xts(SSM01$TSS, order.by = SSM01$DateTime)
@@ -102,9 +107,9 @@ scan_NO3N_SST13 <- xts(SST13$NO3N, order.by = SST13$DateTime)
 scan_NO3_SST13 <- xts(SST13$NO3, order.by = SST13$DateTime)
 
 # Extract spectral data (assuming spectral columns are in range "X200.00.nm" to "X750.00.nm")
-scan.spec01 = xts(SSM01[13:230], as.POSIXct(SSM01$DateTime, format = "%m/%d/%Y %H:%M")) 
-scan.spec20 = xts(SSM20[13:231], as.POSIXct(SSM20$DateTime, format = "%m/%d/%Y %H:%M")) 
-scan.spec13 = xts(SST13[25:234], as.POSIXct(SST13$DateTime, format = "%m/%d/%Y %H:%M")) 
+scan.spec01 = xts(SSM01[27:237], as.POSIXct(SSM01$DateTime, format = "%m/%d/%Y %H:%M")) 
+scan.spec20 = xts(SSM20[29:249], as.POSIXct(SSM20$DateTime, format = "%m/%d/%Y %H:%M")) 
+scan.spec13 = xts(SST13[43:263], as.POSIXct(SST13$DateTime, format = "%m/%d/%Y %H:%M")) 
 # select full spectra
 # note here that if there are 0s in your spectra, this code will throw an error
 # so only use the wavelengths where you have detectable absorbance

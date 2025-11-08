@@ -88,7 +88,6 @@ for (i in seq_along(scan_list)) {
       NO3_mg.l = NO3eq..mg.l....Measured.value,
       TOC_mg.l = TOCeq..mg.l....Measured.value,
       TSS_mg.l = TSSeq..mg.l....Measured.value,
-      Temp_C = Temperature_21...C....Measured.value
     )
   
   # update the data frame in the list
@@ -136,7 +135,7 @@ for (i in seq_along(scan_list)) {
   # plot
   p <- ggplot(data = df, aes(x = DateTime, y = DOCeq_mg.l)) + 
     geom_line() + 
-    scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
+    scale_x_datetime(date_breaks = "15 day", date_labels = "%m/%d") +
     ggtitle(paste(scan_csvs$name[i])) +
     theme(axis.text.x = element_text(angle=45))
   print(p)
@@ -149,7 +148,7 @@ for (i in seq_along(scan_list)) {
   # plot
   p <- ggplot(data = df, aes(x = DateTime, y = NO3_mg.l)) + 
     geom_line() + 
-    scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
+    scale_x_datetime(date_breaks = "15 day", date_labels = "%m/%d") +
     ggtitle(paste(scan_csvs$name[i])) +
     theme(axis.text.x = element_text(angle=45))
   print(p)
@@ -162,7 +161,7 @@ for (i in seq_along(scan_list)) {
   # plot
   p <- ggplot(data = df, aes(x = DateTime, y = NO3.N_mg.l)) + 
     geom_line() + 
-    scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
+    scale_x_datetime(date_breaks = "15 day", date_labels = "%m/%d") +
     ggtitle(paste(scan_csvs$name[i])) +
     theme(axis.text.x = element_text(angle=45))
   print(p)
@@ -176,7 +175,7 @@ for (i in seq_along(scan_list)) {
   # plot
   p <- ggplot(data = df, aes(x = DateTime, y = TOC_mg.l)) + 
     geom_line() + 
-    scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
+    scale_x_datetime(date_breaks = "15 day", date_labels = "%m/%d") +
     ggtitle(paste(scan_csvs$name[i])) +
     theme(axis.text.x = element_text(angle=45))
   print(p)
@@ -190,7 +189,7 @@ for (i in seq_along(scan_list)) {
   # plot
   p <- ggplot(data = df, aes(x = DateTime, y = TSS_mg.l)) + 
     geom_line() + 
-    scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
+    scale_x_datetime(date_breaks = "15 day", date_labels = "%m/%d") +
     ggtitle(paste(scan_csvs$name[i])) +
     theme(axis.text.x = element_text(angle=45))
   print(p)
@@ -204,7 +203,7 @@ for (i in seq_along(scan_list)) {
   # plot
   p <- ggplot(data = df, aes(x = DateTime, y = Temp_C)) + 
     geom_line() + 
-    scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
+    scale_x_datetime(date_breaks = "15 day", date_labels = "%m/%d") +
     ggtitle(paste(scan_csvs$name[i])) +
     theme(axis.text.x = element_text(angle=45))
   print(p)
@@ -220,13 +219,13 @@ for (i in seq_along(scan_list)) {
   df <- scan_list[[i]]
   # plot
   p <- ggplot(data = df) + 
-    geom_line(aes(x=DateTime, y=Temp_C, color='Temp_C')) +
+    geom_line(aes(x=DateTime, y=Temperature_40...F....Measured.value, color='Temp_F')) +
     geom_line(aes(x=DateTime, y=TSS_mg.l, color='TSS')) +
     geom_line(aes(x=DateTime, y=TOC_mg.l, color='TOC')) +
     geom_line(aes(x=DateTime, y=NO3.N_mg.l, color='NO3-N')) +
     geom_line(aes(x=DateTime, y=NO3_mg.l, color='NO3')) +
     geom_line(aes(x=DateTime, y=DOCeq_mg.l, color='DOC')) +
-    scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
+    scale_x_datetime(date_breaks = "30 day", date_labels = "%m/%d") +
     ggtitle(paste(scan_csvs$name[i])) +
     theme(axis.text.x = element_text(angle=45)) +
     ylab("Measured")

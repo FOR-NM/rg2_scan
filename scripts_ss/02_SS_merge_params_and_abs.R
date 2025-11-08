@@ -20,15 +20,15 @@ scan <- googledrive::as_id("https://drive.google.com/drive/folders/1qpsqrmcnALNS
 scan_csvs <- googledrive::drive_ls(path = scan)
 
 # load only SSM01 files
-googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="01_SSM01_params.csv"], 
-                            path = "googledrive/01_SSM01_params.csv",
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="SSM01_params.csv"], 
+                            path = "googledrive/SSM01_params.csv",
                             overwrite = T)
-googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="01_SSM01_abs.csv"], 
-                            path = "googledrive/01_SSM01_abs.csv",
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="SSM01_abs.csv"], 
+                            path = "googledrive/SSM01_abs.csv",
                             overwrite = T)
 
-SSM01_params <- read.csv("googledrive/01_SSM01_params.csv")
-SSM01_abs <- read.csv("googledrive/01_SSM01_abs.csv")
+SSM01_params <- read.csv("googledrive/SSM01_params.csv")
+SSM01_abs <- read.csv("googledrive/SSM01_abs.csv")
 
 #############################
 #### Tidy both data sets ####
@@ -67,15 +67,15 @@ drive_upload(media = "data/02_SSM01_absparams.csv", path = as_id(drive_folder_id
 #### Import abs and parameter data ####
 #######################################
 # load only SSM01 files
-googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="01_SSM20_params.csv"], 
-                            path = "googledrive/01_SSM20_params.csv",
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="SSM20_params.csv"], 
+                            path = "googledrive/SSM20_params.csv",
                             overwrite = T)
-googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="01_SSM20_abs.csv"], 
-                            path = "googledrive/01_SSM20_abs.csv",
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="SSM20_abs.csv"], 
+                            path = "googledrive/SSM20_abs.csv",
                             overwrite = T)
 
-SSM20_params <- read.csv("googledrive/01_SSM20_params.csv")
-SSM20_abs <- read.csv("googledrive/01_SSM20_abs.csv")
+SSM20_params <- read.csv("googledrive/SSM20_params.csv")
+SSM20_abs <- read.csv("googledrive/SSM20_abs.csv")
 
 #############################
 #### Tidy both data sets ####
@@ -115,14 +115,14 @@ drive_upload(media = "data/02_SSM20_absparams.csv", path = as_id(drive_folder_id
 #######################################
 # load only SST13 files
 googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="SST13_params.csv"], 
-                            path = "googledrive/01_SST13_params.csv",
+                            path = "googledrive/SST13_params.csv",
                             overwrite = T)
 googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="SST13_abs.csv"], 
-                            path = "googledrive/01_SST13_abs.csv",
+                            path = "googledrive/SST13_abs.csv",
                             overwrite = T)
 
-SST13_params <- read.csv("googledrive/01_SST13_params.csv")
-SST13_abs <- read.csv("googledrive/01_SST13_abs.csv")
+SST13_params <- read.csv("googledrive/SST13_params.csv")
+SST13_abs <- read.csv("googledrive/SST13_abs.csv")
 
 #############################
 #### Tidy both data sets ####
@@ -139,7 +139,7 @@ SST13_abs <- SST13_abs %>%
 # param data first
 SST13_merged <- left_join(SST13_params, SST13_abs, by = "DateTime")
 
-#########################################
+########################################s#
 #### Save merged SSM01 file to Drive ####
 #########################################
 # make sure it is in datetime format

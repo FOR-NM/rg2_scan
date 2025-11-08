@@ -21,7 +21,6 @@ file.remove(files)
 ##########################
 #### Import chem data ####
 ##########################
-
 #### Load chem data ####
 # Chem data is for all the sites
 chem <- googledrive::as_id("https://drive.google.com/drive/folders/1ZCVAoIamyMMtwh-Cy3SpeQx2IWYu6gg2")
@@ -31,14 +30,15 @@ chem_csv <- googledrive::drive_ls(path = chem, type = "csv")
 3
 
 # call the specific file you want (most recent one)
-googledrive::drive_download(file = chem_csv$id[chem_csv$name=="2024-11-15_chem_data.csv"], 
-                            path = "googledrive/2024-11-15_chem_data.csv",
+googledrive::drive_download(file = chem_csv$id[chem_csv$name=="2025-08-20_chem_data.csv"], 
+                            path = "googledrive/2025-08-20_chem_data.csv",
                             overwrite = T)
 # load it into R
-wqual = read.csv("googledrive/2024-11-15_chem_data.csv")
+wqual = read.csv("googledrive/2025-08-20_chem_data.csv")
 
 # Format date columns
 wqual$Collection.Date <- as.Date(wqual$Collection.Date, format = "%m/%d/%y")
+
 
 # Rename Collection Date column
 wqual <- wqual %>% rename(Date = Collection.Date)
@@ -76,7 +76,7 @@ nonna_counts_dplyr <- data_avg %>%
   summarise_all(~ sum(!is.na(.)))
 
 #### Load sample info to get grab sample collection time ####
-samplelogsheet <- drive_get("https://docs.google.com/spreadsheets/d/1JVDwzSoHetQGHhYPoeoTOHzlmRrcWNPs-i5b8t2U754/edit?gid=1408689713#gid=1408689713")
+samplelogsheet <- drive_get("https://docs.google.com/spreadsheets/d/1JVDwzSoHetQGHhYPoeoTOHzlmRrcWNPs-i5b8t2U754/edit?gid=2118868541#gid=2118868541")
 
 # Download spreadsheet from Webster Lab Sample Log Sheet
 drive_download(as_id(samplelogsheet$id), path = "googledrive/samplelogsheet.xlsx", overwrite = T)
@@ -85,8 +85,8 @@ drive_download(as_id(samplelogsheet$id), path = "googledrive/samplelogsheet.xlsx
 samplelogsheet <- readxl::read_excel("googledrive/samplelogsheet.xlsx", sheet = "YSI", skip = 1)
 
 # Format date and time columns
-samplelogsheet$Date <- as.Date(samplelogsheet$`Collection Date`, format = "%Y/%m/%d")
-samplelogsheet$Time <- format(as.POSIXct(samplelogsheet$`Arrival Time`, format = "%Y-%m-%d %H:%M:%S"), "%H:%M:%S")
+samplelogsheet$Date <- as.Date(samplelogsheet$`Collection Date`, format = "%Y-%m-%d")
+samplelogsheet$Time <- format(as.POSIXct(samplelogsheet$`Time`, format = "%Y-%m-%d %H:%M:%S"), "%H:%M:%S")
 
 # Clean up a bit
 drops <- c("Sampling Time", "Crew Initials", "Pressure (mmHg)", "Dissolved O2 (%sat)", "pH", "Dissolved O2 (mg/L)")
@@ -101,7 +101,6 @@ samplelogsheet <- samplelogsheet[ , !(names(samplelogsheet) %in% drops)]
 ##################################
 #### Rounding collection time ####
 ##################################
-
 # Create extra columns so you don't erase original time               
 samplelogsheet$TimeNotRounded <- samplelogsheet$Time
 
@@ -119,7 +118,6 @@ str(samplelogsheet)
 #######################################################################
 #### Merge chem and sample log sheet to get sample collection time ####
 #######################################################################
-
 # filter only data for SSM20, SST13 and SSM01 (scan sites) 
 wqual_scans <- data_avg %>% filter(Site %in% c("SSM01", "SSM20", "SST13"))
 
@@ -134,31 +132,30 @@ sum(duplicated(sample_times))
 ##########################
 #### Import scan data ####
 ##########################
-
 #### Import abs and parameter data ####
 # This is the "merged" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR")
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1--vHCs6vefqpfrHz4ObLWE6gqzxT0eJS")
 
 # List all the files in the folder
 merged <- googledrive::drive_ls(path = scan, type = "csv")
 
 #SSM01
-googledrive::drive_download(file = merged$id[merged$name=="SSM01_filtered.csv"], 
-                            path = "googledrive/SSM01_filtered.csv",
+googledrive::drive_download(file = merged$id[merged$name=="03_SSM01_absparams_clean.csv"], 
+                            path = "googledrive/03_SSM01_absparams_clean.csv",
                             overwrite = T)
 #SSM20
-googledrive::drive_download(file = merged$id[merged$name=="SSM20_filtered.csv"], 
-                            path = "googledrive/SSM20_filtered.csv",
+googledrive::drive_download(file = merged$id[merged$name=="03_SSM20_absparams_clean.csv"], 
+                            path = "googledrive/03_SSM20_absparams_clean.csv",
                             overwrite = T)
 #SST13
-googledrive::drive_download(file = merged$id[merged$name=="SST13_filtered.csv"], 
-                            path = "googledrive/SST13_filtered.csv",
+googledrive::drive_download(file = merged$id[merged$name=="03_SST13_absparams_clean.csv"], 
+                            path = "googledrive/03_SST13_absparams_clean.csv",
                             overwrite = T)
 
 # Load them separately 
-SSM01 <- read.csv("googledrive/SSM01_filtered.csv")
-SSM20 <- read.csv("googledrive/SSM20_filtered.csv")
-SST13 <- read.csv("googledrive/SST13_filtered.csv")
+SSM01 <- read.csv("googledrive/03_SSM01_absparams_clean.csv")
+SSM20 <- read.csv("googledrive/03_SSM20_absparams_clean.csv")
+SST13 <- read.csv("googledrive/03_SST13_absparams_clean.csv")
 
 # Convert the DateTime column to POSIXct
 SSM01$DateTime <- as.POSIXct(SSM01$DateTime, format = "%Y-%m-%d %H:%M")
@@ -173,7 +170,6 @@ sum(duplicated(SST13))
 ##################################
 #### Merge chem and scan data ####
 ##################################
-
 # Filter to get just one site at a time
 U01 <- filter(sample_times, Site == "SSM01")
 U20 <- filter(sample_times, Site == "SSM20")
@@ -197,7 +193,6 @@ sum(duplicated(data13))
 ############################
 #### Save matched files ####
 ############################
-
 # Make sure it is in datetime format
 data01$DateTime <- format(data01$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
@@ -212,8 +207,8 @@ data13$DateTime <- format(data13$DateTime, "%Y-%m-%d %H:%M:%S")
 write.csv(data13,"googledrive/SST13_merged.csv" , row.names=FALSE, quote=FALSE)
 
 # Define the target folder ID in Google Drive
-# This is the "merged" folder
-drive_folder_id <- "1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR"
+# This is the "with grab" folder
+drive_folder_id <- "1Wju54VbyACZ_RFtfeInSvBCiVDKFScGj"
 
 # Upload the file to the specified Google Drive folder
 drive_upload(media = "googledrive/SSM01_merged.csv", path = as_id(drive_folder_id))

@@ -249,18 +249,18 @@ print(plot_variables(scan_list[[3]], scan_csvs$name[3]))
 ####################################
 #### Save cleaned data to Drive ####
 ####################################
-# ensure DateTime column is properly formatted
+# format DateTime column
 scan_list <- lapply(scan_list, function(df) {
   df$DateTime <- format(df$DateTime, "%Y-%m-%d %H:%M:%S") 
   return(df)
 })
 
 lapply(names(scan_list), function(site) {
-  write.csv(scan_list[[site]], file.path("data/03_", paste0(site, "_clean.csv")))
+  write.csv(scan_list[[site]], file.path("data/", paste0(site, "_clean.csv")))
 })
 
 lapply(names(scan_list), function(site) {
-  file <- paste0("data/03_", site, "_clean.csv")
+  file <- paste0("data/", site, "_clean.csv")
   # this is the in use folder
   drive_folder_id <- "1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR"
   # Upload file to the specified Google Drive folder

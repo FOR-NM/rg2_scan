@@ -95,17 +95,14 @@ USF21 <- USF21[-c(19675:19771),]
 scan_DOC_USF12 <- xts(USF12$DOC_mg.l , order.by = USF12$DateTime)
 scan_TSS_USF12 <- xts(USF12$TSS_clean, order.by = USF12$DateTime)
 scan_NO3N_USF12 <- xts(USF12$NO3..mg.N.L., order.by = USF12$DateTime)
-scan_NO3_USF12 <- xts(USF12$NO3_mg.l, order.by = USF12$DateTime)
 
 scan_DOC_USF20 <- xts(USF20$DOC_mg.l, order.by = USF20$DateTime)
 scan_TSS_USF20 <- xts(USF20$TSS_clean, order.by = USF20$DateTime)
 scan_NO3N_USF20 <- xts(USF20$NO3..mg.N.L., order.by = USF20$DateTime)
-scan_NO3_USF20 <- xts(USF20$NO3_mg.l, order.by = USF20$DateTime)
 
 scan_DOC_USF21 <- xts(USF21$DOC_mg.l, order.by = USF21$DateTime)
 scan_TSS_USF21 <- xts(USF21$TSS_clean, order.by = USF21$DateTime)
 scan_NO3N_USF21 <- xts(USF21$NO3..mg.N.L., order.by = USF21$DateTime)
-scan_NO3_USF21 <- xts(USF21$NO3_mg.l, order.by = USF21$DateTime)
 
 # Extract spectral data (assuming spectral columns are in range "200.00.nm" to "750.00.nm")
 scan.spec12 = xts(USF12[27:227], as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
@@ -148,15 +145,29 @@ grab_USF20 = USF20[USF20$Grab_sample == "Y",] # Ony gets data when there is a Y
 grab_USF21 = USF21[USF21$Grab_sample == "Y",] # Ony gets data when there is a Y
 
 grab.DOC12 = grab_USF12$NPOC..mg.C.L.
-grab.NO312 = grab_USF12$NO3..mg.N.L.
+grab.NO3N12 = grab_USF12$NO3..mg.N.L.
 
 grab.DOC20 = grab_USF20$NPOC..mg.C.L.
-grab.NO320 = grab_USF20$NO3..mg.N.L.
+grab.NO3N20 = grab_USF20$NO3..mg.N.L.
 
 grab.DOC21 = grab_USF21$NPOC..mg.C.L.
-grab.NO321 = grab_USF21$NO3..mg.N.L.
+grab.NO3N21 = grab_USF21$NO3..mg.N.L.
 
-# Compare grab vs scan DOC
+#### remove a couple of problematic samples ####
+grab_USF20 <- grab_USF20 %>%
+  mutate(NO3..mg.N.L. = ifelse(Date == "2024-05-23" | is.na(NO3..mg.N.L.),
+                               NA,
+                               NO3..mg.N.L.))
+
+# problematic dates for USF21
+problem_dates_USF21 <- c("2025-05-15", "2025-06-13", "2024-09-18")
+
+grab_USF21 <- grab_USF21 %>%
+  mutate(NO3..mg.N.L. = ifelse(Date %in% problem_dates_USF21 | is.na(NO3..mg.N.L.),
+                               NA,
+                               NO3..mg.N.L.))
+
+# compare grab vs scan DOC
 plot(grab_USF12$DOC_mg.l ~ grab_USF12$NPOC..mg.C.L.)
 ggplot(grab_USF12, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +
   geom_point(color = "blue") +
@@ -168,6 +179,7 @@ ggplot(grab_USF20, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +
   geom_point(color = "blue") +
   geom_text(aes(label = Date), vjust = -0.5, size = 3)  # adds date labels above points
 calib.mod.DOC20 = lm(grab_USF20$DOC_mg.l ~ grab_USF20$NPOC..mg.C.L.)
+
 summary(calib.mod.DOC20)
 
 ggplot(grab_USF21, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +
@@ -176,27 +188,27 @@ ggplot(grab_USF21, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +
 calib.mod.DOC21 = lm(grab_USF21$DOC_mg.l ~ grab_USF21$NPOC..mg.C.L.)
 summary(calib.mod.DOC21)
 
-# Compare grab vs scan NO3
-plot(grab_USF12$NO3_mg.l ~ grab_USF12$NO3..mg.N.L.)
-ggplot(grab_USF12, aes(x = NO3..mg.N.L., y = NO3_mg.l)) +
+# compare grab vs scan NO3
+plot(grab_USF12$NO3.N_mg.l ~ grab_USF12$NO3..mg.N.L.)
+ggplot(grab_USF12, aes(x = NO3..mg.N.L., y = NO3.N_mg.l)) +
   geom_point(color = "blue") +
   geom_text(aes(label = Date), vjust = -0.5, size = 3)  # adds date labels above points
-calib.mod.DOC12 = lm(grab_USF12$NO3_mg.l ~ grab_USF12$NO3..mg.N.L.)
-summary(calib.mod.DOC12)
+calib.mod.NO3N12 = lm(grab_USF12$NO3.N_mg.l ~ grab_USF12$NO3..mg.N.L.)
+summary(calib.mod.NO3N12)
 
-plot(grab_USF20$NO3_mg.l ~ grab_USF20$NO3..mg.N.L.)
-ggplot(grab_USF20, aes(x = NO3..mg.N.L., y = NO3_mg.l)) +
+plot(grab_USF20$NO3.N_mg.l ~ grab_USF20$NO3..mg.N.L.)
+ggplot(grab_USF20, aes(x = NO3..mg.N.L., y = NO3.N_mg.l)) +
   geom_point(color = "blue") +
   geom_text(aes(label = Date), vjust = -0.5, size = 3)  # adds date labels above points
-calib.mod.DOC20 = lm(grab_USF20$NO3_mg.l ~ grab_USF20$NO3..mg.N.L.)
-summary(calib.mod.DOC20)
+calib.mod.NO3N20 = lm(grab_USF20$NO3.N_mg.l ~ grab_USF20$NO3..mg.N.L.)
+summary(calib.mod.NO3N20)
 
-plot(grab_USF21$NO3_mg.l ~ grab_USF21$NO3..mg.N.L.)
-ggplot(grab_USF21, aes(x = NO3..mg.N.L., y = NO3_mg.l)) +
+plot(grab_USF21$NO3.N_mg.l ~ grab_USF21$NO3..mg.N.L.)
+ggplot(grab_USF21, aes(x = NO3..mg.N.L., y = NO3.N_mg.l)) +
   geom_point(color = "blue") +
   geom_text(aes(label = Date), vjust = -0.5, size = 3)  # adds date labels above points
-calib.mod.DOC21 = lm(grab_USF21$NO3_mg.l ~ grab_USF21$NO3..mg.N.L.)
-summary(calib.mod.DOC21)
+calib.mod.NO3N21 = lm(grab_USF21$NO3.N_mg.l ~ grab_USF21$NO3..mg.N.L.)
+summary(calib.mod.NO3N21)
 
 #######################################################################################
 #### STEP 4: Create matrices of GRAB spectral data - this is the training data set ####
@@ -400,28 +412,28 @@ attributes(scan.spectra21)
 # 3. Full s::can spectra (from 220-750nm)
 
 length(scan_DOC_USF12)
-length(scan_NO3_USF12)
+length(scan_NO3N_USF12)
 dim(scan.spectra12) 
 class(scan.spectra12)
 
 # NOTE: We use the I() function to protect the Spectra 
-spectralcal.df12 = data.frame(DOC12 = scan_DOC_USF12, NO312 = scan_NO3_USF12, Spectra12 = I(scan.spectra12))
+spectralcal.df12 = data.frame(DOC12 = scan_DOC_USF12, NO3N12 = scan_NO3N_USF12, Spectra12 = I(scan.spectra12))
 str(spectralcal.df12)
 
-spectralcal.df20 = data.frame(DOC20 = scan_DOC_USF20, NO320 = scan_NO3_USF20, Spectra20 = I(scan.spectra20))
+spectralcal.df20 = data.frame(DOC20 = scan_DOC_USF20, NO3N20 = scan_NO3N_USF20, Spectra20 = I(scan.spectra20))
 str(spectralcal.df20)
 
-spectralcal.df21 = data.frame(DOC21 = scan_DOC_USF21, NO321 = scan_NO3_USF21, Spectra21 = I(scan.spectra21))
+spectralcal.df21 = data.frame(DOC21 = scan_DOC_USF21, NO3N21 = scan_NO3N_USF21, Spectra21 = I(scan.spectra21))
 str(spectralcal.df21)
 
 # Also do this for the GRAB sample data
-grabcal.df12 = data.frame(DOC12 = grab.DOC12, NO312 = grab.NO312, Spectra12 = I(grab.spectra12))
+grabcal.df12 = data.frame(DOC12 = grab.DOC12, NO3N12 = grab.NO3N12, Spectra12 = I(grab.spectra12))
 str(grabcal.df12)
 
-grabcal.df20 = data.frame(DOC20 = grab.DOC20, NO320 = grab.NO320, Spectra20 = I(grab.spectra20))
-str(grabcal.df20)
+grabcal.df20 = data.frame(DOC20 = grab.DOC20, NO3N20 = grab.NO3N20, Spectra20 = I(grab.spectra20))
+ str(grabcal.df20)
 
-grabcal.df21 = data.frame(DOC21 = grab.DOC21, NO321 = grab.NO321, Spectra21 = I(grab.spectra21))
+grabcal.df21 = data.frame(DOC21 = grab.DOC21, NO3N21 = grab.NO3N21, Spectra21 = I(grab.spectra21))
 str(grabcal.df21)
 
 #################################################
@@ -441,7 +453,7 @@ NTest12 = spectralcal.df12
 Cmod12 = plsr(DOC12 ~ Spectra12, ncomp = 10, data = CTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod12) # optimized for 4 components
 
-Nmod12 = plsr(NO312 ~ Spectra12, ncomp = 10, data = NTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
+Nmod12 = plsr(NO3N12 ~ Spectra12, ncomp = 10, data = NTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod12)
 
 # Plot RMSE of the predictions to optimize model
@@ -523,7 +535,7 @@ NTest20 = spectralcal.df20
 Cmod20 = plsr(DOC20 ~ Spectra20, ncomp = 10, data = CTrain20, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod20) # optimized for 4 components
 
-Nmod20 = plsr(NO320 ~ Spectra20, ncomp = 10, data = NTrain20, validation = "LOO") # usually ncomp is N-1 grab samples you have
+Nmod20 = plsr(NO3N20 ~ Spectra20, ncomp = 10, data = NTrain20, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod20)
 
 # Plot RMSE of the predictions to optimize model
@@ -583,7 +595,7 @@ NTest21 = spectralcal.df21
 Cmod21 = plsr(DOC21 ~ Spectra21, ncomp = 5, data = CTrain21, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod21) # optimized for 4 components
 
-Nmod21 = plsr(NO321 ~ Spectra21, ncomp = 7, data = NTrain21, validation = "LOO") # usually ncomp is N-1 grab samples you have
+Nmod21 = plsr(NO3N21 ~ Spectra21, ncomp = 7, data = NTrain21, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod21)
 
 # Plot RMSE of the predictions to optimize model
@@ -612,6 +624,19 @@ plot(predictedN21)
 
 write.csv(predictedC21, file = "predicted/PredictedC_USF21.csv") # <- this is your newly calibrated dataset!
 write.csv(predictedN21, file = "predicted/PredictedN_USF21.csv") # <- this is your newly calibrated dataset!
+
+
+# 1. Loadings Plot for USF12 (Opposite Trend)
+# This shows how the wavelengths contribute to each component (ncomp = 1, 2, 3, etc.)
+plot(Nmod12, plottype = "loading",
+     comps = 1:2, # Plot the first two components for initial inspection
+     main = "USF12 NO3-N PLSR Loadings")
+
+# 2. Loadings Plot for USF21 (Flat Trend)
+# Examine the first few components for USF21
+plot(Nmod21, plottype = "loading",
+     comps = 1:2, # Plot the first two components
+     main = "USF21 NO3-N PLSR Loadings")
 
 #######################
 #### Save in Drive #### 
