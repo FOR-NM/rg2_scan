@@ -179,7 +179,6 @@ ggplot(grab_USF20, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +
   geom_point(color = "blue") +
   geom_text(aes(label = Date), vjust = -0.5, size = 3)  # adds date labels above points
 calib.mod.DOC20 = lm(grab_USF20$DOC_mg.l ~ grab_USF20$NPOC..mg.C.L.)
-
 summary(calib.mod.DOC20)
 
 ggplot(grab_USF21, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +

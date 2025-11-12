@@ -17,7 +17,6 @@ file.remove(files)
 ##########################
 #### Import scan data ####
 ##########################
-
 #### list and download all files in the folder ####
 # this is the "raw" folder
 scan <- googledrive::as_id("https://drive.google.com/drive/folders/1x6tPgXn-DgmBVvFTMG0TEo2AxqHqQLwV")
@@ -26,7 +25,7 @@ scan_csvs <- googledrive::drive_ls(path = scan)
 3
 
 # create empty list to store data frames
-scan_list <- list()
+scan_list_param <- list()
 
 # loop over each file in the `scan_csvs` data frame
 for (i in seq_along(scan_csvs$id)) {
@@ -50,35 +49,35 @@ for (i in seq_along(scan_csvs$id)) {
   data <- read_excel(local_path, skip = 4, col_names = col_names)
   
   # store the data in the list
-  scan_list[[scan_csvs$name[i]]] <- data
+  scan_list_param[[scan_csvs$name[i]]] <- data
 }
 
 ####################################
 #### Combine data for each site ####
 ####################################
 # loop through each data frame in the list to change DateTime column name
-for (i in seq_along(scan_list)) {
+for (i in seq_along(scan_list_param)) {
   # Access the current data frame
-  df <- scan_list[[i]]
+  df <- scan_list_param[[i]]
   
   # change names for easier handling
   colnames(df)[1] ="DateTime"
   
   # update the data frame in the list
-  scan_list[[i]] <- df
+  scan_list_param[[i]] <- df
 }
 
 # site names
 site_names <- c("SSM01", "SSM20", "SST13")
 
-# group files in `scan_list` by matching `site_names` in file names
+# group files in `scan_list_param` by matching `site_names` in file names
 
 scan_list_by_site <- lapply(site_names, function(site) {
-  # names(scan_list) gives the names of all files in scan_list.
-  site_files <- names(scan_list)[grepl(site, names(scan_list))] 
-  # grep checks if the current site (e.g., SSM01) appears in each file name in scan_list. 
+  # names(scan_list_param) gives the names of all files in scan_list_param
+  site_files <- names(scan_list_param)[grepl(site, names(scan_list_param))] 
+  # grep checks if the current site (e.g., SSM01) appears in each file name in scan_list_param. 
   # This returns a logical vector (TRUE for matches, FALSE otherwise).
-  scan_list[site_files] # select only the files for this site
+  scan_list_param[site_files] # select only the files for this site
   # The [ ] indexing selects only the file names where the match is TRUE.
 })
 
@@ -108,7 +107,7 @@ lapply(names(combined_by_site), function(site) {
   
 lapply(names(combined_by_site), function(site) {
   file <- paste0("data/", site, "_params.csv")
-  # this is the in use folder
+  # this is the time stamps folder
   drive_folder_id <- "1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR"
   # Upload file to the specified Google Drive folder
   drive_put(
@@ -125,7 +124,6 @@ lapply(names(combined_by_site), function(site) {
 ##########################
 #### Import scan data ####
 ##########################
-
 # create empty list to store data frames
 scan_list <- list()
 
@@ -208,7 +206,7 @@ lapply(names(combined_by_site), function(site) {
 
 lapply(names(combined_by_site), function(site) {
   file <- paste0("data/", site, "_abs.csv")
-  # this is the in use folder
+  # this is the time stamps folder
   drive_folder_id <- "1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR"
   # Upload file to the specified Google Drive folder
   drive_put(
@@ -216,3 +214,4 @@ lapply(names(combined_by_site), function(site) {
     path = as_id(drive_folder_id)
   )
 })
+

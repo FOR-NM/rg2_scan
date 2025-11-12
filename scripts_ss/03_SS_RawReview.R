@@ -22,8 +22,8 @@ file.remove(files)
 #################################
 #### Import & Visualize Data ####
 #################################
-# load data from Google drive, this is the "merged" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR")
+# load data from Google drive, this is the "with grab" folder
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1Wju54VbyACZ_RFtfeInSvBCiVDKFScGj")
 # list all CSV files in the folder
 scan_csvs <- googledrive::drive_ls(path = scan, type = "csv")
 3
@@ -49,10 +49,10 @@ for (i in seq_along(scan_csvs$id)) {
   scan_list[[scan_csvs$name[i]]] <- data
 }
 
-#### remove abs files from list ####
-# we are just plotting parameters to see how data looks
-# remove 1st through 3rd items in this case, check position of abs files
-scan_list = scan_list[-c(1:3)]
+# #### remove abs files from list ####
+# # we are just plotting parameters to see how data looks
+# # remove 1st through 3rd items in this case, check position of abs files
+# scan_list = scan_list[-c(1:3)]
 
 ################################
 #### Format DateTime column ####

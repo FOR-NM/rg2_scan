@@ -35,9 +35,9 @@ SSM01_abs <- read.csv("googledrive/SSM01_abs.csv")
 #############################
 # change datetime format
 SSM01_params <- SSM01_params %>%
-  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Central"))
+  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
 SSM01_abs <- SSM01_abs %>%
-  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Central"))
+  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
 
 #################################
 #### Merge parameter and abs ####
@@ -55,7 +55,7 @@ write.csv(SSM01_merged,"data/02_SSM01_absparams.csv" , row.names=FALSE, quote=FA
 
 # define the target folder ID in Google Drive
 # this is the "merged" folder
-drive_folder_id <- "1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR"
+drive_folder_id <- "1WbfZWpSeXVLoSEvxqbVnjgvgo4uUwGtm"
 
 # upload the file to the specified Google Drive folder
 drive_upload(media = "data/02_SSM01_absparams.csv", path = as_id(drive_folder_id))
@@ -82,9 +82,9 @@ SSM20_abs <- read.csv("googledrive/SSM20_abs.csv")
 #############################
 # change datetime format
 SSM20_params <- SSM20_params %>%
-  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Central"))
+  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
 SSM20_abs <- SSM20_abs %>%
-  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Central"))
+  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
 
 #################################
 #### Merge parameter and abs ####
@@ -102,7 +102,7 @@ write.csv(SSM20_merged,"data/02_SSM20_absparams.csv" , row.names=FALSE, quote=FA
 
 # define the target folder ID in Google Drive
 # this is the "merged" folder
-drive_folder_id <- "1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR"
+drive_folder_id <- "1WbfZWpSeXVLoSEvxqbVnjgvgo4uUwGtm"
 
 # upload the file to the specified Google Drive folder
 drive_upload(media = "data/02_SSM20_absparams.csv", path = as_id(drive_folder_id))
@@ -129,9 +129,9 @@ SST13_abs <- read.csv("googledrive/SST13_abs.csv")
 #############################
 # change datetime format
 SST13_params <- SST13_params %>%
-  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Central"))
+  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
 SST13_abs <- SST13_abs %>%
-  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Central"))
+  mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
 
 #################################
 #### Merge parameter and abs ####
@@ -149,7 +149,7 @@ write.csv(SST13_merged,"data/02_SST13_absparams.csv" , row.names=FALSE, quote=FA
 
 # define the target folder ID in Google Drive
 # this is the "merged" folder
-drive_folder_id <- "1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR"
+drive_folder_id <- "1WbfZWpSeXVLoSEvxqbVnjgvgo4uUwGtm"
 
 # upload the file to the specified Google Drive folder
 drive_upload(media = "data/02_SST13_absparams.csv", path = as_id(drive_folder_id))

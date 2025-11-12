@@ -133,29 +133,29 @@ sum(duplicated(sample_times))
 #### Import scan data ####
 ##########################
 #### Import abs and parameter data ####
-# This is the "merged" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1--vHCs6vefqpfrHz4ObLWE6gqzxT0eJS")
+# This is the "params and abs" folder
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1WbfZWpSeXVLoSEvxqbVnjgvgo4uUwGtm")
 
 # List all the files in the folder
 merged <- googledrive::drive_ls(path = scan, type = "csv")
 
 #SSM01
-googledrive::drive_download(file = merged$id[merged$name=="03_SSM01_absparams_clean.csv"], 
-                            path = "googledrive/03_SSM01_absparams_clean.csv",
+googledrive::drive_download(file = merged$id[merged$name=="02_SSM01_absparams.csv"], 
+                            path = "googledrive/02_SSM01_absparams.csv",
                             overwrite = T)
 #SSM20
-googledrive::drive_download(file = merged$id[merged$name=="03_SSM20_absparams_clean.csv"], 
-                            path = "googledrive/03_SSM20_absparams_clean.csv",
+googledrive::drive_download(file = merged$id[merged$name=="02_SSM20_absparams.csv"], 
+                            path = "googledrive/02_SSM20_absparams.csv",
                             overwrite = T)
 #SST13
-googledrive::drive_download(file = merged$id[merged$name=="03_SST13_absparams_clean.csv"], 
-                            path = "googledrive/03_SST13_absparams_clean.csv",
+googledrive::drive_download(file = merged$id[merged$name=="02_SST13_absparams.csv"], 
+                            path = "googledrive/02_SST13_absparams.csv",
                             overwrite = T)
 
 # Load them separately 
-SSM01 <- read.csv("googledrive/03_SSM01_absparams_clean.csv")
-SSM20 <- read.csv("googledrive/03_SSM20_absparams_clean.csv")
-SST13 <- read.csv("googledrive/03_SST13_absparams_clean.csv")
+SSM01 <- read.csv("googledrive/02_SSM01_absparams.csv")
+SSM20 <- read.csv("googledrive/02_SSM20_absparams.csv")
+SST13 <- read.csv("googledrive/02_SST13_absparams.csv")
 
 # Convert the DateTime column to POSIXct
 SSM01$DateTime <- as.POSIXct(SSM01$DateTime, format = "%Y-%m-%d %H:%M")

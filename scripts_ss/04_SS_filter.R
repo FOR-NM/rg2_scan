@@ -19,7 +19,6 @@ file.remove(files)
 ##########################
 #### Import scan data ####
 ##########################
-
 #### Import abs and parameter data ####
 # This is the "merged" folder
 scan <- googledrive::as_id("https://drive.google.com/drive/folders/1qpsqrmcnALNS9OVtoIDICdEuW5LkVuIR")
@@ -58,7 +57,6 @@ sum(duplicated(SSM01))
 ##################
 #### Clean up ####
 ##################
-
 # #### Keep rows with only 15-minute intervals ####
 # SSM20 <- SSM20 %>%
 #   filter(format(SSM20$DateTime, "%M") %in% c("00", "15", "30", "45"))
@@ -159,7 +157,6 @@ SSM01_clean <- SSM01 %>%
 #####################################
 #### Plot all variables separate ####
 #####################################
-
 # Function to plot each variable separately in the same panel
 plot_variables <- function(df) {
   # Ensure column selection works correctly
