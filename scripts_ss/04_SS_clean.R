@@ -12,7 +12,7 @@ library(ggplot2)
 #### Clear folders that we will use ####
 ########################################
 # list and delete all files in the folder
-files <- list.files(path = "scan_figs", full.names = TRUE)
+files <- list.files(path = "data", full.names = TRUE)
 file.remove(files)
 
 files <- list.files(path = "googledrive", full.names = TRUE)

@@ -38,7 +38,7 @@ googledrive::drive_download(file = chem_csv$id[chem_csv$name=="2025-08-20_chem_d
 wqual = read.csv("googledrive/2025-08-20_chem_data.csv")
 
 # format date columns
-wqual$Collection.Date <- as.Date(wqual$Collection.Date, format = "%Y-%m-%d")
+wqual$Collection.Date <- as.Date(wqual$Collection.Date, format = "%m/%d/%y")
 # rename Collection Date column
 wqual <- wqual %>% rename(Date = Collection.Date)
 
@@ -73,6 +73,9 @@ data_avg <- NM %>%
 # count non-NA values in Q column using dplyr
 nonna_counts_dplyr <- data_avg %>%
   summarise_all(~ sum(!is.na(.)))
+
+# save the averaged chem data to a CSV file
+# write.csv(data_avg,"googledrive/avg_chem.csv" , row.names=FALSE, quote=FALSE)
 
 #### load sample info to get grab sample collection time ####
 samplelogsheet <- drive_get("https://docs.google.com/spreadsheets/d/1xxSKNQiXFZ-jtFHj2ruqwq5LqSrl9hc37rCcNp8gQ0s/edit?gid=0#gid=0")
