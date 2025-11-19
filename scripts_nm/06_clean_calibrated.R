@@ -106,14 +106,20 @@ USF21_pred <- merge(USF21_spec, USF21, by = c("DateTime"))
 data.frame(colnames(USF12_pred))
 
 USF12_test <- USF12_pred %>%
-  mutate(across(243, #add 27:227 to do that for spectral values
+  mutate(across(c(243, 27:236), 
                 list(clean = ~ if_else(. < 0 | . > 100, NA_real_, as.numeric(.))),
                 .names = "{.col}_{.fn}"))
 
 USF12_test <- USF12_test %>%
-  mutate(across(243,
+  mutate(across(c(243, 27:236), 
                 list(flag  = ~ if_else(. < 0 | . > 100, TRUE, FALSE, missing = FALSE)),
                 .names = "{.col}_{.fn}")) 
+
+USF12_test <- USF12_pred %>%
+  # Filter to keep only the rows where the condition is NOT met
+  # The ! operator negates the condition: it keeps rows where it's NOT true
+  # that *any* column in 27:236 is < 0 OR > 100.
+  filter(!if_any(c(27:236), ~ . < -2 | . > 100))
 
 ### USF20 ###
 # First check column numbers, look for spectral columns
@@ -151,74 +157,74 @@ USF21_test <- USF21_test %>%
                 list(flag  = ~ if_else(. < 0 | . > 100, TRUE, FALSE, missing = FALSE)),
                 .names = "{.col}_{.fn}"))
 
-# ################################
-# #### Plot clean absorbances ####
-# ################################
-# # Rename columns for all data frames
-# rename_columns <- function(df) {
-#   colnames(df) <- gsub("^X|\\.nm$", "", colnames(df))
-#   return(df)
-# }
-# # Apply the renaming to each data frame
-# USF12_test <- rename_columns(USF12_test)
-# USF20_test <- rename_columns(USF20_test)
-# USF21_test <- rename_columns(USF21_test)
-# 
-# # find spebtral data in df 
-# data.frame(colnames(USF12_test))
-# data.frame(colnames(USF20_test))
-# data.frame(colnames(USF21_test))
-# 
-# scan.spec12 = USF12_test[244:444]
-# scan.spec20 = USF20_test[242:442]
-# scan.spec21 = USF21_test[244:444]
-# 
-# # Rows = wavelength
-# # Columns = date/time
-# abs12 = (scan.spec12)
-# abs20 = (scan.spec20) 
-# abs21 = (scan.spec21) 
-# 
-# wl12 <- gsub(".nm_clean", "", colnames(abs12))   
-# wl12 <- as.numeric(wl12)
-# wl20 <- gsub(".nm_clean", "", colnames(abs20))   
-# wl20 <- as.numeric(wl20)
-# wl21 <- gsub(".nm_clean", "", colnames(abs21))   
-# wl21 <- as.numeric(wl21)
-# 
-# lastrow12 = as.numeric(nrow(abs12))
-# Num12 = c(1:lastrow12)
-# lastrow20 = as.numeric(nrow(abs20))
-# Num20 = c(1:lastrow20)
-# lastrow21 = as.numeric(nrow(abs21))
-# Num21 = c(1:lastrow21)
-# 
-# #USF12
-# scan.matrix12 = cbind(abs12)
-# rownames(scan.matrix12) = as.numeric(Num12)
-# colnames(scan.matrix12) = as.numeric(wl12)
-# 
-# scan.matrix12 = as.matrix(scan.matrix12)
-# spec12 = spectra(value = abs12, bands = wl12, names = Num12)
-# plot(spec12) # Note = reflectance here = absorbance from the scans
-# 
-# #USF20
-# scan.matrix20 = cbind(abs20)
-# rownames(scan.matrix20) = as.numeric(Num20)
-# colnames(scan.matrix20) = as.numeric(wl20)
-# 
-# scan.matrix20 = as.matrix(scan.matrix20)
-# spec20 = spectra(value = abs20, bands = wl20, names = Num20)
-# plot(spec20) # Note = reflectance here = absorbance from the scans
-# 
-# #USF21
-# scan.matrix21 = cbind(abs21)
-# rownames(scan.matrix21) = as.numeric(Num21)
-# colnames(scan.matrix21) = as.numeric(wl21)
-# 
-# scan.matrix21 = as.matrix(scan.matrix21)
-# spec21 = spectra(value = abs21, bands = wl21, names = Num21)
-# plot(spec21) # Note = reflectance here = absorbance from the scans
+################################
+#### Plot clean absorbances ####
+################################
+# Rename columns for all data frames
+rename_columns <- function(df) {
+  colnames(df) <- gsub("^X|\\.nm$", "", colnames(df))
+  return(df)
+}
+# Apply the renaming to each data frame
+USF12_test <- rename_columns(USF12_test)
+USF20_test <- rename_columns(USF20_test)
+USF21_test <- rename_columns(USF21_test)
+
+# find spebtral data in df
+data.frame(colnames(USF12_test))
+data.frame(colnames(USF20_test))
+data.frame(colnames(USF21_test))
+
+scan.spec12 = USF12_test[27:236] #245:454
+scan.spec20 = USF20_test[242:442]
+scan.spec21 = USF21_test[244:444]
+
+# Rows = wavelength
+# Columns = date/time
+abs12 = (scan.spec12)
+abs20 = (scan.spec20)
+abs21 = (scan.spec21)
+
+wl12 <- gsub(".nm_clean", "", colnames(abs12))
+wl12 <- as.numeric(wl12)
+wl20 <- gsub(".nm_clean", "", colnames(abs20))
+wl20 <- as.numeric(wl20)
+wl21 <- gsub(".nm_clean", "", colnames(abs21))
+wl21 <- as.numeric(wl21)
+
+lastrow12 = as.numeric(nrow(abs12))
+Num12 = c(1:lastrow12)
+lastrow20 = as.numeric(nrow(abs20))
+Num20 = c(1:lastrow20)
+lastrow21 = as.numeric(nrow(abs21))
+Num21 = c(1:lastrow21)
+
+#USF12
+scan.matrix12 = cbind(abs12)
+rownames(scan.matrix12) = as.numeric(Num12)
+colnames(scan.matrix12) = as.numeric(wl12)
+
+scan.matrix12 = as.matrix(scan.matrix12)
+spec12 = spectra(value = abs12, bands = wl12, names = Num12)
+plot(spec12) # Note = reflectance here = absorbance from the scans
+
+#USF20
+scan.matrix20 = cbind(abs20)
+rownames(scan.matrix20) = as.numeric(Num20)
+colnames(scan.matrix20) = as.numeric(wl20)
+
+scan.matrix20 = as.matrix(scan.matrix20)
+spec20 = spectra(value = abs20, bands = wl20, names = Num20)
+plot(spec20) # Note = reflectance here = absorbance from the scans
+
+#USF21
+scan.matrix21 = cbind(abs21)
+rownames(scan.matrix21) = as.numeric(Num21)
+colnames(scan.matrix21) = as.numeric(wl21)
+
+scan.matrix21 = as.matrix(scan.matrix21)
+spec21 = spectra(value = abs21, bands = wl21, names = Num21)
+plot(spec21) # Note = reflectance here = absorbance from the scans
 
 ##########################
 #### Clean a bit more ####

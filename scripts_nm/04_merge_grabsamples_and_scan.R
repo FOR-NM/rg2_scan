@@ -38,7 +38,7 @@ googledrive::drive_download(file = chem_csv$id[chem_csv$name=="2025-08-20_chem_d
 wqual = read.csv("googledrive/2025-08-20_chem_data.csv")
 
 # format date columns
-wqual$Collection.Date <- as.Date(wqual$Collection.Date, format = "%m/%d/%y")
+wqual$Collection.Date <- as.Date(wqual$Collection.Date, format = "%Y-%m-%d")
 # rename Collection Date column
 wqual <- wqual %>% rename(Date = Collection.Date)
 
