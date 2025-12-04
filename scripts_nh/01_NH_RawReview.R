@@ -57,37 +57,6 @@ for (i in seq_along(scan_csvs$id)) {
 # remove abs
 scan_list <- scan_list[-c(1,3:7)]
 
-#################
-#### Tidying #### 
-#################
-# ### rename columns and change to values to numeric ###
-# # loop through each data frame in the list
-# for (i in seq_along(scan_list)) {
-#   # access the current data frame
-#   df <- scan_list[[i]]
-#   
-#   # change names for easier handling
-#   colnames(df)[1] ="dateTime"
-#   colnames(df)[2] ="DOC"
-#   colnames(df)[6] ="NO3N"
-#   colnames(df)[8] ="NO3"
-#   colnames(df)[12] ="TOC"
-#   colnames(df)[14] ="TSS"
-#   colnames(df)[16] ="Temp"
-#   colnames(df)[11] ="Voltage"
-#   
-#   # make sure values are numeric 
-#   df$DOC <- as.numeric(df$DOC)
-#   df$NO3N <- as.numeric(df$NO3N)
-#   df$NO3 <- as.numeric(df$NO3)
-#   df$TOC <- as.numeric(df$TOC)
-#   df$TSS <- as.numeric(df$TSS)
-#   df$Temp <- as.numeric(df$Temp)
-#   
-#   # update the data frame in the list
-#   scan_list[[i]] <- df
-# }
-
 # Ensure DateTime column is properly formatted
 scan_list <- lapply(scan_list, function(df) {
   df$DateTime <- as.POSIXct(df$DateTime, "%Y-%m-%d %H:%M:%S") # Ensure consistent format
@@ -209,7 +178,6 @@ for (i in seq_along(scan_list)) {
   print(p)
 }
 
-
 ###########################
 #### Plot all together ####
 ###########################
@@ -256,55 +224,72 @@ USGS_LMP72$DateTime <- USGS_LMP72$dateTime
 USGS_LMP27$DateTime <- USGS_LMP27$dateTime
 USGS_LMP07$DateTime <- USGS_LMP07$dateTime
 
-#####################################
+########################################
+#### Merge parameters and USGS data ####
+########################################
+# extract parameters from list
+CTB <- scan_list[["NHCTB_params.csv"]]
+SMB <- scan_list[["NHSBM_params.csv"]]
+LMP72 <- scan_list[["NHLMP72_params.csv"]]
+LMP27 <- scan_list[["NHLMP27_params.csv"]]
+LMP07 <- scan_list[["NHLMP07_params.csv"]]
 
+# First check if the merge works
+datCTB <- merge(CTB, USGS_CTB, by = "DateTime")
+datSMB <- merge(SMB, USGS_SBM, by = "DateTime")
+datLMP72 <- merge(LMP72, USGS_LMP72, by = "DateTime")
+datLMP27 <- merge(LMP27, USGS_LMP27, by = "DateTime")
+datLMP07 <- merge(LMP07, USGS_LMP07, by = "DateTime")
+
+# return to list
+combined <- list()
+
+combined$CTB<- datCTB
+combined$SMB<- datSMB 
+combined$LMP72<- datLMP72 
+combined$LMP27<- datLMP27 
+combined$LMP07<- datLMP07 
+
+#####################################
 #### Plot all variables separate ####
-
 #####################################
-# function to retrieve and plot USGS data with separate facets for each variable
-plot_usgs_faceted <- function(df, usgs_df, label) {
-  # convert to xts and merge data frames
-  df_xts <- xts(df, order.by = df$DateTime)
-  usgs_xts <- xts(usgs_df, order.by = usgs_df$DateTime)
-  combined_xts <- merge(df_xts, usgs_xts, join = "outer")
-  combined_df <- data.frame(DateTime = index(combined_xts), coredata(combined_xts))
+plot_usgs_faceted <- function(df, label) {
   
-  # convert columns to numeric, if necessary
-  combined_df <- combined_df %>% mutate(across(c(`Temperature_19 [°C] - Measured value`, 
-                                                 `TSSeq [mg/l] - Measured value`, 
-                                                 `TOCeq [mg/l] - Measured value`, 
-                                                 `NO3-Neq [mg/l] - Measured value`,
-                                                 `NO3eq [mg/l] - Measured value`,
-                                                 `DOCeq [mg/l] - Measured value`, 
-                                                 Flow_Inst), as.numeric))
+  # Columns you want to plot
+  vars <- c(
+    "TSSeq [mg/l] - Measured value",
+    "TOCeq [mg/l] - Measured value",
+    "NO3-Neq [mg/l] - Measured value",
+    "NO3eq [mg/l] - Measured value",
+    "DOCeq [mg/l] - Measured value",
+    "Flow_Inst"
+  )
   
-  # reshape data to long format for faceting
-  combined_long <- combined_df %>%
-    dplyr::select(DateTime, 
-                  `Temperature_19 [°C] - Measured value`, 
-                  `TSSeq [mg/l] - Measured value`, 
-                  `TOCeq [mg/l] - Measured value`, 
-                  `NO3-Neq [mg/l] - Measured value`,
-                  `NO3eq [mg/l] - Measured value`,
-                  `DOCeq [mg/l] - Measured value`,
-                  Flow_Inst) %>%
-    pivot_longer(cols = -DateTime, names_to = "Variable", values_to = "Value")
+  # Convert to numeric if they exist
+  df <- df %>%
+    mutate(across(any_of(vars), as.numeric))
   
-  # plot using facet_wrap for each variable
-  ggplot(data = combined_long, aes(x = DateTime, y = Value, color = Variable)) +
+  # Reshape to long
+  long_df <- df %>%
+    select(any_of(c("DateTime", vars))) %>%
+    pivot_longer(cols = -DateTime,
+                 names_to = "Variable",
+                 values_to = "Value")
+  
+  # Plot
+  ggplot(long_df, aes(DateTime, Value, color = Variable)) +
     geom_line() +
-    facet_wrap(~Variable, scales = "free_y", ncol = 1) +  # separate facet for each variable
+    facet_wrap(~Variable, scales = "free_y", ncol = 1) +
     scale_x_datetime(date_breaks = "2 week", date_labels = "%m/%d") +
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
     ylab(label) +
     ggtitle(label) +
-    theme(legend.position = "none")  # Hide the legend as it's redundant with faceting
+    theme(legend.position = "none")
 }
 
-# plot
-print(plot_usgs_faceted(scan_list[[1]], USGS_CTB, scan_csvs$name[1]))
-print(plot_usgs_faceted(scan_list[[3]], USGS_SBM, scan_csvs$name[3]))
-print(plot_usgs_faceted(scan_list[[4]], USGS_LMP72, scan_csvs$name[4]))
-print(plot_usgs_faceted(scan_list[[5]], USGS_LMP27, scan_csvs$name[5]))
-print(plot_usgs_faceted(scan_list[[6]], USGS_LMP07, scan_csvs$name[6]))
+print(plot_usgs_faceted(combined$CTB, "CTB"))
+print(plot_usgs_faceted(combined$SMB, "SMB"))
+print(plot_usgs_faceted(combined$LMP72, "LMP72"))
+print(plot_usgs_faceted(combined$LMP27, "LMP27"))
+print(plot_usgs_faceted(combined$LMP07, "LMP07"))
 

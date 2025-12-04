@@ -49,6 +49,17 @@ wqual <- wqual[ , !(names(wqual) %in% drops)]
 # Filter to get just SS data
 NH <- filter(wqual, Sub_Project == "QuEST")
 
+# Format time columns
+NH$Time <- format(as.POSIXct(NH$Collection.Time, format = "%I:%M:%S %p"), "%H:%M:%S")
+
+# Combine Date and Time columns into a new DateTime column
+NH$DateTime <- paste(NH$Date, NH$Time, sep = " ")
+# Convert the DateTime column to POSIXct
+NH$DateTime <- as.POSIXct(NH$DateTime, format = "%Y-%m-%d %H:%M")
+
+# Round DateTime to the nearest 15-minute interval 
+NH$DateTime <- round_date(NH$DateTime, unit="15 mins")
+
 #### There are no reps for NH so no need to merge here (reps and bottles) ####
 
 #### Load sample info to get grab sample collection time ####
@@ -67,9 +78,10 @@ samplelogsheet$Collection_Date <- convertToDateTime(samplelogsheet$Collection_Da
 # Format date and time columns
 samplelogsheet$Date <- as.Date(samplelogsheet$Collection_Date, format = "%Y/%m/%d")
 samplelogsheet$Time <- format(as.POSIXct(samplelogsheet$Collection_Time, format = "%Y-%m-%d %H:%M:%S"), "%H:%M:%S")
-
+  
 # Clean up a bit
-drops <- c("DTWT", "Volume", "Dilution", "Start.Date/Time", "Lab_Notes", "Refrigerated_Received", "Frozen_Received", "BatchID")
+drops <- c("DTWT", "Volume", "Dilution", "Start.Date/Time", "Lab_Notes", "Refrigerated_Received", "Frozen_Received", "BatchID", "Salinity", 
+           "Sample_Type", "UNH#", "Project", "Sub_Project", "Sub_ProjectA", "Sub_ProjectB", "Field_Notes", "Logger")
 samplelogsheet <- samplelogsheet[ , !(names(samplelogsheet) %in% drops)]
 
 # #### Change sample time to fit scan time ####
@@ -84,7 +96,7 @@ samplelogsheet <- samplelogsheet[ , !(names(samplelogsheet) %in% drops)]
 # Combine Date and Time columns into a new DateTime column
 samplelogsheet$DateTime <- paste(samplelogsheet$Date, samplelogsheet$Time, sep = " ")
 # Convert the DateTime column to POSIXct
-samplelogsheet$DateTime <- as.POSIXct(samplelogsheet$DateTime, format = "%Y-%m-%d %H:%M")
+samplelogsheet$DateTime <- as.POSIXct(samplelogsheet$DateTime, format = "%Y-%m-%d %H:%M:%S")
 
 # Round DateTime to the nearest 15-minute interval 
 samplelogsheet$DateTime <- round_date(samplelogsheet$DateTime, unit="15 mins")
@@ -104,13 +116,14 @@ wqual_scans <- NH %>% filter(Sample.Name %in% c("CTB", "LMP07", "LMP27", "LMP72"
 wqual_scans <- wqual_scans %>% 
   rename(Sample_Name = Sample.Name)
 
-# merge wqual data first
+### Merge wqual data first ###
 sample_times <- merge(wqual_scans, samplelogsheet, by = c("Date", "Sample_Name"), all = T)
 
-# Check for duplicates in the original datasets
-sum(duplicated(sample_times))
-# Remove duplicates from the original datasets
-# sample_times <- sample_times %>% distinct()
+sample_times <- sample_times %>%
+  mutate(is.na(DateTime.y), DateTime.x)
+# Clean up a bit
+drops <- c("Date.y", "UNH.ID..", "Sub_Project", "Site", "Field.Notes", "Lab_Notes", "Temperature.y", "Turbidity.y", "WL.(mm)")
+sample_times <- sample_times[ , !(names(sample_times) %in% drops)]
 
 ##########################
 #### Import scan data ####
@@ -155,23 +168,37 @@ LMP27 <- read.csv("googledrive/LMP27_absparams.csv")
 LMP72 <- read.csv("googledrive/LMP72_absparams.csv")
 
 # Convert the DateTime column to POSIXct
-CTB$DateTime <- as.POSIXct(CTB$DateTime, format = "%Y-%m-%d %H:%M")
-SMB$DateTime <- as.POSIXct(SMB$DateTime, format = "%Y-%m-%d %H:%M")
-NCBd$DateTime <- as.POSIXct(NCBd$DateTime, format = "%Y-%m-%d %H:%M")
-LMP07$DateTime <- as.POSIXct(LMP07$DateTime, format = "%Y-%m-%d %H:%M")
-LMP27$DateTime <- as.POSIXct(LMP27$DateTime, format = "%Y-%m-%d %H:%M")
-LMP72$DateTime <- as.POSIXct(LMP72$DateTime, format = "%Y-%m-%d %H:%M")
+CTB$DateTime <- as.POSIXct(CTB$DateTime, format = "%Y-%m-%d %H:%M:%S")
+SMB$DateTime <- as.POSIXct(SMB$DateTime, format = "%Y-%m-%d %H:%M:%S")
+NCBd$DateTime <- as.POSIXct(NCBd$DateTime, format = "%Y-%m-%d %H:%M:%S")
+LMP07$DateTime <- as.POSIXct(LMP07$DateTime, format = "%Y-%m-%d %H:%M:%S")
+LMP27$DateTime <- as.POSIXct(LMP27$DateTime, format = "%Y-%m-%d %H:%M:%S")
+LMP72$DateTime <- as.POSIXct(LMP72$DateTime, format = "%Y-%m-%d %H:%M:%S")
 
 ##################################
 #### Merge chem and scan data ####
 ##################################
 # Filter to get just one site at a time
-UCTB <- filter(sample_times, Site == "CTB")
-USMB <- filter(sample_times, Site == "SMB")
-UNCBd <- filter(sample_times, Site == "NCBd")
-ULMP07 <- filter(sample_times, Site == "LMP07")
-ULMP27 <- filter(sample_times, Site == "LMP27")
-ULMP72 <- filter(sample_times, Site == "LMP72")
+UCTB <- filter(sample_times, Sample_Name == "CTB")
+USMB <- filter(sample_times, Sample_Name == "SMB")
+UNCBd <- filter(sample_times, Sample_Name == "NCBd")
+ULMP07 <- filter(sample_times, Sample_Name == "LMP07")
+ULMP27 <- filter(sample_times, Sample_Name == "LMP27")
+ULMP72 <- filter(sample_times, Sample_Name == "LMP72")
+
+# Change DateTime column name
+UCTB <- UCTB  %>% 
+  rename(DateTime = DateTime.y)
+USMB <- USMB %>%
+  rename(DateTime = DateTime.y)
+UNCBd <- UNCBd %>%
+  rename(DateTime = DateTime.y)
+ULMP07 <- ULMP07 %>%
+  rename(DateTime = DateTime.y)
+ULMP27 <- ULMP27 %>%
+  rename(DateTime = DateTime.y)
+ULMP72 <- ULMP72 %>%
+  rename(DateTime = DateTime.y)
 
 # First check if the merge works
 datCTB <- merge(CTB, UCTB, by = "DateTime")
