@@ -79,6 +79,7 @@ scan_list <- lapply(scan_list, function(df) {
   return(df)
 })
 
+
 #########################################################################################
 #### Count number of service dates (out of water days) and 'ABOVE' and 'BELOW' values####
 #########################################################################################
@@ -104,13 +105,21 @@ for (file_name in names(scan_list)) {
   val_below_count <- sum(apply(char_data, 1, function(row) any(row == "VAL_BELOW", na.rm = TRUE)))
   val_above_count <- sum(apply(char_data, 1, function(row) any(row == "VAL_ABOVE", na.rm = TRUE)))
   no_medium_count <- sum(apply(char_data, 1, function(row) any(row == "NO_MEDIUM", na.rm = TRUE)))
+  math_err_count <- sum(apply(char_data, 1, function(row) any(row == "MATH_ERR", na.rm = TRUE)))
+  volt_low_count <- sum(apply(char_data, 1, function(row) any(row == "VOLT_LOW", na.rm = TRUE)))
+  volt_high_count <- sum(apply(char_data, 1, function(row) any(row == "VOLT_HIGH", na.rm = TRUE)))
+  hw_deffect_count <- sum(apply(char_data, 1, function(row) any(row == "HW_DEFECT", na.rm = TRUE)))
   
   # store the counts in a data frame
   count_list[[file_name]] <- data.frame(
     File = file_name,
     VAL_BELOW = val_below_count,
     VAL_ABOVE = val_above_count,
-    NO_MEDIUM = no_medium_count
+    NO_MEDIUM = no_medium_count,
+    MATH_ERR = math_err_count,
+    VOLT_LOW = volt_low_count,
+    VOLT_HIGH = volt_high_count,
+    HW_DEFECT = hw_deffect_count
   )
 }
 
@@ -146,7 +155,7 @@ scan_list <- lapply(scan_list, function(df) {
     mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
   
   # define status values to replace with NA
-  status_values_to_replace <- c("NO_MEDIUM", "VAL_BELOW:NO_MEDIUM", "VAL_BELOW", "VAL_ABOVE")
+  status_values_to_replace <- c("NO_MEDIUM", "VAL_BELOW:NO_MEDIUM")
   
   # create new cleaned columns (e.g., DOC_clean, NO3_clean) and set to NA if the status column has invalid values
   df <- df %>%
@@ -187,29 +196,6 @@ scan_list <- lapply(scan_list, function(df) {
   return(df)
 })
 
-###############################
-#### Load Servicing Times #####
-###############################
-# get data from google drive
-service_tibble <- googledrive::drive_ls("https://drive.google.com/drive/folders/1KdjN1nmeeqtgxk6k3rImtb-wpVXVyLk4")
-googledrive::drive_download(as_id(service_tibble$id[service_tibble$name=="sensor_event_log"]), overwrite = TRUE,path="googledrive/sensor_event_log.xlsx")
-
-# read in file and filter to s::can service days and deployments
-service = readxl::read_excel("googledrive/sensor_event_log.xlsx")
-service = service[service$observation=="out of water" | service$observation=="deployed",]
-
-# format date and time
-service$date = as.Date(service$date)
-service$time <- format(as.POSIXct(service$time, format="%H:%M:%S"), "%H:%M:%S")
-service$datetime = paste(service$date,  service$time, sep = " ")
-# convert to POIXct and set timezone
-service$datetimeMT<-as.POSIXct(service$datetime, 
-                               format = "%Y-%m-%d %H:%M")
-
-# remove rows with no exact times & make one new for deployed
-deployedtimes = service[!is.na(service$datetimeMT),]
-deployedtimes = service[service$observation == "deployed", ]
-
 ###############################################
 #### Add instrument name or serial number  ####
 ###############################################
@@ -227,45 +213,35 @@ scan_filtered <- mapply(function(df, file_name) {
 # TEMPORARY REMOVE extra files
 #scan_filtered <- scan_filtered[-c(4:16)]
 
-#############################################################
-#### Delete all the rows before the deployment date-time ####
-#############################################################
-# the first few rows before deployment are usually junk. Let's get rid of those
-# create function 
-scan_filtered1 <- lapply(scan_filtered, function(df) {
-  # extract each s::can name/serial number
-  serial_number <- df$serial_number[1]
-  # extract the deployed time of each instrument 
-  deployed_time <- service$datetimeMT[service$serial_number == serial_number & service$observation == "deployed"]
-  
-  # filter, keep data that is equal to or after the deployed time
-  df <- df %>% filter(DateTime >= deployed_time)
-  return(df)
-})
-
-USF12 <- scan_filtered1[["USF12_absparams_Buttercup.csv"]]
-USF21 <- scan_filtered1[["USF21_absparams_Bubbles.csv"]]
-USF20 <- scan_filtered1[["USF20_absparams_Blossom.csv"]]
+USF12 <- scan_filtered[["USF12_absparams_Buttercup.csv"]]
+USF21 <- scan_filtered[["USF21_absparams_Bubbles.csv"]]
+USF20 <- scan_filtered[["USF20_absparams_Blossom.csv"]]
 
 ########################################
 #### remove error section from USF20 ###
 ########################################
 USF20_test <- USF20 %>%
   mutate(across(
-    c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean", 21:230),
+    c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean", 21:232),
     ~ ifelse(between(DateTime, as.Date("2024-09-25"), as.Date("2024-10-17")), NA, .)
   ))
 
-########################################
-#### remove low volt at end of USF21 ###
-########################################
-USF21 <- USF21[-c(11889:11961),]
-
-USF21 <- USF21 %>%
+#########################################
+#### remove low volt at end of USF21 ####
+#########################################
+USF21_test <- USF21 %>%
   mutate(across(
-    c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean"),
-    ~ if_else(row_number() %in% c(1812, 97, 1810), NA, .)
+    c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean", 27:236),
+    ~ ifelse(between(DateTime, as.Date("2024-11-15"), as.Date("2024-11-16")), NA, .)
   ))
+
+########################
+#### Return to list ####
+########################
+scan_filtered2 <- list()
+scan_filtered2[["USF21"]] <- USF21_test
+scan_filtered2[["USF20"]] <- USF20_test
+scan_filtered2[["USF12"]] <- USF12
 
 #####################################
 #### Plot all variables together ####
@@ -286,9 +262,9 @@ plot_variables <- function(df, file_name) {
 }
 
 # plot
-print(plot_variables(scan_filtered1[[1]], scan_csvs$name[1]))
-print(plot_variables(scan_filtered1[[2]], scan_csvs$name[2]))
-print(plot_variables(scan_filtered1[[3]], scan_csvs$name[3]))
+print(plot_variables(scan_filtered2[[1]], scan_csvs$name[1]))
+print(plot_variables(scan_filtered2[[2]], scan_csvs$name[2]))
+print(plot_variables(scan_filtered2[[3]], scan_csvs$name[3]))
 
 # save figures to folder
 for (i in seq_along(scan_filtered)) {
@@ -317,9 +293,9 @@ plot_variables <- function(df, file_name) {
 }
 
 # generate plots
-print(plot_variables(scan_filtered1[[1]], scan_csvs$name[1]))
-print(plot_variables(scan_filtered1[[2]], scan_csvs$name[2]))
-print(plot_variables(scan_filtered1[[3]], scan_csvs$name[3]))
+print(plot_variables(scan_filtered2[[1]], scan_csvs$name[1]))
+print(plot_variables(scan_filtered2[[2]], scan_csvs$name[2]))
+print(plot_variables(scan_filtered2[[3]], scan_csvs$name[3]))
 
 ### save figures to folder ###
 for (i in seq_along(scan_filtered)) {
@@ -387,9 +363,9 @@ remove_extension <- function(file_name) {
 }
 
 # loop through each data frame in the list
-for (i in seq_along(scan_filtered1)) {
+for (i in seq_along(scan_filtered2)) {
   # access the current data frame
-  df <- scan_filtered1[[i]]
+  df <- scan_filtered2[[i]]
   
   # define the file name and path
   clean_name <- remove_extension(scan_csvs$name[i])
@@ -402,7 +378,7 @@ for (i in seq_along(scan_filtered1)) {
   drive_folder_id <- "1g6aSuGnb--Qeyk-rceX82Y5wSNzCqFg0"
   
   # upload the file to the specified Google Drive folder
-  drive_upload(media = file_name, path = as_id(drive_folder_id))
+  drive_put(media = file_name, path = as_id(drive_folder_id))
 }
 
 

@@ -77,6 +77,12 @@ USF12$DateTime <- as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")
 USF20$DateTime <- as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")
 USF21$DateTime <- as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")
 
+# Remove NAs from DateTime column
+USF20 <- USF20 %>%
+  filter(!is.na(DateTime))
+USF21 <- USF21 %>%
+  filter(!is.na(DateTime))
+
 # Rename columns by removing the X in front of the spectra (that brakes the code somehow)
 rename_columns <- function(df) {
   colnames(df) <- gsub("^X|\\.nm$", "", colnames(df))
@@ -86,10 +92,6 @@ rename_columns <- function(df) {
 USF12 <- rename_columns(USF12)
 USF20 <- rename_columns(USF20)
 USF21 <- rename_columns(USF21)
-
-# USF12 <- USF12[-c(45201:45235),]
-# USF20 <- USF20[-c(33137:33367),]
-USF21 <- USF21[-c(19675:19771),]
 
 # Extract DOC NO3 NO3N and TSS data as time series objects (xts)
 scan_DOC_USF12 <- xts(USF12$DOC_mg.l , order.by = USF12$DateTime)
@@ -105,9 +107,9 @@ scan_TSS_USF21 <- xts(USF21$TSS_clean, order.by = USF21$DateTime)
 scan_NO3N_USF21 <- xts(USF21$NO3..mg.N.L., order.by = USF21$DateTime)
 
 # Extract spectral data (assuming spectral columns are in range "200.00.nm" to "750.00.nm")
-scan.spec12 = xts(USF12[27:227], as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
-scan.spec20 = xts(USF20[23:223], as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
-scan.spec21 = xts(USF21[27:227], as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
+scan.spec12 = xts(USF12[19:228], as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
+scan.spec20 = xts(USF20[19:228], as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
+scan.spec21 = xts(USF21[19:228], as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
 # select full spectra
 # note here that if there are 0s in your spectra, this code will throw an error
 # so only use the wavelengths where you have detectable absorbance
@@ -214,9 +216,9 @@ summary(calib.mod.NO3N21)
 #######################################################################################
 # 1. Index data set with columns with absorbances
 # raw spectra
-grab.spec.dat12 = grab_USF12[27:227] # Full spectra, with no NAs?
-grab.spec.dat20 = grab_USF20[23:223]
-grab.spec.dat21 = grab_USF21[27:227] 
+grab.spec.dat12 = grab_USF12[19:228] # Full spectra, with no NAs?
+grab.spec.dat20 = grab_USF20[19:228]
+grab.spec.dat21 = grab_USF21[19:228] 
 # clean spectra
 # grab.spec.dat12 = grab_USF12[243:443] # Full spectra, with no NAs?
 # grab.spec.dat20 = grab_USF20[241:441]
@@ -320,9 +322,9 @@ attributes(grab.spectra21)
 ########################################################################################
 # 1. Index FULL dataset with columns with absorbances
 # raw spectra
-scan.spec12 = USF12[27:227]
-scan.spec20 = USF20[23:223] 
-scan.spec21 = USF21[27:227]
+scan.spec12 = USF12[19:228]
+scan.spec20 = USF20[19:228] 
+scan.spec21 = USF21[19:228]
 # clean spectra
 # scan.spec12 = USF12[243:443]
 # scan.spec20 = USF20[241:441] 

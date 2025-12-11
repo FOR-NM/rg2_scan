@@ -15,7 +15,7 @@ library(lubridate)
 ########################################
 #### Clear folders that we will use ####
 ########################################
-# list and delete all files in the folder 
+# list and delete all files in the folder
 files <- list.files(path = "googledrive", full.names = TRUE)
 file.remove(files)
 
@@ -126,6 +126,14 @@ sum(duplicated(sample_times))
 # remove duplicates from the original datasets
 sample_times <- sample_times %>% distinct()
 
+# remove duplicates ignoring QuEST_ID column
+sample_times <- sample_times %>% 
+  distinct(
+    across(-QuEST_ID), # Check for distinctness on all columns EXCEPT QuEST
+    .keep_all = TRUE # This argument is not strictly needed here because across() is used to select columns
+    # but it is good practice to ensure all columns are kept.
+  )
+
 # combine Date and Time columns into a new DateTime column
 sample_times$DateTime <- paste(sample_times$Date, sample_times$Time, sep = " ")
 # convert the DateTime column to POSIXct
@@ -136,28 +144,36 @@ sample_times$DateTime <- as.POSIXct(sample_times$DateTime, format = "%Y-%m-%d %H
 ##########################
 #### import abs and parameter data ####
 # this is the "clean abs" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1QsjPCu8AVhePe7DGWBhRha26HXbyshcu")
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1g6aSuGnb--Qeyk-rceX82Y5wSNzCqFg0")
 
 # list all the files in the folder
 merged <- googledrive::drive_ls(path = scan, type = "csv")
 
 #USF12
-googledrive::drive_download(file = merged$id[merged$name=="USF12_flagged_Buttercup.csv"], 
-                            path = "googledrive/USF12_flagged_Buttercup.csv",
+googledrive::drive_download(file = merged$id[merged$name=="USF12_absparams_Buttercup_clean.csv"], 
+                            path = "googledrive/USF12_absparams_Buttercup_clean.csv",
                             overwrite = T)
 #USF20
-googledrive::drive_download(file = merged$id[merged$name=="USF20_flagged_Blossom.csv"], 
-                            path = "googledrive/USF20_flagged_Blossom.csv",
+googledrive::drive_download(file = merged$id[merged$name=="USF20_absparams_Blossom_clean.csv"], 
+                            path = "googledrive/USF20_absparams_Blossom_clean.csv",
                             overwrite = T)
 #USF21
-googledrive::drive_download(file = merged$id[merged$name=="USF21_flagged_Bubbles.csv"], 
-                            path = "googledrive/USF21_flagged_Bubbles.csv",
+googledrive::drive_download(file = merged$id[merged$name=="USF21_absparams_Bubbles_clean.csv"], 
+                            path = "googledrive/USF21_absparams_Bubbles_clean.csv",
                             overwrite = T)
 
 # load them separately 
-USF12 <- read.csv("googledrive/USF12_flagged_Buttercup.csv")
-USF20 <- read.csv("googledrive/USF20_flagged_Blossom.csv")
-USF21 <- read.csv("googledrive/USF21_flagged_Bubbles.csv")
+USF12 <- read.csv("googledrive/USF12_absparams_Buttercup_clean.csv")
+USF20 <- read.csv("googledrive/USF20_absparams_Blossom_clean.csv")
+USF21 <- read.csv("googledrive/USF21_absparams_Bubbles_clean.csv")
+
+# DateTime at midnight is missing 00:00:00 time, so filling in that time using grep
+USF12$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF12$DateTime)] <- paste(
+  USF12$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF12$DateTime)],"00:00:00")
+USF20$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF20$DateTime)] <- paste(
+  USF20$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF20$DateTime)],"00:00:00")
+USF21$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF21$DateTime)] <- paste(
+  USF21$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF21$DateTime)],"00:00:00")
 
 # convert the DateTime column to POSIXct
 USF12$DateTime <- as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")
@@ -191,6 +207,24 @@ data21 <- merge(USF21, U21, by = "DateTime", all.x = TRUE)
 # sum(duplicated(data12))
 # sum(duplicated(data20))
 # sum(duplicated(data21))
+
+##################
+#### Clean up ####
+##################
+data12 <- data12 %>%
+  dplyr::select(-c(NPOC_mg_L, TN_mg_L, Processing_Notes, Storage_Notes, ID_bottle_type, ...38, 
+         Temperature_40...F....Measured.status, Temperature_40...F....Measured.value,
+         Device.Rotation.......Measured.status, Device.Tilt.......Measured.status,
+         Supply.Current..mA....Measured.status, Supply.Voltage..V....Measured.status))
+data20 <- data20 %>%
+  dplyr::select(-NPOC_mg_L, -TN_mg_L, -Processing_Notes, -Storage_Notes, -ID_bottle_type, -...38, 
+         -Temperature_26...F....Measured.value, -Temperature_26...F....Measured.status,
+         -Device.Rotation.......Measured.status, -Device.Tilt.......Measured.status,
+         -Supply.Current..mA....Measured.status, -Supply.Voltage..V....Measured.status)
+data21 <- data21 %>%
+  dplyr::select(-NPOC_mg_L, -TN_mg_L, -Processing_Notes, -Storage_Notes, -ID_bottle_type, -...38, 
+         -Temperature_20...F....Measured.value, -Temperature_20...F....Measured.status,
+         -X725.00.nm, -X727.50.nm)
 
 ############################
 #### Save matched files ####

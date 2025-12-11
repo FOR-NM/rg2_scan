@@ -56,6 +56,16 @@ USF12_abs <- USF12_abs %>%
 # param data first
 USF12_merged <- left_join(USF12_params, USF12_abs, by = "DateTime")
 
+##################
+#### Clean up ####
+##################
+# Remove data before deployment
+USF12_merged <- USF12_merged %>%
+  filter(DateTime > "2024-05-07 13:00:00")
+
+USF12_merged <- USF12_merged %>%
+  select(-X.x, -X.y)
+
 #########################################
 #### Save merged USF12 file to Drive ####
 #########################################
@@ -111,6 +121,18 @@ USF20_abs <- USF20_abs %>%
 # param data first
 USF20_merged <- left_join(USF20_params, USF20_abs, by = "DateTime")
 
+##################
+#### Clean up ####
+##################
+# Remove data before deployment
+USF20_merged <- USF20_merged %>%
+  filter(DateTime > "2024-05-08 14:30:00") %>%
+  filter(DateTime != "2024-11-13 13:04:32") %>%
+  filter(!(DateTime >= "2025-03-28 12:15:00" & DateTime <= "2025-03-28 21:15:00"))
+
+USF20_merged <- USF20_merged %>%
+  select(-X.x, -X.y)
+
 ################################
 #### Save merged USF20 file ####
 ################################
@@ -165,6 +187,17 @@ USF21_abs <- USF21_abs %>%
 #################################
 # param data first
 USF21_merged <- left_join(USF21_params, USF21_abs, by = "DateTime")
+
+##################
+#### Clean up ####
+##################
+# Remove data before deployment
+USF21_merged <- USF21_merged %>%
+  filter(DateTime > "2024-06-27 17:30:00") %>%
+  filter(!(DateTime >= "2025-05-01 12:45:00" & DateTime <= "2025-05-18 12:45:00"))
+
+USF21_merged <- USF21_merged %>%
+  select(-X.x, -X.y)
 
 ################################
 #### Save merged USF21 file ####
