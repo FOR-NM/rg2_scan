@@ -156,19 +156,23 @@ grab.DOC21 = grab_USF21$NPOC..mg.C.L.
 grab.NO3N21 = grab_USF21$NO3..mg.N.L.
 
 #### remove a couple of problematic samples ####
-grab_USF20 <- grab_USF20 %>%
-  mutate(NO3..mg.N.L. = ifelse(Date == "2024-05-23" | is.na(NO3..mg.N.L.),
+grab_USF12 <- grab_USF12 %>%
+  mutate(NPOC..mg.C.L. = ifelse(Date == "2025-01-02" | is.na(NPOC..mg.C.L.),
                                NA,
-                               NO3..mg.N.L.))
-
-# problematic dates for USF21
-problem_dates_USF21 <- c("2025-05-15", "2025-06-13", "2024-09-18")
+                               NPOC..mg.C.L.))
+grab_USF20 <- grab_USF20 %>%
+  mutate(NPOC..mg.C.L. = ifelse(Date == "2024-10-24" | is.na(NPOC..mg.C.L.),
+                               NA,
+                               NPOC..mg.C.L.))
+grab_USF20 <- grab_USF20 %>%
+  mutate(NO3..mg.N.L. = ifelse(Date == "2024-09-11" | is.na(NO3..mg.N.L.),
+                                NA,
+                                NO3..mg.N.L.))
 
 grab_USF21 <- grab_USF21 %>%
-  mutate(NO3..mg.N.L. = ifelse(Date %in% problem_dates_USF21 | is.na(NO3..mg.N.L.),
+  mutate(NPOC..mg.C.L. = ifelse(Date == "2024-08-30" | is.na(NPOC..mg.C.L.),
                                NA,
-                               NO3..mg.N.L.))
-
+                               NPOC..mg.C.L.))
 # compare grab vs scan DOC
 plot(grab_USF12$DOC_mg.l ~ grab_USF12$NPOC..mg.C.L.)
 ggplot(grab_USF12, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +
@@ -432,7 +436,7 @@ grabcal.df12 = data.frame(DOC12 = grab.DOC12, NO3N12 = grab.NO3N12, Spectra12 = 
 str(grabcal.df12)
 
 grabcal.df20 = data.frame(DOC20 = grab.DOC20, NO3N20 = grab.NO3N20, Spectra20 = I(grab.spectra20))
- str(grabcal.df20)
+str(grabcal.df20)
 
 grabcal.df21 = data.frame(DOC21 = grab.DOC21, NO3N21 = grab.NO3N21, Spectra21 = I(grab.spectra21))
 str(grabcal.df21)
@@ -451,10 +455,10 @@ NTest12 = spectralcal.df12
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-Cmod12 = plsr(DOC12 ~ Spectra12, ncomp = 10, data = CTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
+Cmod12 = plsr(DOC12 ~ Spectra12, ncomp = 15, data = CTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod12) # optimized for 4 components
 
-Nmod12 = plsr(NO3N12 ~ Spectra12, ncomp = 10, data = NTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
+Nmod12 = plsr(NO3N12 ~ Spectra12, ncomp = 15, data = NTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod12)
 
 # Plot RMSE of the predictions to optimize model
@@ -464,18 +468,18 @@ plot(RMSEP(Nmod12), legendpos = "topright")
 # Plot predicted vs. measured from optimized model
 # Pick the number of components with the least error (in this case, 2)
 # NOTE: This plot may be messy, given low number of grab samples 
-plot(Cmod12, ncomp = 2, asp = 1, line = TRUE)
+plot(Cmod12, ncomp = 3, asp = 1, line = TRUE)
 plot(Nmod12, ncomp = 2, asp = 1, line = TRUE)
 
 ####################################################################
 #### STEP 8: Make predictions based on reduced-error PLSR model #### 
 ####################################################################
 # Predict model!
-predictedC12 = predict(Cmod12, ncomp = 2, newdata = spectralcal.df12) # use reduced error model
+predictedC12 = predict(Cmod12, ncomp = 4, newdata = spectralcal.df12) # use reduced error model
 str(predictedC12)
 plot(predictedC12)
 
-predictedN12 = predict(Nmod12, ncomp = 2, newdata = spectralcal.df12) # use reduced error model
+predictedN12 = predict(Nmod12, ncomp = 6, newdata = spectralcal.df12) # use reduced error model
 str(predictedN12)
 # Plot final predictions
 plot(predictedN12)
@@ -533,10 +537,10 @@ NTest20 = spectralcal.df20
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-Cmod20 = plsr(DOC20 ~ Spectra20, ncomp = 10, data = CTrain20, validation = "LOO") # usually ncomp is N-1 grab samples you have
+Cmod20 = plsr(DOC20 ~ Spectra20, ncomp = 8, data = CTrain20, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod20) # optimized for 4 components
 
-Nmod20 = plsr(NO3N20 ~ Spectra20, ncomp = 10, data = NTrain20, validation = "LOO") # usually ncomp is N-1 grab samples you have
+Nmod20 = plsr(NO3N20 ~ Spectra20, ncomp = 8, data = NTrain20, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod20)
 
 # Plot RMSE of the predictions to optimize model
@@ -555,25 +559,16 @@ plot(Nmod20, ncomp = 2, asp = 1, line = TRUE)
 # Predict model!
 predictedC20 = predict(Cmod20, ncomp = 3, newdata = spectralcal.df20) # use reduced error model
 str(predictedC20)
+# Plot final predictions
 plot(predictedC20)
 
-predictedN20 = predict(Nmod20, ncomp = 1, newdata = spectralcal.df20) # use reduced error model
+predictedN20 = predict(Nmod20, ncomp = 2, newdata = spectralcal.df20) # use reduced error model
 str(predictedN20)
 # Plot final predictions
 plot(predictedN20)
 
 write.csv(predictedC20, file = "predicted/PredictedC_USF20.csv") # <- this is your newly calibrated dataset!
 write.csv(predictedN20, file = "predicted/PredictedN_USF20.csv") # <- this is your newly calibrated dataset!
-
-# Invert it?
-#predictedC20 <- read.csv("predicted/PredictedC_USF20.csv")
-#predictedC20_rev <- predictedC20
-
-#predictedC20_rev$DOC20_rev <- -predictedC20_rev$DOC.compensated
-
-# Check the result
-#head(predictedC20_rev)
-#write.csv(predictedC20_rev, file = "PredictedC_USF20_inv.csv") 
 
 ## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 
 # You might need to use a moving window approach to the calibraiton (i.e., calibrate 1 month at a time)
@@ -593,7 +588,7 @@ NTest21 = spectralcal.df21
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-Cmod21 = plsr(DOC21 ~ Spectra21, ncomp = 5, data = CTrain21, validation = "LOO") # usually ncomp is N-1 grab samples you have
+Cmod21 = plsr(DOC21 ~ Spectra21, ncomp = 7, data = CTrain21, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod21) # optimized for 4 components
 
 Nmod21 = plsr(NO3N21 ~ Spectra21, ncomp = 7, data = NTrain21, validation = "LOO") # usually ncomp is N-1 grab samples you have
@@ -607,7 +602,7 @@ plot(RMSEP(Nmod21), legendpos = "topright")
 # Pick the number of components with the least error (in this case, 1)
 # NOTE: This plot may be messy, given low number of grab samples 
 plot(Cmod21, ncomp = 4, asp = 1, line = TRUE)
-plot(Nmod21, ncomp = 2, asp = 1, line = TRUE)
+plot(Nmod21, ncomp = 4, asp = 1, line = TRUE)
 
 ####################################################################
 #### STEP 8: Make predictions based on reduced-error PLSR model #### 
@@ -615,29 +610,29 @@ plot(Nmod21, ncomp = 2, asp = 1, line = TRUE)
 # Predict model!
 predictedC21 = predict(Cmod21, ncomp = 4, newdata = spectralcal.df21) # use reduced error model
 str(predictedC21)
+# Plot
 plot(predictedC21)
 
 head(predictedC21)
 predictedN21 = predict(Nmod21, ncomp = 2, newdata = spectralcal.df21) # use reduced error model
 str(predictedN21)
-# Plot final predictions
+# Plot
 plot(predictedN21)
 
 write.csv(predictedC21, file = "predicted/PredictedC_USF21.csv") # <- this is your newly calibrated dataset!
 write.csv(predictedN21, file = "predicted/PredictedN_USF21.csv") # <- this is your newly calibrated dataset!
 
-
-# 1. Loadings Plot for USF12 (Opposite Trend)
-# This shows how the wavelengths contribute to each component (ncomp = 1, 2, 3, etc.)
-plot(Nmod12, plottype = "loading",
-     comps = 1:2, # Plot the first two components for initial inspection
-     main = "USF12 NO3-N PLSR Loadings")
-
-# 2. Loadings Plot for USF21 (Flat Trend)
-# Examine the first few components for USF21
-plot(Nmod21, plottype = "loading",
-     comps = 1:2, # Plot the first two components
-     main = "USF21 NO3-N PLSR Loadings")
+# # 1. Loadings Plot for USF12 (Opposite Trend)
+# # This shows how the wavelengths contribute to each component (ncomp = 1, 2, 3, etc.)
+# plot(Nmod12, plottype = "loading",
+#      comps = 1:2, # Plot the first two components for initial inspection
+#      main = "USF12 NO3-N PLSR Loadings")
+# 
+# # 2. Loadings Plot for USF21 (Flat Trend)
+# # Examine the first few components for USF21
+# plot(Nmod21, plottype = "loading",
+#      comps = 1:2, # Plot the first two components
+#      main = "USF21 NO3-N PLSR Loadings")
 
 #######################
 #### Save in Drive #### 

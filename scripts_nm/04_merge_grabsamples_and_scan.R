@@ -226,21 +226,39 @@ data21 <- data21 %>%
          -Temperature_20...F....Measured.value, -Temperature_20...F....Measured.status,
          -X725.00.nm, -X727.50.nm)
 
+##########################
+#### Clean up spectra ####
+##########################
+data12_clean <- data12 %>%
+  # Remove rows where the condition under -1 and above 100 is not met.
+  dplyr::filter(!if_any(c(19:228), 
+                        ~ . < -0.1 | . > 60))
+
+data20_clean <- data20 %>%
+  # Remove rows where the condition under -1 and above 100 is not met.
+  dplyr::filter(!if_any(c(19:228), 
+                        ~ . < -0.1 | . > 60))
+
+data21_clean <- data21 %>%
+  # Remove rows where the condition under -1 and above 100 is not met.
+  dplyr::filter(!if_any(c(19:228), 
+                        ~ . < -0.1 | . > 60))
+
 ############################
 #### Save matched files ####
 ############################
 # make sure it is in datetime format
-data12$DateTime <- format(data12$DateTime, "%Y-%m-%d %H:%M:%S")
+data12_clean$DateTime <- format(data12_clean$DateTime, "%Y-%m-%d %H:%M:%S")
 # save the new data frame to a CSV file
-write.csv(data12,"googledrive/USF12_chem_Buttercup.csv" , row.names=FALSE, quote=FALSE)
+write.csv(data12_clean,"googledrive/USF12_chem_Buttercup.csv" , row.names=FALSE, quote=FALSE)
 # make sure it is in datetime format
-data20$DateTime <- format(data20$DateTime, "%Y-%m-%d %H:%M:%S")
+data20_clean$DateTime <- format(data20_clean$DateTime, "%Y-%m-%d %H:%M:%S")
 # save the new data frame to a CSV file
-write.csv(data20,"googledrive/USF20_chem_Blossom.csv" , row.names=FALSE, quote=FALSE)
+write.csv(data20_clean,"googledrive/USF20_chem_Blossom.csv" , row.names=FALSE, quote=FALSE)
 # make sure it is in datetime format
-data21$DateTime <- format(data21$DateTime, "%Y-%m-%d %H:%M:%S")
+data21_clean$DateTime <- format(data21_clean$DateTime, "%Y-%m-%d %H:%M:%S")
 # save the new data frame to a CSV file
-write.csv(data21,"googledrive/USF21_chem_Bubbles.csv" , row.names=FALSE, quote=FALSE)
+write.csv(data21_clean,"googledrive/USF21_chem_Bubbles.csv" , row.names=FALSE, quote=FALSE)
 
 # define the target folder ID in Google Drive
 # this is the "with chem" folder
