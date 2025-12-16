@@ -173,6 +173,10 @@ grab_USF21 <- grab_USF21 %>%
   mutate(NPOC..mg.C.L. = ifelse(Date == "2024-08-30" | is.na(NPOC..mg.C.L.),
                                NA,
                                NPOC..mg.C.L.))
+grab_USF21 <- grab_USF21 %>%
+  mutate(NO3..mg.N.L. = ifelse(Date %in% c("2024-06-27", "2024-07-17", "2024-09-18", "2025-06-13") | is.na(NO3..mg.N.L.),
+                               NA,
+                               NO3..mg.N.L.))
 # compare grab vs scan DOC
 plot(grab_USF12$DOC_mg.l ~ grab_USF12$NPOC..mg.C.L.)
 ggplot(grab_USF12, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +

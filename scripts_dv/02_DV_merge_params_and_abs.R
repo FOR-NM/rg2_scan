@@ -91,14 +91,12 @@ DVMS1_abs <- DVMS1_abs %>%
 #################################
 #### Merge parameter and abs ####
 #################################
-
-Param data first
+#Param data first
 DVMS1_merged <- left_join(DVMS1_params, DVMS1_abs, by = "DateTime")
 
 #########################################
 #### Save merged DVMS1 file to Drive ####
 #########################################
-
 # Make sure it is in datetime format
 DVMS1_merged$DateTime <- format(DVMS1_merged$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
@@ -114,7 +112,6 @@ drive_upload(media = "data/02_DVMS1_absparams.csv", path = as_id(drive_folder_id
 ##==============================================================================
 ## DVNWT5
 ##==============================================================================
-
 #######################################
 #### Import abs and parameter data ####
 #######################################

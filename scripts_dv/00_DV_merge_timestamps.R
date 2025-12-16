@@ -17,7 +17,6 @@ file.remove(files)
 ##########################
 #### Import scan data ####
 ##########################
-
 #### List and download all files in the folder ####
 # This is the "raw" folder
 scan <- googledrive::as_id("https://drive.google.com/drive/folders/1YhKX_XcF50cJrhYDHX0NdxdbylE84vip")
@@ -53,11 +52,9 @@ for (i in seq_along(scan_csvs$id)) {
   scan_list[[scan_csvs$name[i]]] <- data
 }
 
-
 ####################################
 #### Combine data for each site ####
 ####################################
-
 # Loop through each data frame in the list to change DateTime column name
 for (i in seq_along(scan_list)) {
   # Access the current data frame
@@ -98,7 +95,6 @@ combined_by_site <- lapply(scan_list_by_site, function(site_data_list) {
 ##############################
 #### Save combined files  ####
 ##############################
-
 # Ensure DateTime column is properly formatted
 combined_by_site <- lapply(combined_by_site, function(df) {
   df$DateTime <- format(df$DateTime, "%Y-%m-%d %H:%M:%S") # Ensure consistent format
@@ -124,7 +120,6 @@ lapply(names(combined_by_site), function(site) {
 ## Now we need to do the same thing but for the compensated abs tab
 ## abs file is in the same excel in second tab of file
 ##==============================================================================
-
 ##########################
 #### Import scan data ####
 ##########################
@@ -160,7 +155,6 @@ for (i in seq_along(scan_csvs$id)) {
 ####################################
 #### Combine data for each site ####
 ####################################
-
 # Change DateTime column name
 for (i in seq_along(scan_list)) {
   # Access the current data frame
@@ -200,7 +194,6 @@ combined_by_site <- lapply(scan_list_by_site, function(site_data_list) {
 ##############################
 #### Save combined files  ####
 ##############################
-
 # Ensure DateTime column is properly formatted
 combined_by_site <- lapply(combined_by_site, function(df) {
   df$DateTime <- format(df$DateTime, "%Y-%m-%d %H:%M:%S") # Ensure consistent format
