@@ -226,9 +226,9 @@ summary(calib.mod.NO3N21)
 #######################################################################################
 # 1. Index data set with columns with absorbances
 # raw spectra
-grab.spec.dat12 = grab_DVO[19:228] # Full spectra, with no NAs?
-grab.spec.dat20 = grab_DVMS1[19:228]
-grab.spec.dat21 = grab_DVNWT5[19:228] 
+grab.spec.dat12 = grab_DVO[15:224] # Full spectra, with no NAs?
+grab.spec.dat20 = grab_DVMS1[15:224]
+grab.spec.dat21 = grab_DVNWT5[15:224] 
 # clean spectra
 # grab.spec.dat12 = grab_DVO[243:443] # Full spectra, with no NAs?
 # grab.spec.dat20 = grab_DVMS1[241:441]
@@ -332,9 +332,9 @@ attributes(grab.spectra21)
 ########################################################################################
 # 1. Index FULL dataset with columns with absorbances
 # raw spectra
-scan.spec12 = DVO[19:228]
-scan.spec20 = DVMS1[19:228] 
-scan.spec21 = DVNWT5[19:228]
+scan.spec12 = DVO[15:224]
+scan.spec20 = DVMS1[15:224] 
+scan.spec21 = DVNWT5[15:224]
 # clean spectra
 # scan.spec12 = DVO[243:443]
 # scan.spec20 = DVMS1[241:441] 
