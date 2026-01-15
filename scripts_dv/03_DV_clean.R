@@ -12,7 +12,7 @@ library(ggplot2)
 #### Clear folders that we will use ####
 ########################################
 # List and delete all files in the folder
-files <- list.files(path = "scan_figs", full.names = TRUE)
+files <- list.files(path = "data", full.names = TRUE)
 file.remove(files)
 
 files <- list.files(path = "googledrive", full.names = TRUE)
@@ -87,7 +87,6 @@ scan_list <- lapply(scan_list, function(df) {
 ### first, count how many logs with , 'VAL_BELOW' or 'VAL_ABOVE' each one has ###
 # initialize a list to store the counts for each file
 count_list <- list()
-
 # loop over each data frame in the list
 for (file_name in names(scan_list)) {
   
@@ -192,19 +191,27 @@ scan_list <- lapply(scan_list, function(df) {
   return(df)
 })
 
-DVO <- scan_list[["DVO_absparams.csv"]]
-DVNWT5 <- scan_list[["DVNWT5_absparams.csv"]]
-DVMS1 <- scan_list[["DVMS1_absparams.csv"]]
+DVO <- scan_list[["02_DVO_absparams.csv"]]
+DVNWT5 <- scan_list[["02_DVNWT5_absparams.csv"]]
+DVMS1 <- scan_list[["02_DVMS1_absparams.csv"]]
 
-# ########################################
-# #### remove error section from USF20 ###
-# ########################################
-# USF20_test <- USF20 %>%
-#   mutate(across(
-#     c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean", 21:232),
-#     ~ ifelse(between(DateTime, as.Date("2024-09-25"), as.Date("2024-10-17")), NA, .)
-#   ))
-# 
+# remove some unwanted columns
+DVO <- DVO[(-c(1, 15))]
+DVNWT5 <- DVNWT5[(-c(1, 15))]
+DVMS1 <- DVMS1[(-c(1, 15))]
+
+#########################################
+#### remove error section from USF20 ####
+#########################################
+DVO_test <- DVO %>%
+  filter(DateTime >= "2024-07-25 10:15:00")
+
+DVO_test <- DVO %>%
+  mutate(across(
+    c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean", 17:227),
+    ~ ifelse(between(DateTime, as.Date("2024-07-25"), as.Date("2024-10-17")), NA, .)
+  ))
+
 # #########################################
 # #### remove low volt at end of USF21 ####
 # #########################################

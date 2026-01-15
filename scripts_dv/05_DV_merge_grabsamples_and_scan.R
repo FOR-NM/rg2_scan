@@ -31,17 +31,17 @@ chem_csv <- googledrive::drive_ls(path = chem, type = "csv")
 3
 
 # call the specific file you want (most recent one)
-googledrive::drive_download(file = chem_csv$id[chem_csv$name=="2025-08-20_chem_data.csv"], 
-                            path = "googledrive/2025-08-20_chem_data.csv",
+googledrive::drive_download(file = chem_csv$id[chem_csv$name=="2026-01-07_chem_data.csv"], 
+                            path = "googledrive/2026-01-07_chem_data.csv",
                             overwrite = T)
 # load it into R
-wqual = read.csv("googledrive/2025-08-20_chem_data.csv")
+wqual = read.csv("googledrive/2026-01-07_chem_data.csv")
 
 # Filter to get just DV data
 DV <- filter(wqual, Sub_Project == "Nevada")
 
 # Format date columns
-DV$Collection.Date <- as.Date(DV$Collection.Date, format = "%Y-%m-%d")
+DV$Collection.Date <- as.Date(DV$Collection.Date, format = "%m/%d/%y")
 
 # Rename Collection Date column
 DV <- DV %>% 
