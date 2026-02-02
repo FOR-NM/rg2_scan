@@ -30,11 +30,11 @@ chem_csv <- googledrive::drive_ls(path = chem, type = "csv")
 3
 
 # call the specific file you want (most recent one)
-googledrive::drive_download(file = chem_csv$id[chem_csv$name=="2025-08-20_chem_data.csv"], 
-                            path = "googledrive/2025-08-20_chem_data.csv",
+googledrive::drive_download(file = chem_csv$id[chem_csv$name=="2026-01-07_chem_data.csv"], 
+                            path = "googledrive/2026-01-07_chem_data.csv",
                             overwrite = T)
 # load it into R
-wqual = read.csv("googledrive/2025-08-20_chem_data.csv")
+wqual = read.csv("googledrive/2026-01-07_chem_data.csv")
 
 # Format date columns
 wqual$Collection.Date <- as.Date(wqual$Collection.Date, format = "%m/%d/%y")
@@ -102,12 +102,15 @@ samplelogsheet <- samplelogsheet[ , !(names(samplelogsheet) %in% drops)]
 #### Rounding collection time ####
 ##################################
 # Create extra columns so you don't erase original time               
-samplelogsheet$TimeNotRounded <- samplelogsheet$Time
+samplelogsheet$TimeNotRounded <- samplelogsheet$`Arrival Time`
+
+# Extract only the time part (HH:MM:SS) from the rounded DateTime
+samplelogsheet$Time <- format(samplelogsheet$`Arrival Time`, format = "%H:%M:%S")
 
 # Combine Date and Time columns into a new DateTime column
 samplelogsheet$DateTime <- paste(samplelogsheet$Date, samplelogsheet$Time, sep = " ")
 # Convert the DateTime column to POSIXct
-samplelogsheet$DateTime <- as.POSIXct(samplelogsheet$DateTime, format = "%Y-%m-%d %H:%M")
+samplelogsheet$DateTime <- as.POSIXct(samplelogsheet$DateTime, format = "%Y-%m-%d %H:%M:%S")
 
 # Round DateTime to the nearest 15-minute interval 
 samplelogsheet$DateTime <- round_date(samplelogsheet$DateTime, unit="15 mins")
@@ -129,6 +132,7 @@ sum(duplicated(sample_times))
 # Remove duplicates from the original datasets
 # sample_times <- sample_times %>% distinct()
 
+sample_times <- sample_times[-6,]
 ##########################
 #### Import scan data ####
 ##########################

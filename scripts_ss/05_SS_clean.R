@@ -1,29 +1,28 @@
 ##==============================================================================
-## Project: QuEST - Script to tidy up a bit scan data and plot it
+## Project: QuEST - Script to tidy up South Sandy scan data and plot it
 ## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
-library(dataRetrieval) # download USGS discharge data
 library(googledrive) # download docs from Drive
 library(tidyverse)
 library(readxl) # to read Excel
 library(lubridate) # edit date format
-library(xts) # time series
 library(ggplot2)
 
 ########################################
 #### Clear folders that we will use ####
 ########################################
 # list and delete all files in the folder
-files <- list.files(path = "googledrive", full.names = TRUE)
-file.remove(files)
 files <- list.files(path = "data", full.names = TRUE)
+file.remove(files)
+
+files <- list.files(path = "googledrive", full.names = TRUE)
 file.remove(files)
 
 #####################
 #### Import Data ####
 #####################
-# load data from Google Drive. This is the "merged" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1hlc9U54d70T5-hml_F9RM8FAiUCVRFmp")
+# load data from Google Drive. his is the "merged" folder
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1Wju54VbyACZ_RFtfeInSvBCiVDKFScGj")
 scan_csvs <- googledrive::drive_ls(path = scan, type = "csv")
 3
 
@@ -43,17 +42,21 @@ for (i in seq_along(scan_csvs$id)) {
   )
   
   # read the header row (row 2)
-  header <- read_csv(local_path, n_max = 1, col_names = TRUE)
+  header <- read.csv(local_path)
   
   # read the data starting from row 4 using the header as column names
-  data <- read_csv(local_path)
+  data <- read.csv(local_path)
   
   # store the data in the list
   scan_list[[scan_csvs$name[i]]] <- data
 }
 
-# TEMPORARY REMOVE extra files
-# scan_list <- scan_list[-c(4:8)]
+head(scan_list)
+
+#### remove abs files from list ####
+# we just want merged parameters and abs file
+# check position of abs and params files
+# scan_list = scan_list[-c(1:3)]
 
 #################
 #### Tidying ####
@@ -62,22 +65,31 @@ for (i in seq_along(scan_csvs$id)) {
 scan_list <- lapply(scan_list, function(df) {
   # rename columns by matching the existing names
   df <- df %>%
-    rename(
+    dplyr::rename(
       DOC_mg.l = DOCeq..mg.l....Measured.value,
       NO3.N_mg.l = NO3.Neq..mg.l....Measured.value,
-      NO3_mg.l =  NO3eq..mg.l....Measured.value,
+      NO3_mg.l = NO3eq..mg.l....Measured.value,
       TOC_mg.l = TOCeq..mg.l....Measured.value,
       TSS_mg.l = TSSeq..mg.l....Measured.value,
-      Temp_C = Temperature_19...C....Measured.value,
     )
-  
   # ensure numeric variables are converted to numeric
   df <- df %>%
-    mutate(across(c(DOC_mg.l, NO3.N_mg.l, NO3_mg.l, TOC_mg.l, TSS_mg.l, Temp_C), as.numeric)) %>%
-    mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
+    mutate(across(c(DOC_mg.l, NO3.N_mg.l, NO3_mg.l, TOC_mg.l, TSS_mg.l), as.numeric)) %>%
+    mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
   
   return(df)
 })
+
+#################
+#### Cleaning ###
+#################
+SSM01 <- scan_list[["SSM01_merged.csv"]]
+SSM20 <- scan_list[["SSM20_merged.csv"]]
+SST13 <- scan_list[["SST13_merged.csv"]]
+
+SSM01 <- SSM01[, -c(2, 18, 19, 25, 26)]
+SSM20 <- SSM20[, -c(2, 18, 24:26)]
+SST13 <- SST13[, -c(2, 21:36, 39, 40)]
 
 #########################################################################################
 #### Count number of service dates (out of water days) and 'ABOVE' and 'BELOW' values####
@@ -135,86 +147,68 @@ print(final_count_table)
 #################################################
 #### Clean service dates (out of water days) ####
 #################################################
-# apply changes to status columns across all data frames in the list
 scan_list <- lapply(scan_list, function(df) {
-  
   # rename columns by matching the existing names
   df <- df %>%
     rename(
-      DOC_status = DOCeq..mg.l....Measured.status,  # rename the status column for DOC
-      NO3.N_status = NO3.Neq..mg.l....Measured.status,  # rename the status column for NO3.N
-      NO3_status = NO3eq..mg.l....Measured.status,  # rename the status column for NO3
-      TOC_status = TOCeq..mg.l....Measured.status,  # rename the status column for TOC
-      TSS_status = TSSeq..mg.l....Measured.status  # rename the status column for TSS
+      DOC_status   = DOCeq..mg.l....Measured.status,
+      NO3.N_status = NO3.Neq..mg.l....Measured.status,
+      NO3_status   = NO3eq..mg.l....Measured.status,
+      TOC_status   = TOCeq..mg.l....Measured.status,
+      TSS_status   = TSSeq..mg.l....Measured.status
     )
   
   # ensure numeric variables are converted to numeric
   df <- df %>%
-    mutate(across(c(DOC_mg.l, NO3.N_mg.l, NO3_mg.l, TOC_mg.l, TSS_mg.l, Temp_C), as.numeric)) %>%
-    mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
-  
-  # define status values to replace with NA
-  status_values_to_replace <- c("NO_MEDIUM", "VAL_BELOW:NO_MEDIUM")
-  
-  # create new cleaned columns (e.g., DOC_clean, NO3_clean) and set to NA if the status column has invalid values
-  df <- df %>%
     mutate(
-      DOC_clean = ifelse(DOC_status %in% status_values_to_replace, NA, DOC_mg.l),
-      NO3.N_clean = ifelse(NO3.N_status %in% status_values_to_replace, NA, NO3.N_mg.l),
-      NO3_clean = ifelse(NO3_status %in% status_values_to_replace, NA, NO3_mg.l),
-      TOC_clean = ifelse(TOC_status %in% status_values_to_replace, NA, TOC_mg.l),
-      TSS_clean = ifelse(TSS_status %in% status_values_to_replace, NA, TSS_mg.l)
+      across(c(DOC_mg.l, NO3.N_mg.l, NO3_mg.l, TOC_mg.l, TSS_mg.l), as.numeric),
+      DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S")
     )
   
-  # find all spectral columns (those starting with "X" and ending with ".nm")
-  spectra_cols <- grep("^X[0-9]+\\.[0-9]+\\.nm$", colnames(df), value = TRUE)
+  # define status values to replace with NA
+  status_values_to_replace <- c("NO_MEDIUM", "VAL_BELOW:NO_MEDIUM", "MATH_ERR", "NEG_MED", "DARK_MAX", "NEG_FP")
   
-  # debug: Print the spectral columns found
-  print(paste("Spectral columns in", deparse(substitute(df)), ":", toString(spectra_cols)))
+  #################################################
+  #### Create a single "bad row" logical flag ####
+  #################################################
+  df <- df %>%
+    mutate(
+      bad_row = DOC_status   %in% status_values_to_replace |
+        NO3.N_status %in% status_values_to_replace |
+        NO3_status   %in% status_values_to_replace |
+        TOC_status   %in% status_values_to_replace |
+        TSS_status   %in% status_values_to_replace |
+        Measured_Status %in% status_values_to_replace
+    )
   
-  # If there are spectral columns, clean them
-  if (length(spectra_cols) > 0) {
-    # loop through each spectral column and apply the NA logic based on status
-    for (col in spectra_cols) {
-      # debug: Check which column is being processed
-      print(paste("Processing spectral column:", col))
-      
-      # apply the NA logic based on status values
-      df[[col]] <- ifelse(
-        df$DOC_status %in% status_values_to_replace |
-          df$NO3.N_status %in% status_values_to_replace |
-          df$NO3_status %in% status_values_to_replace |
-          df$TOC_status %in% status_values_to_replace |
-          df$TSS_status %in% status_values_to_replace,
-        NA, df[[col]]
-      )
-    }
-  }
+  ###################################
+  #### Clean chemistry variables ####
+  ###################################
+  df <- df %>%
+    mutate(
+      DOC_clean   = ifelse(bad_row, NA, DOC_mg.l),
+      NO3.N_clean = ifelse(bad_row, NA, NO3.N_mg.l),
+      NO3_clean   = ifelse(bad_row, NA, NO3_mg.l),
+      TOC_clean   = ifelse(bad_row, NA, TOC_mg.l),
+      TSS_clean   = ifelse(bad_row, NA, TSS_mg.l)
+    )
   
-  # return the cleaned dataframe
+  #######################################
+  #### Clean spectral columns 23:243 ####
+  #######################################
+  spectral_cols <- names(df)[23:243]
+  
+  df <- df %>%
+    mutate(across(
+      all_of(spectral_cols),
+      ~ ifelse(bad_row, NA, .x)
+    ))
+  
+  # optional: remove helper column
+  df <- df %>% select(-bad_row)
+  
   return(df)
 })
-
-###############################################
-#### Add instrument name or serial number  ####
-###############################################
-# create function to extract file name (they all start with B)
-extract_id <- function(file_name) {
-  str_extract(file_name, "B\\w+")
-}
-
-# apply function to add extracted name to all data frames 
-scan_filtered <- mapply(function(df, file_name) {
-  df <- add_column(df, serial_number = extract_id(file_name))
-  return(df)
-}, scan_list, scan_csvs$name, SIMPLIFY = FALSE)
-
-# TEMPORARY REMOVE extra files
-#scan_filtered <- scan_filtered[-c(4:16)]
-
-USF12 <- scan_filtered[["USF12_absparams_Buttercup.csv"]]
-USF21 <- scan_filtered[["USF21_absparams_Bubbles.csv"]]
-USF20 <- scan_filtered[["USF20_absparams_Blossom.csv"]]
 
 ########################################
 #### remove error section from USF20 ###
@@ -228,47 +222,19 @@ USF20 <- scan_filtered[["USF20_absparams_Blossom.csv"]]
 #########################################
 #### remove low volt at end of USF21 ####
 #########################################
-USF21_test <- USF21 %>%
-  mutate(across(
-    c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean", 27:236),
-    ~ ifelse(between(DateTime, as.Date("2024-11-15"), as.Date("2024-11-16")), NA, .)
-  ))
+# USF21_test <- USF21 %>%
+#   mutate(across(
+#     c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean", 27:236),
+#     ~ ifelse(between(DateTime, as.Date("2024-11-15"), as.Date("2024-11-16")), NA, .)
+#   ))
 
-########################
-#### Return to list ####
-########################
+#######################
+### Return to list ####
+#######################
 scan_filtered2 <- list()
-scan_filtered2[["USF20"]] <- USF20
-scan_filtered2[["USF21"]] <- USF21_test
-scan_filtered2[["USF12"]] <- USF12
-
-#####################################
-#### Plot all variables together ####
-#####################################
-# plot after filtering pre-deployed and out of water times
-plot_variables <- function(df, file_name) {
-  ggplot(data = df) +
-    geom_line(aes(x = DateTime, y = Temp_C, color = 'Temp')) +
-    geom_line(aes(x = DateTime, y = TSS_clean, color = 'TSS')) +
-    geom_line(aes(x = DateTime, y = TOC_clean, color = 'TOC')) +
-    geom_line(aes(x = DateTime, y = NO3.N_clean, color = 'NO3.N')) +
-    geom_line(aes(x = DateTime, y = NO3_clean, color = 'NO3')) +
-    geom_line(aes(x = DateTime, y = DOC_clean, color = 'DOC')) +
-    scale_x_datetime(date_breaks = "15 days", date_labels = "%m/%d") +
-    ggtitle(file_name) +
-    theme(axis.text.x = element_text(angle = 45)) +
-    ylab("Measured")
-}
-
-# plot
-print(plot_variables(scan_filtered2[[1]], scan_csvs$name[1]))
-print(plot_variables(scan_filtered2[[2]], scan_csvs$name[2]))
-print(plot_variables(scan_filtered2[[3]], scan_csvs$name[3]))
-
-# save figures to folder
-for (i in seq_along(scan_filtered)) {
-  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_Measured.png"), plot_variables(scan_filtered[[i]], scan_csvs$name[i]))
-  }
+scan_filtered2[["SSM01"]] <- SSM01
+scan_filtered2[["SSM20"]] <- SSM20
+scan_filtered2[["SST13"]] <- SST13
 
 #####################################
 #### Plot all variables separate ####
@@ -277,7 +243,7 @@ for (i in seq_along(scan_filtered)) {
 plot_variables <- function(df, file_name) {
   # ensure column selection works correctly
   df_long <- df %>%
-    dplyr::select("DateTime", "Temp_C", "TSS_clean", "TOC_clean", "NO3.N_clean", "NO3_clean", "DOC_clean") %>%
+    dplyr::select("DateTime", "TSS_clean", "TOC_clean", "NO3.N_clean", "NO3_clean", "DOC_clean") %>%
     pivot_longer(cols = -DateTime, names_to = "Variable", values_to = "Value")
   
   # generate the plot
@@ -297,9 +263,9 @@ print(plot_variables(scan_filtered2[[2]], scan_csvs$name[2]))
 print(plot_variables(scan_filtered2[[3]], scan_csvs$name[3]))
 
 ### save figures to folder ###
-for (i in seq_along(scan_filtered)) {
-  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_separate.png"), plot_variables(scan_filtered[[i]], scan_csvs$name[i]))
-  }
+for (i in seq_along(scan_filtered2)) {
+  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_separate.png"), plot_variables(scan_filtered2[[i]], scan_csvs$name[i]))
+}
 
 tail(scan_filtered1[[1]])
 
@@ -313,9 +279,9 @@ Date2 <- as.Date("2025-08-30", "%Y-%m-%d")
 scan_subdf <- list()
 
 # loop through each data frame in the list to change DateTime column name
-for (i in seq_along(scan_filtered1)) {
+for (i in seq_along(scan_filtered2)) {
   # Access the current data frame
-  df <- scan_filtered1[[i]]
+  df <- scan_filtered2[[i]]
   
   # change time frame
   subdf <- df[df$DateTime < Date2 & df$DateTime > Date1,]
@@ -352,6 +318,24 @@ for (i in seq_along(scan_subdf)) {
   ggsave(paste0("scan_figs/", scan_csvs$name[i], "_subdf.png"), plot_variables(scan_subdf[[i]], scan_csvs$name[i]))
 }
 
+##########################
+#### Clean up spectra ####
+##########################
+data12_clean <- data12 %>%
+  # Remove rows where the condition under -1 and above 100 is not met.
+  dplyr::filter(!if_any(c(19:228), 
+                        ~ . < -0.1 | . > 60))
+
+data20_clean <- data20 %>%
+  # Remove rows where the condition under -1 and above 100 is not met.
+  dplyr::filter(!if_any(c(19:228), 
+                        ~ . < -0.09 | . > 60))
+
+data21_clean <- data21 %>%
+  # Remove rows where the condition under -1 and above 100 is not met.
+  dplyr::filter(!if_any(c(19:228), 
+                        ~ . < -0.1 | . > 60))
+
 ####################################
 #### Save cleaned data to Drive ####
 ####################################
@@ -373,10 +357,8 @@ for (i in seq_along(scan_filtered2)) {
   write.csv(df, file_name, row.names=FALSE, quote=FALSE)
   
   # define the target folder ID in Google Drive, this is the "clean" folder
-  drive_folder_id <- "1g6aSuGnb--Qeyk-rceX82Y5wSNzCqFg0"
+  drive_folder_id <- "1BNCKA7LdysjDH5_REI4WhH_P0Z4FIe0r"
   
   # upload the file to the specified Google Drive folder
   drive_put(media = file_name, path = as_id(drive_folder_id))
 }
-
-

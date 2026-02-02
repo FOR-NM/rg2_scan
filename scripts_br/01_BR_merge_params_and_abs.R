@@ -9,175 +9,175 @@ library(dplyr)
 library(openxlsx)
 
 ##==============================================================================
-## USF12
+## BRMQ1
 ##==============================================================================
 
 #######################################
 #### Import abs and parameter data ####
 #######################################
 # this is the "merge_timestamps" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1-dUxVn1hBWy2MpHeIjVt-2QSujpVhijy")
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1ROxMHt-mzsMrym5Gisi2mNM9RaepuhZc")
 
 # list all the files in the folder
 scan_csvs <- googledrive::drive_ls(path = scan, type = "csv")
 
-#USF12 parameters
-googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="USF12_params.csv"], 
-                            path = "googledrive/USF12_params.csv",
+#BRMQ1 parameters
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="BRMQ1_params.csv"], 
+                            path = "googledrive/BRMQ1_params.csv",
                             overwrite = T)
-#USF12 abs
-googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="USF12_abs.csv"], 
-                            path = "googledrive/USF12_abs.csv",
+#BRMQ1 abs
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="BRMQ1_abs.csv"], 
+                            path = "googledrive/BRMQ1_abs.csv",
                             overwrite = T)
 
 
 # load fingerprints and parameter data
-USF12_params <- read.csv("googledrive/USF12_params.csv")
-USF12_abs <- read.csv("googledrive/USF12_abs.csv")
+BRMQ1_params <- read.csv("googledrive/BRMQ1_params.csv")
+BRMQ1_abs <- read.csv("googledrive/BRMQ1_abs.csv")
 
-colSums(USF12_params == 0, na.rm = TRUE)
+colSums(BRMQ1_params == 0, na.rm = TRUE)
 
 #############################
 #### Tidy both data sets ####
 #############################
 # remove extra rows
-USF12_params <- USF12_params[-c(1:9), ] 
-#USF12_abs <- USF12_abs[-c(1:9), ] 
+BRMQ1_params <- BRMQ1_params[-c(1:9), ] 
+#BRMQ1_abs <- BRMQ1_abs[-c(1:9), ] 
 
 # change datetime format
-USF12_params <- USF12_params %>%
+BRMQ1_params <- BRMQ1_params %>%
   mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
-USF12_abs <- USF12_abs %>%
+BRMQ1_abs <- BRMQ1_abs %>%
   mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
 
 #################################
 #### Merge parameter and abs ####
 #################################
 # param data first
-USF12_merged <- left_join(USF12_params, USF12_abs, by = "DateTime")
+BRMQ1_merged <- left_join(BRMQ1_params, BRMQ1_abs, by = "DateTime")
 
 #########################################
-#### Save merged USF12 file to Drive ####
+#### Save merged BRMQ1 file to Drive ####
 #########################################
 # make sure it is in datetime format
-USF12_merged$DateTime <- format(USF12_merged$DateTime, "%Y-%m-%d %H:%M:%S")
+BRMQ1_merged$DateTime <- format(BRMQ1_merged$DateTime, "%Y-%m-%d %H:%M:%S")
 # save the new data frame to a CSV file
-write.csv(USF12_merged,"googledrive/USF12_absparams_Buttercup.csv" , row.names=FALSE, quote=FALSE)
+write.csv(BRMQ1_merged,"googledrive/BRMQ1_absparams.csv" , row.names=FALSE, quote=FALSE)
 
 # define the target folder ID in Google Drive
 # this is the "merged" folder
-drive_folder_id <- "1hlc9U54d70T5-hml_F9RM8FAiUCVRFmp"
+drive_folder_id <- "1pbRqXX5NqSgS4Roh0Ap9gsP9SicKX5-A"
 
 # upload the file to the specified Google Drive folder
-drive_upload(media = "googledrive/USF12_absparams_Buttercup.csv", path = as_id(drive_folder_id))
+drive_upload(media = "googledrive/BRMQ1_absparams.csv", path = as_id(drive_folder_id))
 
 ##==============================================================================
-## USF20
+## BRMQ4
 ##==============================================================================
 #######################################
 #### Import abs and parameter data ####
 #######################################
-#USF20 parameters
-googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="USF20_params.csv"], 
-                            path = "googledrive/USF20_params.csv",
+#BRMQ4 parameters
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="BRMQ4_params.csv"], 
+                            path = "googledrive/BRMQ4_params.csv",
                             overwrite = T)
-#USF20 abs
-googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="USF20_abs.csv"], 
-                            path = "googledrive/USF20_abs.csv",
+#BRMQ4 abs
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="BRMQ4_abs.csv"], 
+                            path = "googledrive/BRMQ4_abs.csv",
                             overwrite = T)
 
 # load fingerprints and parameter data
-USF20_params <- read.csv("googledrive/USF20_params.csv")
-USF20_abs <- read.csv("googledrive/USF20_abs.csv")
+BRMQ4_params <- read.csv("googledrive/BRMQ4_params.csv")
+BRMQ4_abs <- read.csv("googledrive/BRMQ4_abs.csv")
 
-colSums(USF20_params == 0, na.rm = TRUE)
+colSums(BRMQ4_params == 0, na.rm = TRUE)
 
 #############################
 #### Tidy both data sets ####
 #############################
-# remove extra rows
-USF20_params <- USF20_params[-c(1:85), ] 
-USF20_abs <- USF20_abs[-c(1:45), ] 
+# # remove extra rows
+# BRMQ4_params <- BRMQ4_params[-c(1:85), ] 
+# BRMQ4_abs <- BRMQ4_abs[-c(1:45), ] 
 
 # change datetime format
-USF20_params <- USF20_params %>%
+BRMQ4_params <- BRMQ4_params %>%
   mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
-USF20_abs <- USF20_abs %>%
+BRMQ4_abs <- BRMQ4_abs %>%
   mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
 
 #################################
 #### Merge parameter and abs ####
 #################################
 # param data first
-USF20_merged <- left_join(USF20_params, USF20_abs, by = "DateTime")
+BRMQ4_merged <- left_join(BRMQ4_params, BRMQ4_abs, by = "DateTime")
 
 ################################
-#### Save merged USF20 file ####
+#### Save merged BRMQ4 file ####
 ################################
 # make sure it is in datetime format
-USF20_merged$DateTime <- format(USF20_merged$DateTime, "%Y-%m-%d %H:%M:%S")
+BRMQ4_merged$DateTime <- format(BRMQ4_merged$DateTime, "%Y-%m-%d %H:%M:%S")
 # save the new data frame to a CSV file
-write.csv(USF20_merged,"googledrive/USF20_absparams_Blossom.csv" , row.names=FALSE, quote=FALSE)
+write.csv(BRMQ4_merged,"googledrive/BRMQ4_absparams.csv" , row.names=FALSE, quote=FALSE)
 
 # define the target folder ID in Google Drive
 # this is the "merged" folder
-drive_folder_id <- "1hlc9U54d70T5-hml_F9RM8FAiUCVRFmp"
+drive_folder_id <- "1pbRqXX5NqSgS4Roh0Ap9gsP9SicKX5-A"
 
 # upload the file to the specified Google Drive folder
-drive_upload(media = "googledrive/USF20_absparams_Blossom.csv", path = as_id(drive_folder_id))
+drive_upload(media = "googledrive/BRMQ4_absparams.csv", path = as_id(drive_folder_id))
 
 ##==============================================================================
-## USF21
+## BRM06
 ##==============================================================================
 #######################################
 #### Import abs and parameter data ####
 #######################################
-#USF21 parameters
-googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="USF21_params.csv"], 
-                            path = "googledrive/USF21_params.csv",
+#BRM06 parameters
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="BRM06_params.csv"], 
+                            path = "googledrive/BRM06_params.csv",
                             overwrite = T)
-#USF21 abs
-googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="USF21_abs.csv"], 
-                            path = "googledrive/USF21_abs.csv",
+#BRM06 abs
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="BRM06_abs.csv"], 
+                            path = "googledrive/BRM06_abs.csv",
                             overwrite = T)
 
 # load fingerprints and parameter data
-USF21_params <- read.csv("googledrive/USF21_params.csv")
-USF21_abs <- read.csv("googledrive/USF21_abs.csv")
+BRM06_params <- read.csv("googledrive/BRM06_params.csv")
+BRM06_abs <- read.csv("googledrive/BRM06_abs.csv")
 
-colSums(USF21_params == 0, na.rm = TRUE)
+colSums(BRM06_params == 0, na.rm = TRUE)
 
 #############################
 #### Tidy both data sets ####
 #############################
-# remove extra rows
-USF21_params <- USF21_params[-c(1:28), ] 
-USF21_abs <- USF21_abs[-c(1:28), ] 
+# # remove extra rows
+# BRM06_params <- BRM06_params[-c(1:28), ] 
+# BRM06_abs <- BRM06_abs[-c(1:28), ] 
 
 # change datetime format
-USF21_params <- USF21_params %>%
+BRM06_params <- BRM06_params %>%
   mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
-USF21_abs <- USF21_abs %>%
+BRM06_abs <- BRM06_abs %>%
   mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
 
 #################################
 #### Merge parameter and abs ####
 #################################
 # param data first
-USF21_merged <- left_join(USF21_params, USF21_abs, by = "DateTime")
+BRM06_merged <- left_join(BRM06_params, BRM06_abs, by = "DateTime")
 
 ################################
-#### Save merged USF21 file ####
+#### Save merged BRM06 file ####
 ################################
 # make sure it is in datetime format
-USF21_merged$DateTime <- format(USF21_merged$DateTime, "%Y-%m-%d %H:%M:%S")
+BRM06_merged$DateTime <- format(BRM06_merged$DateTime, "%Y-%m-%d %H:%M:%S")
 # save the new data frame to a CSV file
-write.csv(USF21_merged,"googledrive/USF21_absparams_Bubbles.csv" , row.names=FALSE, quote=FALSE)
+write.csv(BRM06_merged,"googledrive/BRM06_absparams.csv" , row.names=FALSE, quote=FALSE)
 
 # define the target folder ID in Google Drive
 # this is the "merged" folder
-drive_folder_id <- "1hlc9U54d70T5-hml_F9RM8FAiUCVRFmp"
+drive_folder_id <- "1pbRqXX5NqSgS4Roh0Ap9gsP9SicKX5-A"
 
 # upload the file to the specified Google Drive folder
-drive_upload(media = "googledrive/USF21_absparams_Bubbles.csv", path = as_id(drive_folder_id))
+drive_upload(media = "googledrive/BRM06_absparams.csv", path = as_id(drive_folder_id))
 

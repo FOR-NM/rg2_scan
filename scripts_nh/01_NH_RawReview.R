@@ -213,12 +213,14 @@ retrieve_usgs_data <- function(start_date, end_date, site_no = "01073319", p_cod
 
 # retrieve USGS data for different s::can sites, each has different deployment dates
 USGS_CTB <- retrieve_usgs_data("2024-05-20", "2025-09-01")
+USGS_NCBd <- retrieve_usgs_data("2024-05-20", "2025-09-01")
 USGS_SBM <- retrieve_usgs_data("2024-05-20", "2025-09-01")
 USGS_LMP72 <- retrieve_usgs_data("2024-05-20", "2025-09-01")
 USGS_LMP27 <- retrieve_usgs_data("2024-05-20", "2025-09-01")
 USGS_LMP07 <- retrieve_usgs_data("2024-05-20", "2025-09-01")
 
 USGS_CTB$DateTime <- USGS_CTB$dateTime
+USGS_NCBd$DateTime <- USGS_NCBd$dateTime
 USGS_SBM$DateTime <- USGS_SBM$dateTime
 USGS_LMP72$DateTime <- USGS_LMP72$dateTime
 USGS_LMP27$DateTime <- USGS_LMP27$dateTime
@@ -228,6 +230,7 @@ USGS_LMP07$DateTime <- USGS_LMP07$dateTime
 #### Merge parameters and USGS data ####
 ########################################
 # extract parameters from list
+NCBd <- scan_list[["NHNCBd_params.csv"]]
 CTB <- scan_list[["NHCTB_params.csv"]]
 SMB <- scan_list[["NHSBM_params.csv"]]
 LMP72 <- scan_list[["NHLMP72_params.csv"]]
@@ -236,6 +239,7 @@ LMP07 <- scan_list[["NHLMP07_params.csv"]]
 
 # First check if the merge works
 datCTB <- merge(CTB, USGS_CTB, by = "DateTime")
+datNCBd <- merge(NCBd, USGS_NCBd, by = "DateTime")
 datSMB <- merge(SMB, USGS_SBM, by = "DateTime")
 datLMP72 <- merge(LMP72, USGS_LMP72, by = "DateTime")
 datLMP27 <- merge(LMP27, USGS_LMP27, by = "DateTime")
@@ -245,6 +249,7 @@ datLMP07 <- merge(LMP07, USGS_LMP07, by = "DateTime")
 combined <- list()
 
 combined$CTB<- datCTB
+combined$NCBd<- datNCBd
 combined$SMB<- datSMB 
 combined$LMP72<- datLMP72 
 combined$LMP27<- datLMP27 
@@ -287,6 +292,7 @@ plot_usgs_faceted <- function(df, label) {
     theme(legend.position = "none")
 }
 
+print(plot_usgs_faceted(combined$NCBd, "NCBd"))
 print(plot_usgs_faceted(combined$CTB, "CTB"))
 print(plot_usgs_faceted(combined$SMB, "SMB"))
 print(plot_usgs_faceted(combined$LMP72, "LMP72"))

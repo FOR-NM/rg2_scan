@@ -31,14 +31,14 @@ chem_csv <- googledrive::drive_ls(path = chem, type = "csv")
 3
 
 # call the specific file you want (most recent one)
-googledrive::drive_download(file = chem_csv$id[chem_csv$name=="2025-08-20_chem_data.csv"], 
-                            path = "googledrive/2025-08-20_chem_data.csv",
+googledrive::drive_download(file = chem_csv$id[chem_csv$name=="2026-01-07_chem_data.csv"], 
+                            path = "googledrive/2026-01-07_chem_data.csv",
                             overwrite = T)
 # load it into R
-wqual = read.csv("googledrive/2025-08-20_chem_data.csv")
+wqual = read.csv("googledrive/2026-01-07_chem_data.csv")
 
 # format date columns
-wqual$Collection.Date <- as.Date(wqual$Collection.Date, format = "%Y-%m-%d")
+wqual$Collection.Date <- as.Date(wqual$Collection.Date, format = "%m/%d/%y")
 # rename Collection Date column
 wqual <- wqual %>% rename(Date = Collection.Date)
 
@@ -216,33 +216,37 @@ data12 <- data12 %>%
          Temperature_40...F....Measured.status, Temperature_40...F....Measured.value,
          Device.Rotation.......Measured.status, Device.Tilt.......Measured.status,
          Supply.Current..mA....Measured.status, Supply.Voltage..V....Measured.status, serial_number))
-data20 <- data20 %>% 
+data20 <- data20 %>%
+  dplyr::select(-NPOC_mg_L, -TN_mg_L, -Processing_Notes, -Storage_Notes, -ID_bottle_type, -...38, 
+                -Temperature_20...F....Measured.value, -Temperature_20...F....Measured.status,
+                -X725.00.nm, -X727.50.nm, -serial_number )
+data21 <- data21 %>% 
   dplyr::select(-NPOC_mg_L, -TN_mg_L, -Processing_Notes, -Storage_Notes, -ID_bottle_type, -...38, 
          -Temperature_26...F....Measured.value, -Temperature_26...F....Measured.status,
          -Device.Rotation.......Measured.status, -Device.Tilt.......Measured.status,
          -Supply.Current..mA....Measured.status, -Supply.Voltage..V....Measured.status, -serial_number)
-data21 <- data21 %>%
-  dplyr::select(-NPOC_mg_L, -TN_mg_L, -Processing_Notes, -Storage_Notes, -ID_bottle_type, -...38, 
-         -Temperature_20...F....Measured.value, -Temperature_20...F....Measured.status,
-         -X725.00.nm, -X727.50.nm, -serial_number )
 
 ##########################
 #### Clean up spectra ####
 ##########################
-data12_clean <- data12 %>%
-  # Remove rows where the condition under -1 and above 100 is not met.
-  dplyr::filter(!if_any(c(19:228), 
+# Here you find when your spectra go negative. For USF data is around 450-460nm (column 123)
+data12_clean <- data12[,-c(119:228)]
+data20_clean <- data20[,-c(119:228)]
+data21_clean <- data21[,-c(119:228)]
+  
+################################################
+#### Clean up spectra very low or high rows ####
+################################################
+# Remove rows where the condition under -0.5 and above 60 is not met.
+data12_clean <- data12_clean %>%
+  dplyr::filter(!if_any(c(19:118),
+                        ~ . < 0 | . > 60))
+data20_clean <- data20_clean %>%
+  dplyr::filter(!if_any(c(19:118),
                         ~ . < -0.1 | . > 60))
-
-data20_clean <- data20 %>%
-  # Remove rows where the condition under -1 and above 100 is not met.
-  dplyr::filter(!if_any(c(19:228), 
-                        ~ . < -0.09 | . > 60))
-
-data21_clean <- data21 %>%
-  # Remove rows where the condition under -1 and above 100 is not met.
-  dplyr::filter(!if_any(c(19:228), 
-                        ~ . < -0.1 | . > 60))
+data21_clean <- data21_clean %>%
+  dplyr::filter(!if_any(c(19:118),
+                        ~ . < 0 | . > 60))
 
 ############################
 #### Save matched files ####

@@ -21,6 +21,7 @@ library(spectrolab)
 #install_github(repo = "meireles/spectrolab") # Install analysis package
 # Make sure to hit "no" for install
 library(ggplot2)
+library(plotly)
 
 ###################################
 #### Clear folders we will use ####
@@ -36,9 +37,9 @@ file.remove(files)
 # This data was matched using previous scripts #
 # See scripts merge_params_and_abs and merge_grabsamples_and_scan
 
-######################################################
+#######################################################
 #### STEP 2: Upload scan data frame [with spectra] ####
-######################################################
+#######################################################
 # This is the "with chem" folder
 scan <- googledrive::as_id("https://drive.google.com/drive/folders/1qjM3Zze-I5ycFCHNcd997UG6gYXBUoX8")
 
@@ -93,23 +94,23 @@ USF12 <- rename_columns(USF12)
 USF20 <- rename_columns(USF20)
 USF21 <- rename_columns(USF21)
 
-# Extract DOC NO3 NO3N and TSS data as time series objects (xts)
+# Extract DOC NO3N and TSS data as time series objects (xts)
 scan_DOC_USF12 <- xts(USF12$DOC_mg.l , order.by = USF12$DateTime)
-scan_TSS_USF12 <- xts(USF12$TSS_clean, order.by = USF12$DateTime)
-scan_NO3N_USF12 <- xts(USF12$NO3..mg.N.L., order.by = USF12$DateTime)
+scan_TSS_USF12 <- xts(USF12$TSS_mg.l, order.by = USF12$DateTime)
+scan_NO3N_USF12 <- xts(USF12$NO3.N_mg.l, order.by = USF12$DateTime)
 
 scan_DOC_USF20 <- xts(USF20$DOC_mg.l, order.by = USF20$DateTime)
-scan_TSS_USF20 <- xts(USF20$TSS_clean, order.by = USF20$DateTime)
-scan_NO3N_USF20 <- xts(USF20$NO3..mg.N.L., order.by = USF20$DateTime)
+scan_TSS_USF20 <- xts(USF20$TSS_mg.l, order.by = USF20$DateTime)
+scan_NO3N_USF20 <- xts(USF20$NO3.N_mg.l, order.by = USF20$DateTime)
 
 scan_DOC_USF21 <- xts(USF21$DOC_mg.l, order.by = USF21$DateTime)
-scan_TSS_USF21 <- xts(USF21$TSS_clean, order.by = USF21$DateTime)
-scan_NO3N_USF21 <- xts(USF21$NO3..mg.N.L., order.by = USF21$DateTime)
+scan_TSS_USF21 <- xts(USF21$TSS_mg.l, order.by = USF21$DateTime)
+scan_NO3N_USF21 <- xts(USF21$NO3.N_mg.l, order.by = USF21$DateTime)
 
 # Extract spectral data (assuming spectral columns are in range "200.00.nm" to "750.00.nm")
-scan.spec12 = xts(USF12[19:228], as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
-scan.spec20 = xts(USF20[19:228], as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
-scan.spec21 = xts(USF21[19:228], as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
+scan.spec12 = xts(USF12[19:118], as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
+scan.spec20 = xts(USF20[19:118], as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
+scan.spec21 = xts(USF21[19:118], as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
 # select full spectra
 # note here that if there are 0s in your spectra, this code will throw an error
 # so only use the wavelengths where you have detectable absorbance
@@ -157,65 +158,56 @@ grab.NO3N21 = grab_USF21$NO3..mg.N.L.
 
 #### remove a couple of problematic samples ####
 grab_USF12 <- grab_USF12 %>%
-  mutate(NPOC..mg.C.L. = ifelse(Date == "2025-01-02" | is.na(NPOC..mg.C.L.),
-                               NA,
-                               NPOC..mg.C.L.))
+  mutate(NPOC..mg.C.L. = ifelse(DateTime == "2025-01-02 12:15:00" | is.na(NPOC..mg.C.L.),NA,NPOC..mg.C.L.))
 grab_USF20 <- grab_USF20 %>%
-  mutate(NPOC..mg.C.L. = ifelse(Date == "2024-10-24" | is.na(NPOC..mg.C.L.),
-                               NA,
-                               NPOC..mg.C.L.))
-grab_USF20 <- grab_USF20 %>%
-  mutate(NO3..mg.N.L. = ifelse(Date == "2024-09-11" | is.na(NO3..mg.N.L.),
-                                NA,
-                                NO3..mg.N.L.))
+  mutate(NPOC..mg.C.L. = ifelse(DateTime == "2024-06-19 14:00:00" | is.na(NPOC..mg.C.L.),NA,NPOC..mg.C.L.))
 
+grab_USF12 <- grab_USF12 %>%
+  mutate(NO3..mg.N.L. = ifelse(Date %in% c("2024-09-25", "2025-05-01", "2025-09-12", "2025-04-10") | is.na(NO3..mg.N.L.), NA, NO3..mg.N.L.))
+grab_USF20 <- grab_USF20 %>%
+  mutate(NO3..mg.N.L. = ifelse(Date %in% c("2024-05-23", "2025-09-12", "2025-05-01", "2024-10-16") | is.na(NO3..mg.N.L.),NA,NO3..mg.N.L.))
 grab_USF21 <- grab_USF21 %>%
-  mutate(NPOC..mg.C.L. = ifelse(Date == "2024-08-30" | is.na(NPOC..mg.C.L.),
-                               NA,
-                               NPOC..mg.C.L.))
-grab_USF21 <- grab_USF21 %>%
-  mutate(NO3..mg.N.L. = ifelse(Date %in% c("2024-06-27", "2024-07-17", "2024-09-18", "2025-06-13") | is.na(NO3..mg.N.L.),
-                               NA,
-                               NO3..mg.N.L.))
+  mutate(NO3..mg.N.L. = ifelse(Date %in% c("2024-09-18", "2025-06-13", "2025-09-12") | is.na(NO3..mg.N.L.), NA, NO3..mg.N.L.))
+
 # compare grab vs scan DOC
 plot(grab_USF12$DOC_mg.l ~ grab_USF12$NPOC..mg.C.L.)
 ggplot(grab_USF12, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +
   geom_point(color = "blue") +
-  geom_text(aes(label = Date), vjust = -0.5, size = 3)  # adds date labels above points
+  geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
 calib.mod.DOC12 = lm(grab_USF12$DOC_mg.l ~ grab_USF12$NPOC..mg.C.L.)
 summary(calib.mod.DOC12)
 
 ggplot(grab_USF20, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +
   geom_point(color = "blue") +
-  geom_text(aes(label = Date), vjust = -0.5, size = 3)  # adds date labels above points
+  geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
 calib.mod.DOC20 = lm(grab_USF20$DOC_mg.l ~ grab_USF20$NPOC..mg.C.L.)
 summary(calib.mod.DOC20)
 
 ggplot(grab_USF21, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +
   geom_point(color = "blue") +
-  geom_text(aes(label = Date), vjust = -0.5, size = 3)  # adds date labels above points
+  geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
 calib.mod.DOC21 = lm(grab_USF21$DOC_mg.l ~ grab_USF21$NPOC..mg.C.L.)
 summary(calib.mod.DOC21)
 
-# compare grab vs scan NO3
+# compare grab vs scan NO3N
 plot(grab_USF12$NO3.N_mg.l ~ grab_USF12$NO3..mg.N.L.)
 ggplot(grab_USF12, aes(x = NO3..mg.N.L., y = NO3.N_mg.l)) +
   geom_point(color = "blue") +
-  geom_text(aes(label = Date), vjust = -0.5, size = 3)  # adds date labels above points
+  geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
 calib.mod.NO3N12 = lm(grab_USF12$NO3.N_mg.l ~ grab_USF12$NO3..mg.N.L.)
 summary(calib.mod.NO3N12)
 
 plot(grab_USF20$NO3.N_mg.l ~ grab_USF20$NO3..mg.N.L.)
 ggplot(grab_USF20, aes(x = NO3..mg.N.L., y = NO3.N_mg.l)) +
   geom_point(color = "blue") +
-  geom_text(aes(label = Date), vjust = -0.5, size = 3)  # adds date labels above points
+  geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
 calib.mod.NO3N20 = lm(grab_USF20$NO3.N_mg.l ~ grab_USF20$NO3..mg.N.L.)
 summary(calib.mod.NO3N20)
 
 plot(grab_USF21$NO3.N_mg.l ~ grab_USF21$NO3..mg.N.L.)
 ggplot(grab_USF21, aes(x = NO3..mg.N.L., y = NO3.N_mg.l)) +
   geom_point(color = "blue") +
-  geom_text(aes(label = Date), vjust = -0.5, size = 3)  # adds date labels above points
+  geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
 calib.mod.NO3N21 = lm(grab_USF21$NO3.N_mg.l ~ grab_USF21$NO3..mg.N.L.)
 summary(calib.mod.NO3N21)
 
@@ -224,13 +216,9 @@ summary(calib.mod.NO3N21)
 #######################################################################################
 # 1. Index data set with columns with absorbances
 # raw spectra
-grab.spec.dat12 = grab_USF12[19:228] # Full spectra, with no NAs?
-grab.spec.dat20 = grab_USF20[19:228]
-grab.spec.dat21 = grab_USF21[19:228] 
-# clean spectra
-# grab.spec.dat12 = grab_USF12[243:443] # Full spectra, with no NAs?
-# grab.spec.dat20 = grab_USF20[241:441]
-# grab.spec.dat21 = grab_USF21[243:443] 
+grab.spec.dat12 = grab_USF12[19:118] # Full spectra, with no NAs?
+grab.spec.dat20 = grab_USF20[19:118]
+grab.spec.dat21 = grab_USF21[19:118] 
 
 # Rename columns for all data frames (e.g., USF12, USF20, USF21)
 rename_columns <- function(df) {
@@ -330,13 +318,9 @@ attributes(grab.spectra21)
 ########################################################################################
 # 1. Index FULL dataset with columns with absorbances
 # raw spectra
-scan.spec12 = USF12[19:228]
-scan.spec20 = USF20[19:228] 
-scan.spec21 = USF21[19:228]
-# clean spectra
-# scan.spec12 = USF12[243:443]
-# scan.spec20 = USF20[241:441] 
-# scan.spec21 = USF21[243:443]
+scan.spec12 = USF12[19:118]
+scan.spec20 = USF20[19:118] 
+scan.spec21 = USF21[19:118]
 
 # 2. Create an absorbance matrix 
 # Rows = wavelength
@@ -453,16 +437,16 @@ str(grabcal.df21)
 CTrain12 = grabcal.df12
 CTest12 = spectralcal.df12
 
-# NO3
+# NO3N
 NTrain12 = grabcal.df12
 NTest12 = spectralcal.df12
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-Cmod12 = plsr(DOC12 ~ Spectra12, ncomp = 15, data = CTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
+Cmod12 = plsr(DOC12 ~ Spectra12, ncomp = 25, data = CTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod12) # optimized for 4 components
 
-Nmod12 = plsr(NO3N12 ~ Spectra12, ncomp = 15, data = NTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
+Nmod12 = plsr(NO3N12 ~ Spectra12, ncomp = 25, data = NTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod12)
 
 # Plot RMSE of the predictions to optimize model
@@ -470,20 +454,20 @@ plot(RMSEP(Cmod12), legendpos = "topright")
 plot(RMSEP(Nmod12), legendpos = "topright")
 
 # Plot predicted vs. measured from optimized model
-# Pick the number of components with the least error (in this case, 2)
+# Pick the number of components with the least error
 # NOTE: This plot may be messy, given low number of grab samples 
-plot(Cmod12, ncomp = 3, asp = 1, line = TRUE)
+plot(Cmod12, ncomp = 5, asp = 1, line = TRUE)
 plot(Nmod12, ncomp = 2, asp = 1, line = TRUE)
 
 ####################################################################
 #### STEP 8: Make predictions based on reduced-error PLSR model #### 
 ####################################################################
 # Predict model!
-predictedC12 = predict(Cmod12, ncomp = 4, newdata = spectralcal.df12) # use reduced error model
+predictedC12 = predict(Cmod12, ncomp = 5, newdata = spectralcal.df12) # use reduced error model
 str(predictedC12)
 plot(predictedC12)
 
-predictedN12 = predict(Nmod12, ncomp = 6, newdata = spectralcal.df12) # use reduced error model
+predictedN12 = predict(Nmod12, ncomp = 2, newdata = spectralcal.df12) # use reduced error model
 str(predictedN12)
 # Plot final predictions
 plot(predictedN12)
@@ -494,11 +478,9 @@ write.csv(predictedN12, file = "predicted/PredictedN_USF12.csv") # <- this is yo
 # Convert predictedC12 to a data frame
 pred_df <- data.frame(
   DateTime = as.POSIXct(dimnames(predictedC12)[[1]]),
-  Predicted = as.numeric(predictedC12)
-)
-
+  Predicted = as.numeric(predictedC12))
 # Plot
-ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
+p <- ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
   geom_point(color = "steelblue") +
   labs(
     x = "DateTime",
@@ -506,24 +488,24 @@ ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
     title = "Predicted DOC over Time (USF12)"
   ) +
   theme_minimal()
+ggplotly(p)
 
-# Define your date range
-start_date <- as.POSIXct("2025-06-01")
-end_date   <- as.POSIXct("2025-09-05")
-
-# Filter the predictions
-pred_zoom <- pred_df %>%
-  filter(DateTime >= start_date & DateTime <= end_date)
-
+# Convert predictedN12 to a data frame
+pred_df <- data.frame(
+  DateTime = as.POSIXct(dimnames(predictedN12)[[1]]),
+  Predicted = as.numeric(predictedN12))
 # Plot
-ggplot(pred_zoom, aes(x = DateTime, y = Predicted)) +
-  geom_line(color = "steelblue") +
+p <- ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
+  geom_point(color = "steelblue") +
   labs(
     x = "DateTime",
-    y = "Predicted DOC (mg/L)",
-    title = "Predicted DOC (USF12): June – Sep 2025"
+    y = "Predicted NO3N (mg/L)",
+    title = "Predicted NO3N over Time (USF12)"
   ) +
   theme_minimal()
+
+ggplotly(p)
+
 ## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 
 # You might need to use a moving window approach to the calibraiton (i.e., calibrate 1 month at a time)
 
@@ -535,16 +517,16 @@ ggplot(pred_zoom, aes(x = DateTime, y = Predicted)) +
 CTrain20 = grabcal.df20
 CTest20 = spectralcal.df20
 
-# NO3
+# NO3N
 NTrain20 = grabcal.df20
 NTest20 = spectralcal.df20
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-Cmod20 = plsr(DOC20 ~ Spectra20, ncomp = 8, data = CTrain20, validation = "LOO") # usually ncomp is N-1 grab samples you have
+Cmod20 = plsr(DOC20 ~ Spectra20, ncomp = 15, data = CTrain20, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod20) # optimized for 4 components
 
-Nmod20 = plsr(NO3N20 ~ Spectra20, ncomp = 8, data = NTrain20, validation = "LOO") # usually ncomp is N-1 grab samples you have
+Nmod20 = plsr(NO3N20 ~ Spectra20, ncomp = 15, data = NTrain20, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod20)
 
 # Plot RMSE of the predictions to optimize model
@@ -554,14 +536,14 @@ plot(RMSEP(Nmod20), legendpos = "topright")
 # Plot predicted vs. measured from optimized model
 # Pick the number of components with the least error (in this case, x)
 # NOTE: This plot may be messy, given low number of grab samples 
-plot(Cmod20, ncomp = 3, asp = 1, line = TRUE)
+plot(Cmod20, ncomp = 1, asp = 1, line = TRUE)
 plot(Nmod20, ncomp = 2, asp = 1, line = TRUE)
 
 ####################################################################
 #### STEP 8: Make predictions based on reduced-error PLSR model #### 
 ####################################################################
 # Predict model!
-predictedC20 = predict(Cmod20, ncomp = 3, newdata = spectralcal.df20) # use reduced error model
+predictedC20 = predict(Cmod20, ncomp = 1, newdata = spectralcal.df20) # use reduced error model
 str(predictedC20)
 # Plot final predictions
 plot(predictedC20)
@@ -578,6 +560,34 @@ write.csv(predictedN20, file = "predicted/PredictedN_USF20.csv") # <- this is yo
 # You might need to use a moving window approach to the calibraiton (i.e., calibrate 1 month at a time)
 # This is a bit more complicated, so start with this simple calibration first. 
 
+# Convert predictedC20 to a data frame
+pred_df <- data.frame(
+  DateTime = as.POSIXct(dimnames(predictedC20)[[1]]),
+  Predicted = as.numeric(predictedC20))
+# Plot
+ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
+  geom_point(color = "steelblue") +
+  labs(
+    x = "DateTime",
+    y = "Predicted DOC (mg/L)",
+    title = "Predicted DOC over Time (USF20)"
+  ) +
+  theme_minimal()
+
+# Convert predictedN20 to a data frame
+pred_df <- data.frame(
+  DateTime = as.POSIXct(dimnames(predictedN20)[[1]]),
+  Predicted = as.numeric(predictedN20))
+# Plot
+ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
+  geom_point(color = "steelblue") +
+  labs(
+    x = "DateTime",
+    y = "Predicted NO3N (mg/L)",
+    title = "Predicted NO3N over Time (USF20)"
+  ) +
+  theme_minimal()
+
 #################################################
 #### STEP 7: Develop PLSR training data sets ####
 #################################################
@@ -586,16 +596,16 @@ write.csv(predictedN20, file = "predicted/PredictedN_USF20.csv") # <- this is yo
 CTrain21 = grabcal.df21
 CTest21 = spectralcal.df21
 
-# NO3
+# NO3N
 NTrain21 = grabcal.df21
 NTest21 = spectralcal.df21
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-Cmod21 = plsr(DOC21 ~ Spectra21, ncomp = 7, data = CTrain21, validation = "LOO") # usually ncomp is N-1 grab samples you have
+Cmod21 = plsr(DOC21 ~ Spectra21, ncomp = 9, data = CTrain21, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod21) # optimized for 4 components
 
-Nmod21 = plsr(NO3N21 ~ Spectra21, ncomp = 7, data = NTrain21, validation = "LOO") # usually ncomp is N-1 grab samples you have
+Nmod21 = plsr(NO3N21 ~ Spectra21, ncomp = 9, data = NTrain21, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod21)
 
 # Plot RMSE of the predictions to optimize model
@@ -603,16 +613,16 @@ plot(RMSEP(Cmod21), legendpos = "topright")
 plot(RMSEP(Nmod21), legendpos = "topright")
 
 # Plot predicted vs. measured from optimized model
-# Pick the number of components with the least error (in this case, 1)
+# Pick the number of components with the least error
 # NOTE: This plot may be messy, given low number of grab samples 
-plot(Cmod21, ncomp = 4, asp = 1, line = TRUE)
-plot(Nmod21, ncomp = 4, asp = 1, line = TRUE)
+plot(Cmod21, ncomp = 6, asp = 1, line = TRUE)
+plot(Nmod21, ncomp = 2, asp = 1, line = TRUE)
 
 ####################################################################
 #### STEP 8: Make predictions based on reduced-error PLSR model #### 
 ####################################################################
 # Predict model!
-predictedC21 = predict(Cmod21, ncomp = 4, newdata = spectralcal.df21) # use reduced error model
+predictedC21 = predict(Cmod21, ncomp = 6, newdata = spectralcal.df21) # use reduced error model
 str(predictedC21)
 # Plot
 plot(predictedC21)
@@ -626,17 +636,51 @@ plot(predictedN21)
 write.csv(predictedC21, file = "predicted/PredictedC_USF21.csv") # <- this is your newly calibrated dataset!
 write.csv(predictedN21, file = "predicted/PredictedN_USF21.csv") # <- this is your newly calibrated dataset!
 
-# # 1. Loadings Plot for USF12 (Opposite Trend)
-# # This shows how the wavelengths contribute to each component (ncomp = 1, 2, 3, etc.)
-# plot(Nmod12, plottype = "loading",
-#      comps = 1:2, # Plot the first two components for initial inspection
-#      main = "USF12 NO3-N PLSR Loadings")
-# 
-# # 2. Loadings Plot for USF21 (Flat Trend)
-# # Examine the first few components for USF21
-# plot(Nmod21, plottype = "loading",
-#      comps = 1:2, # Plot the first two components
-#      main = "USF21 NO3-N PLSR Loadings")
+# 1. Loadings Plot for USF12 (Opposite Trend)
+# This shows how the wavelengths contribute to each component (ncomp = 1, 2, 3, etc.)
+plot(Nmod12, plottype = "loading",
+     comps = 1:2, # Plot the first two components for initial inspection
+     main = "USF12 NO3-N PLSR Loadings")
+
+# 2. Loadings Plot for USF20 (Flat Trend)
+plot(Nmod20, plottype = "loading",
+     comps = 1:2, # Plot the first two components
+     main = "USF20 NO3-N PLSR Loadings")
+
+# 3. Loadings Plot for USF21 (Flat Trend)
+# Examine the first few components for USF21
+plot(Nmod21, plottype = "loading",
+     comps = 1:2, # Plot the first two components
+     main = "USF21 NO3-N PLSR Loadings")
+
+# Convert predictedC21 to a data frame
+pred_df <- data.frame(
+  DateTime = as.POSIXct(dimnames(predictedC21)[[1]]),
+  Predicted = as.numeric(predictedC21))
+# Plot
+ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
+  geom_point(color = "steelblue") +
+  labs(
+    x = "DateTime",
+    y = "Predicted DOC (mg/L)",
+    title = "Predicted DOC over Time (USF21)"
+  ) +
+  theme_minimal()
+
+# Convert predictedN21 to a data frame
+pred_df <- data.frame(
+  DateTime = as.POSIXct(dimnames(predictedN21)[[1]]),
+  Predicted = as.numeric(predictedN21))
+# Plot
+p <- ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
+  geom_point(color = "steelblue") +
+  labs(
+    x = "DateTime",
+    y = "Predicted NO3N (mg/L)",
+    title = "Predicted NO3N over Time (USF21)"
+  ) +
+  theme_minimal()
+ggplotly(p)
 
 #######################
 #### Save in Drive #### 
@@ -649,6 +693,10 @@ drive_folder_id <- "1wa1ycqUYv56y3fTn1-VaN2K-NLU3rFeU"
 drive_upload(media = "predicted/PredictedC_USF12.csv", path = as_id(drive_folder_id))
 drive_upload(media = "predicted/PredictedC_USF20.csv", path = as_id(drive_folder_id))
 drive_upload(media = "predicted/PredictedC_USF21.csv", path = as_id(drive_folder_id))
+
+drive_upload(media = "predicted/PredictedN_USF12.csv", path = as_id(drive_folder_id))
+drive_upload(media = "predicted/PredictedN_USF20.csv", path = as_id(drive_folder_id))
+drive_upload(media = "predicted/PredictedN_USF21.csv", path = as_id(drive_folder_id))
 
 ## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 
 # You might need to use a moving window approach to the calibraiton (i.e., calibrate 1 month at a time)

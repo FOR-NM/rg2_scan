@@ -318,10 +318,9 @@ for (i in seq_along(scan_csvs$id)) {
 
 ## -------------------------------------------------------------------
 
-#####################################################################
-## 2. COMBINE DATA FRAMES BY SITE WITH ROBUST ALIGNMENT
-#####################################################################
-
+##############################################################
+#### 2. COMBINE DATA FRAMES BY SITE WITH ROBUST ALIGNMENT ####
+##############################################################
 site_names <- c("SSM01", "SSM20", "SST13")
 
 # Group files in `scan_list` by site name
@@ -364,7 +363,6 @@ combined_by_site <- lapply(scan_list_by_site, function(site_data_list) {
 #####################################################################
 ## 3. FINAL OUTPUT (OPTIONAL: SAVE TO CSV)
 #####################################################################
-
 # Example: Access the combined data for the SSM20 site
 # combined_data_ssm20 <- combined_by_site[["SSM20"]]
 
@@ -376,7 +374,7 @@ if (!dir.exists("data_combined")) {
 
 lapply(names(combined_by_site), function(site) {
   file_path <- file.path("data_combined", paste0(site, "_combined_abs.csv"))
-  write_csv(
+  write.csv(
     combined_by_site[[site]], 
     file_path,
     # Crucially, write_csv defaults to row.names=FALSE and is generally cleaner than write.csv

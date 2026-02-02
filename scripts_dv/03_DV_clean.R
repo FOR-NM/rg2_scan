@@ -201,7 +201,7 @@ DVNWT5 <- DVNWT5[(-c(1, 15))]
 DVMS1 <- DVMS1[(-c(1, 15))]
 
 #########################################
-#### remove error section from USF20 ####
+#### remove error section from DVOx ####
 #########################################
 DVO_test <- DVO %>%
   filter(DateTime >= "2024-07-25 10:15:00")

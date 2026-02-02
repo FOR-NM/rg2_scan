@@ -39,30 +39,30 @@ file.remove(files)
 #### STEP 2: Upload scan data frame [with spectra] ####
 ######################################################
 # This data is already matched #
-# This is the "with grab" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1Wju54VbyACZ_RFtfeInSvBCiVDKFScGj")
+# This is the "clean" folder
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1BNCKA7LdysjDH5_REI4WhH_P0Z4FIe0r")
 
 # List all CSVs files in the folder
 merged <- googledrive::drive_ls(path = scan, type = "csv")
 3
 
 #SSM01
-googledrive::drive_download(file = merged$id[merged$name=="SSM01_merged.csv"], 
-                            path = "googledrive/SSM01_merged.csv",
+googledrive::drive_download(file = merged$id[merged$name=="SSM01_merged_clean.csv"], 
+                            path = "googledrive/SSM01_merged_clean.csv",
                             overwrite = T)
 #SSM20
-googledrive::drive_download(file = merged$id[merged$name=="SSM20_merged.csv"], 
-                            path = "googledrive/SSM20_merged.csv",
+googledrive::drive_download(file = merged$id[merged$name=="SSM20_merged_clean.csv"], 
+                            path = "googledrive/SSM20_merged_clean.csv",
                             overwrite = T)
 #SST13
-googledrive::drive_download(file = merged$id[merged$name=="SST13_merged.csv"], 
-                            path = "googledrive/SST13_merged.csv",
+googledrive::drive_download(file = merged$id[merged$name=="SST13_merged_clean.csv"], 
+                            path = "googledrive/SST13_merged_clean.csv",
                             overwrite = T)
 
 # Load them separately 
-SSM01 <- read.csv("googledrive/SSM01_merged.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
-SSM20 <- read.csv("googledrive/SSM20_merged.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
-SST13 <- read.csv("googledrive/SST13_merged.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+SSM01 <- read.csv("googledrive/SSM01_merged_clean.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+SSM20 <- read.csv("googledrive/SSM20_merged_clean.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+SST13 <- read.csv("googledrive/SST13_merged_clean.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
 
 # Convert the DateTime column to POSIXct
 SSM01$DateTime <- as.POSIXct(SSM01$DateTime, format = "%Y-%m-%d %H:%M:%S")
@@ -91,25 +91,25 @@ SSM20 <- SSM20 %>% drop_na(DateTime)
 SST13 <- SST13 %>% drop_na(DateTime)
 
 # Extract DOC NO3 NO3N and TSS data as time series objects (xts)
-scan_DOC_SSM01 <- xts(SSM01$DOCeq..mg.l....Measured.value, order.by = SSM01$DateTime)
+scan_DOC_SSM01 <- xts(SSM01$DOC_mg.l, order.by = SSM01$DateTime)
 #scan_TSS_SSM01 <- xts(SSM01$TSS, order.by = SSM01$DateTime)
-scan_NO3N_SSM01 <- xts(SSM01$NO3.Neq..mg.l....Measured.value, order.by = SSM01$DateTime)
+scan_NO3N_SSM01 <- xts(SSM01$NO3_mg.l, order.by = SSM01$DateTime)
 #scan_NO3_SSM01 <- xts(SSM01$NO3, order.by = SSM01$DateTime)
 
-scan_DOC_SSM20 <- xts(SSM20$DOCeq..mg.l....Measured.value, order.by = SSM20$DateTime)
+scan_DOC_SSM20 <- xts(SSM20$DOC_mg.l, order.by = SSM20$DateTime)
 #scan_TSS_SSM20 <- xts(SSM20$TSS, order.by = SSM20$DateTime)
-scan_NO3N_SSM20 <- xts(SSM20$NO3.Neq..mg.l....Measured.value, order.by = SSM20$DateTime)
+scan_NO3N_SSM20 <- xts(SSM20$NO3_mg.l, order.by = SSM20$DateTime)
 #scan_NO3_SSM20 <- xts(SSM20$NO3, order.by = SSM20$DateTime)
 
-scan_DOC_SST13 <- xts(SST13$DOCeq..mg.l....Measured.value, order.by = SST13$DateTime)
+scan_DOC_SST13 <- xts(SST13$DOC_mg.l, order.by = SST13$DateTime)
 #scan_TSS_SST13 <- xts(SST13$TSS, order.by = SST13$DateTime)
-scan_NO3N_SST13 <- xts(SST13$NO3.Neq..mg.l....Measured.value, order.by = SST13$DateTime)
+scan_NO3N_SST13 <- xts(SST13$NO3_mg.l, order.by = SST13$DateTime)
 #scan_NO3_SST13 <- xts(SST13$NO3, order.by = SST13$DateTime)
 
 # Extract spectral data (assuming spectral columns are in range "X200.00.nm" to "X750.00.nm")
-scan.spec01 = xts(SSM01[27:237], as.POSIXct(SSM01$DateTime, format = "%m/%d/%Y %H:%M")) 
-scan.spec20 = xts(SSM20[29:249], as.POSIXct(SSM20$DateTime, format = "%m/%d/%Y %H:%M")) 
-scan.spec13 = xts(SST13[43:263], as.POSIXct(SST13$DateTime, format = "%m/%d/%Y %H:%M")) 
+scan.spec01 = xts(SSM01[23:243], as.POSIXct(SSM01$DateTime, format = "%m/%d/%Y %H:%M:%S")) 
+scan.spec20 = xts(SSM20[23:243], as.POSIXct(SSM20$DateTime, format = "%m/%d/%Y %H:%M:%S")) 
+scan.spec13 = xts(SST13[23:243], as.POSIXct(SST13$DateTime, format = "%m/%d/%Y %H:%M:%S")) 
 # select full spectra
 # note here that if there are 0s in your spectra, this code will throw an error
 # so only use the wavelengths where you have detectable absorbance
@@ -123,22 +123,19 @@ scan.spec13 = xts(SST13[43:263], as.POSIXct(SST13$DateTime, format = "%m/%d/%Y %
 
 # Creating "Grab_sample" column based on values in "Sample.Name"
 # Modify the Grab_sample column
-SSM01_test <- SSM01[-c(2,25)]
-SSM01 <- SSM01_test %>% 
+SSM01 <- SSM01 %>% 
   mutate(Grab_sample = case_when(
     !is.na(Sample.Name) & Sample.Name != "" ~ "Y",  # Assign "Y" if data exists
     TRUE ~ NA_character_  # Leave as NA otherwise
   ))
 
-SSM20_test <- SSM20[-c(2,26)]
-SSM20 <- SSM20_test %>% 
+SSM20 <- SSM20 %>% 
   mutate(Grab_sample = case_when(
     !is.na(Sample.Name) & Sample.Name != "" ~ "Y",
     TRUE ~ NA_character_
   ))
 
-SST13_test <- SST13[-c(2,4)]
-SST13 <- SST13_test %>% 
+SST13 <- SST13 %>% 
   mutate(Grab_sample = case_when(
     !is.na(Sample.Name) & Sample.Name != "" ~ "Y",
     TRUE ~ NA_character_
@@ -150,65 +147,65 @@ grab_SSM20 = SSM20[SSM20$Grab_sample == "Y",] # Only gets data when there is a Y
 grab_SST13 = SST13[SST13$Grab_sample == "Y",] # Only gets data when there is a Y
 
 grab.DOC01 = grab_SSM01$NPOC..mg.C.L.
-grab.NO3N01 = grab_SSM01$NO3.Neq..mg.l....Measured.value
+grab.NO3N01 = grab_SSM01$NO3..mg.N.L.
 
 grab.DOC20 = grab_SSM20$NPOC..mg.C.L.
-grab.NO3N20 = grab_SSM20$NO3.Neq..mg.l....Measured.value
+grab.NO3N20 = grab_SSM20$NO3..mg.N.L.
 
 grab.DOC13 = grab_SST13$NPOC..mg.C.L.
-grab.NO3N13 = grab_SST13$NO3.Neq..mg.l....Measured.value
+grab.NO3N13 = grab_SST13$NO3..mg.N.L.
 
 # Compare grab vs scan DOC
-plot(grab_SSM01$DOCeq..mg.l....Measured.value ~ grab_SSM01$NPOC..mg.C.L.)
-ggplot(grab_SSM01, aes(x = NPOC..mg.C.L., y = DOCeq..mg.l....Measured.value)) +
+plot(grab_SSM01$DOC_mg.l ~ grab_SSM01$NPOC..mg.C.L.)
+ggplot(grab_SSM01, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +
   geom_point(color = "blue") +
   geom_text(aes(label = Date), vjust = -0.5, size = 3)  # adds date labels above points
-calib.mod.DOC01 = lm(grab_SSM01$DOCeq..mg.l....Measured.value ~ grab_SSM01$NPOC..mg.C.L.)
+calib.mod.DOC01 = lm(grab_SSM01$DOC_mg.l ~ grab_SSM01$NPOC..mg.C.L.)
 summary(calib.mod.DOC01)
 
-plot(grab_SSM20$DOCeq..mg.l....Measured.value ~ grab_SSM20$NPOC..mg.C.L.)
-ggplot(grab_SSM20, aes(x = NPOC..mg.C.L., y = DOCeq..mg.l....Measured.value)) +
+plot(grab_SSM20$DOC_mg.l ~ grab_SSM20$NPOC..mg.C.L.)
+ggplot(grab_SSM20, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +
   geom_point(color = "blue") +
   geom_text(aes(label = Date), vjust = -0.5, size = 3) 
-calib.mod.DOC20 = lm(grab_SSM20$DOCeq..mg.l....Measured.value ~ grab_SSM20$NPOC..mg.C.L.)
+calib.mod.DOC20 = lm(grab_SSM20$DOC_mg.l ~ grab_SSM20$NPOC..mg.C.L.)
 summary(calib.mod.DOC20)
 
-plot(grab_SST13$DOCeq..mg.l....Measured.value ~ grab_SST13$NPOC..mg.C.L.)
-ggplot(grab_SST13, aes(x = NPOC..mg.C.L., y = DOCeq..mg.l....Measured.value)) +
+plot(grab_SST13$DOC_mg.l ~ grab_SST13$NPOC..mg.C.L.)
+ggplot(grab_SST13, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +
   geom_point(color = "blue") +
   geom_text(aes(label = Date), vjust = -0.5, size = 3) 
-calib.mod.DOC13 = lm(grab_SST13$DOCeq..mg.l....Measured.value ~ grab_SST13$NPOC..mg.C.L.)
+calib.mod.DOC13 = lm(grab_SST13$DOC_mg.l ~ grab_SST13$NPOC..mg.C.L.)
 summary(calib.mod.DOC13)
 
 # Compare grab vs scan NO3N
-plot(grab_SSM01$NO3.Neq..mg.l....Measured.value ~ grab_SSM01$NO3..mg.N.L.)
-ggplot(grab_SSM01, aes(x = NO3..mg.N.L., y = NO3.Neq..mg.l....Measured.value)) +
+plot(grab_SSM01$NO3_mg.l ~ grab_SSM01$NO3..mg.N.L.)
+ggplot(grab_SSM01, aes(x = NO3..mg.N.L., y = NO3_mg.l)) +
   geom_point(color = "blue") +
   geom_text(aes(label = Date), vjust = -0.5, size = 3)  # adds date labels above points
-calib.mod.DOC01 = lm(grab_SSM01$NO3.Neq..mg.l....Measured.value ~ grab_SSM01$NO3..mg.N.L.)
-summary(calib.mod.DOC01)
+calib.mod.NO301 = lm(grab_SSM01$NO3_mg.l ~ grab_SSM01$NO3..mg.N.L.)
+summary(calib.mod.NO301)
 
-plot(grab_SSM20$NO3.Neq..mg.l....Measured.value ~ grab_SSM20$NO3..mg.N.L.)
-ggplot(grab_SSM20, aes(x = NO3..mg.N.L., y = NO3.Neq..mg.l....Measured.value)) +
+plot(grab_SSM20$NO3_mg.l ~ grab_SSM20$NO3..mg.N.L.)
+ggplot(grab_SSM20, aes(x = NO3..mg.N.L., y = NO3_mg.l)) +
   geom_point(color = "blue") +
   geom_text(aes(label = Date), vjust = -0.5, size = 3)  
-calib.mod.DOC20 = lm(grab_SSM20$NO3.Neq..mg.l....Measured.value ~ grab_SSM20$NO3..mg.N.L.)
-summary(calib.mod.DOC20)
+calib.mod.NO320 = lm(grab_SSM20$NO3_mg.l ~ grab_SSM20$NO3..mg.N.L.)
+summary(calib.mod.NO320)
 
-plot(grab_SST13$NO3.Neq..mg.l....Measured.value ~ grab_SST13$NO3..mg.N.L.)
-ggplot(grab_SST13, aes(x = NO3..mg.N.L., y = NO3.Neq..mg.l....Measured.value)) +
+plot(grab_SST13$NO3_mg.l ~ grab_SST13$NO3..mg.N.L.)
+ggplot(grab_SST13, aes(x = NO3..mg.N.L., y = NO3_mg.l)) +
   geom_point(color = "blue") +
   geom_text(aes(label = Date), vjust = -0.5, size = 3)
-calib.mod.DOC13 = lm(grab_SST13$NO3.Neq..mg.l....Measured.value ~ grab_SST13$NO3..mg.N.L.)
-summary(calib.mod.DOC13)
+calib.mod.NO313 = lm(grab_SST13$NO3_mg.l ~ grab_SST13$NO3..mg.N.L.)
+summary(calib.mod.NO313)
 
 #######################################################################################
 #### STEP 4: Create matrices of GRAB spectral data - this is the training data set ####
 #######################################################################################
 # 1. Index data set with columns with absorbances
-grab.spec.dat01 = grab_SSM01[24:244] # Full spectra, with no NAs
-grab.spec.dat20 = grab_SSM20[25:245] # Full spectra, with no NAs
-grab.spec.dat13 = grab_SST13[39:259] # Full spectra, with no NAs
+grab.spec.dat01 = grab_SSM01[23:243] # Full spectra, with no NAs
+grab.spec.dat20 = grab_SSM20[23:243] # Full spectra, with no NAs
+grab.spec.dat13 = grab_SST13[23:243] # Full spectra, with no NAs
 
 # Rename columns for all data frames (e.g., SSM01, SSM20, SST13)
 rename_columns <- function(df) {
@@ -305,9 +302,9 @@ attributes(grab.spectra13)
 #### STEP 5: Create matrices of ALL spectral data - raw data that needs calibration ####
 ########################################################################################
 # 1. Index FULL dataset with columns with absorbances
-scan.spec01 = SSM01[24:244]
-scan.spec20 = SSM20[25:245]
-scan.spec13 = SST13[39:259]
+scan.spec01 = SSM01[23:243]
+scan.spec20 = SSM20[23:243]
+scan.spec13 = SST13[23:243]
 
 # 2. Create an absorbance matrix 
 # Rows = wavelength

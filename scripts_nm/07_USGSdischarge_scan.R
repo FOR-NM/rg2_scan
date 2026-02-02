@@ -69,7 +69,6 @@ scan_list <- lapply(scan_list, function(df) {
   return(df)
 })
 
-
 ##################################
 #### Pull USGS discharge data ####
 ##################################

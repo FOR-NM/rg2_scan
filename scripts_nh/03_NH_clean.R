@@ -182,9 +182,9 @@ scan_list <- lapply(scan_list, function(df) {
   return(df)
 })
 
-########################################
+############################################
 #### Remove error or sections from USF20 ###
-########################################
+############################################
 USF20_test <- USF20 %>%
   mutate(across(
     c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean", 21:230),

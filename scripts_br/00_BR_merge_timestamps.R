@@ -19,7 +19,7 @@ file.remove(files)
 ##########################
 #### list and download all files in the folder ####
 # this is the in use" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1np2B4bSWaNMIYE2FHL3YOnZ20FRudsEy")
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/18aCQUU838dYH2DzYJ_gRXVm0YNkpsnK1")
 # list all CSV files in the folder
 scan_csvs <- googledrive::drive_ls(path = scan)
 3
@@ -70,7 +70,7 @@ for (i in seq_along(scan_list)) {
 }
 
 # site names
-site_names <- c("USF12", "USF20", "USF21")
+site_names <- c("BRMQ4", "BRM06")
 
 # group files in `scan_list` by matching `site_names` in file names
 
@@ -113,7 +113,7 @@ lapply(names(combined_by_site), function(site) {
 lapply(names(combined_by_site), function(site) {
   file <- paste0("data/", site, "_params.csv")
   # this is the "merged timestamps" folder
-  drive_folder_id <- "1-dUxVn1hBWy2MpHeIjVt-2QSujpVhijy"
+  drive_folder_id <- "1ROxMHt-mzsMrym5Gisi2mNM9RaepuhZc"
   # Upload file to the specified Google Drive folder
   drive_put(
     media = file,
@@ -173,7 +173,7 @@ for (i in seq_along(scan_list)) {
 }
 
 # site names
-site_names <- c("USF12", "USF20", "USF21")
+site_names <- c("BRMQ4", "BRM06")
 
 # group files in `scan_list` by matching `site_names` in file names
 scan_list_by_site <- lapply(site_names, function(site) {
@@ -215,7 +215,7 @@ lapply(names(combined_by_site), function(site) {
 lapply(names(combined_by_site), function(site) {
   file <- paste0("data/", site, "_abs.csv")
   # this is the "in use" folder
-  drive_folder_id <- "1-dUxVn1hBWy2MpHeIjVt-2QSujpVhijy"
+  drive_folder_id <- "1ROxMHt-mzsMrym5Gisi2mNM9RaepuhZc"
   # upload file to the specified Google Drive folder
   drive_put(
     media = file,
