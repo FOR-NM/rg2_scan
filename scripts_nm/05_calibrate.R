@@ -5,7 +5,6 @@
 ## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
 
-# Importing data
 library(googledrive) 
 library(data.table)
 
@@ -42,6 +41,7 @@ file.remove(files)
 #######################################################
 # This is the "with chem" folder
 scan <- googledrive::as_id("https://drive.google.com/drive/folders/1qjM3Zze-I5ycFCHNcd997UG6gYXBUoX8")
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1C94YVprGjKTw-HbWnw-p62oYUdre2e2C")
 
 # List all xlsx files in the folder
 merged <- googledrive::drive_ls(path = scan, type = "csv")
@@ -51,27 +51,36 @@ merged <- googledrive::drive_ls(path = scan, type = "csv")
 googledrive::drive_download(file = merged$id[merged$name=="USF12_chem_Buttercup.csv"], 
                             path = "googledrive/USF12_chem_Buttercup.csv",
                             overwrite = T)
+googledrive::drive_download(file = merged$id[merged$name=="USF12.csv"], 
+                            path = "googledrive/USF12.csv",
+                            overwrite = T)
 #USF20
 googledrive::drive_download(file = merged$id[merged$name=="USF20_chem_Blossom.csv"], 
                             path = "googledrive/USF20_chem_Blossom.csv",
+                            overwrite = T)
+googledrive::drive_download(file = merged$id[merged$name=="USF20.csv"], 
+                            path = "googledrive/USF20.csv",
                             overwrite = T)
 #USF21
 googledrive::drive_download(file = merged$id[merged$name=="USF21_chem_Bubbles.csv"], 
                             path = "googledrive/USF21_chem_Bubbles.csv",
                             overwrite = T)
+googledrive::drive_download(file = merged$id[merged$name=="USF21.csv"], 
+                            path = "googledrive/USF21.csv",
+                            overwrite = T)
 
 # Let's load them separately first
-USF12 <- read.csv("googledrive/USF12_chem_Buttercup.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
-USF20 <- read.csv("googledrive/USF20_chem_Blossom.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
-USF21 <- read.csv("googledrive/USF21_chem_Bubbles.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+USF12 <- read.csv("googledrive/USF12.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+USF20 <- read.csv("googledrive/USF20.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+USF21 <- read.csv("googledrive/USF21.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
 
-# # DateTime at midnight is missing 00:00:00 time, so filling in that time using grep                     
-# USF12$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF12$DateTime)] <- paste(
-#   USF12$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF12$DateTime)],"00:00:00")
-# USF20$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF20$DateTime)] <- paste(
-#   USF20$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF20$DateTime)],"00:00:00")
-# USF21$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF21$DateTime)] <- paste(
-#   USF21$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF21$DateTime)],"00:00:00")
+# DateTime at midnight is missing 00:00:00 time, so filling in using grep
+USF12$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF12$DateTime)] <- paste(
+  USF12$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF12$DateTime)],"00:00:00")
+USF20$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF20$DateTime)] <- paste(
+  USF20$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF20$DateTime)],"00:00:00")
+USF21$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF21$DateTime)] <- paste(
+  USF21$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF21$DateTime)],"00:00:00")
 
 # Convert the DateTime column to POSIXct
 USF12$DateTime <- as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")
@@ -107,10 +116,10 @@ scan_DOC_USF21 <- xts(USF21$DOC_mg.l, order.by = USF21$DateTime)
 scan_TSS_USF21 <- xts(USF21$TSS_mg.l, order.by = USF21$DateTime)
 scan_NO3N_USF21 <- xts(USF21$NO3.N_mg.l, order.by = USF21$DateTime)
 
-# Extract spectral data (assuming spectral columns are in range "200.00.nm" to "750.00.nm")
-scan.spec12 = xts(USF12[19:118], as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
-scan.spec20 = xts(USF20[19:118], as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
-scan.spec21 = xts(USF21[19:118], as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
+# Extract spectral data (assuming spectral columns are in range "200.00.nm" to "4.00.nm")
+scan.spec12 = xts(USF12[16:115], as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
+scan.spec20 = xts(USF20[16:115], as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
+scan.spec21 = xts(USF21[16:115], as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
 # select full spectra
 # note here that if there are 0s in your spectra, this code will throw an error
 # so only use the wavelengths where you have detectable absorbance
@@ -121,6 +130,10 @@ scan.spec21 = xts(USF21[19:118], as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %
 # This is just a check to see how well the s::can did relative to your known concentrations 
 # I upload this as a new data frame, just because in the previous step I had assigned these XTS values
 # Feel free to change this! It's not the most efficient way to do this...
+
+USF12 <- USF12[,-1]
+USF20 <- USF20[,-1]
+USF21 <- USF21[,-1]
 
 # Creating "Grab_sample" column based on values in "Sample.Name"
 # Modify the Grab_sample column
@@ -163,9 +176,9 @@ grab_USF20 <- grab_USF20 %>%
   mutate(NPOC..mg.C.L. = ifelse(DateTime == "2024-06-19 14:00:00" | is.na(NPOC..mg.C.L.),NA,NPOC..mg.C.L.))
 
 grab_USF12 <- grab_USF12 %>%
-  mutate(NO3..mg.N.L. = ifelse(Date %in% c("2024-09-25", "2025-05-01", "2025-09-12", "2025-04-10") | is.na(NO3..mg.N.L.), NA, NO3..mg.N.L.))
+  mutate(NO3..mg.N.L. = ifelse(Date %in% c("2024-09-25", "2025-05-01", "2025-04-10", "2025-04-03") | is.na(NO3..mg.N.L.), NA, NO3..mg.N.L.))
 grab_USF20 <- grab_USF20 %>%
-  mutate(NO3..mg.N.L. = ifelse(Date %in% c("2024-05-23", "2025-09-12", "2025-05-01", "2024-10-16") | is.na(NO3..mg.N.L.),NA,NO3..mg.N.L.))
+  mutate(NO3..mg.N.L. = ifelse(Date %in% c("2024-05-23", "2025-09-12", "2025-05-01", "2024-10-16", "2025-04-10", "2024-07-30") | is.na(NO3..mg.N.L.),NA,NO3..mg.N.L.))
 grab_USF21 <- grab_USF21 %>%
   mutate(NO3..mg.N.L. = ifelse(Date %in% c("2024-09-18", "2025-06-13", "2025-09-12") | is.na(NO3..mg.N.L.), NA, NO3..mg.N.L.))
 
@@ -216,9 +229,9 @@ summary(calib.mod.NO3N21)
 #######################################################################################
 # 1. Index data set with columns with absorbances
 # raw spectra
-grab.spec.dat12 = grab_USF12[19:118] # Full spectra, with no NAs?
-grab.spec.dat20 = grab_USF20[19:118]
-grab.spec.dat21 = grab_USF21[19:118] 
+grab.spec.dat12 = grab_USF12[15:114] # Full spectra, with no NAs?
+grab.spec.dat20 = grab_USF20[15:114]
+grab.spec.dat21 = grab_USF21[15:114] 
 
 # Rename columns for all data frames (e.g., USF12, USF20, USF21)
 rename_columns <- function(df) {
@@ -318,9 +331,9 @@ attributes(grab.spectra21)
 ########################################################################################
 # 1. Index FULL dataset with columns with absorbances
 # raw spectra
-scan.spec12 = USF12[19:118]
-scan.spec20 = USF20[19:118] 
-scan.spec21 = USF21[19:118]
+scan.spec12 = USF12[15:114]
+scan.spec20 = USF20[15:114] 
+scan.spec21 = USF21[15:114]
 
 # 2. Create an absorbance matrix 
 # Rows = wavelength
@@ -472,8 +485,8 @@ str(predictedN12)
 # Plot final predictions
 plot(predictedN12)
 
-write.csv(predictedC12, file = "predicted/PredictedC_USF12.csv") # <- this is your newly calibrated dataset!
-write.csv(predictedN12, file = "predicted/PredictedN_USF12.csv") # <- this is your newly calibrated dataset!
+write.csv(predictedC12, file = "predicted/PredictedC_USF12_vclean.csv") # <- this is your newly calibrated dataset!
+write.csv(predictedN12, file = "predicted/PredictedN_USF12_vclean.csv") # <- this is your newly calibrated dataset!
 
 # Convert predictedC12 to a data frame
 pred_df <- data.frame(
@@ -481,7 +494,7 @@ pred_df <- data.frame(
   Predicted = as.numeric(predictedC12))
 # Plot
 p <- ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
-  geom_point(color = "steelblue") +
+  geom_line(color = "steelblue") +
   labs(
     x = "DateTime",
     y = "Predicted DOC (mg/L)",
@@ -496,14 +509,13 @@ pred_df <- data.frame(
   Predicted = as.numeric(predictedN12))
 # Plot
 p <- ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
-  geom_point(color = "steelblue") +
+  geom_line(color = "steelblue") +
   labs(
     x = "DateTime",
     y = "Predicted NO3N (mg/L)",
     title = "Predicted NO3N over Time (USF12)"
   ) +
   theme_minimal()
-
 ggplotly(p)
 
 ## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 
@@ -544,6 +556,7 @@ plot(Nmod20, ncomp = 2, asp = 1, line = TRUE)
 ####################################################################
 # Predict model!
 predictedC20 = predict(Cmod20, ncomp = 1, newdata = spectralcal.df20) # use reduced error model
+
 str(predictedC20)
 # Plot final predictions
 plot(predictedC20)
@@ -553,8 +566,8 @@ str(predictedN20)
 # Plot final predictions
 plot(predictedN20)
 
-write.csv(predictedC20, file = "predicted/PredictedC_USF20.csv") # <- this is your newly calibrated dataset!
-write.csv(predictedN20, file = "predicted/PredictedN_USF20.csv") # <- this is your newly calibrated dataset!
+write.csv(predictedC20, file = "predicted/PredictedC_USF20_vclean.csv") # <- this is your newly calibrated dataset!
+write.csv(predictedN20, file = "predicted/PredictedN_USF20_vclean.csv") # <- this is your newly calibrated dataset!
 
 ## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 
 # You might need to use a moving window approach to the calibraiton (i.e., calibrate 1 month at a time)
@@ -633,8 +646,8 @@ str(predictedN21)
 # Plot
 plot(predictedN21)
 
-write.csv(predictedC21, file = "predicted/PredictedC_USF21.csv") # <- this is your newly calibrated dataset!
-write.csv(predictedN21, file = "predicted/PredictedN_USF21.csv") # <- this is your newly calibrated dataset!
+write.csv(predictedC21, file = "predicted/PredictedC_USF21_vclean.csv") # <- this is your newly calibrated dataset!
+write.csv(predictedN21, file = "predicted/PredictedN_USF21_vclean.csv") # <- this is your newly calibrated dataset!
 
 # 1. Loadings Plot for USF12 (Opposite Trend)
 # This shows how the wavelengths contribute to each component (ncomp = 1, 2, 3, etc.)
@@ -690,13 +703,13 @@ ggplotly(p)
 drive_folder_id <- "1wa1ycqUYv56y3fTn1-VaN2K-NLU3rFeU"
 
 # Upload the file to the specified Google Drive folder
-drive_upload(media = "predicted/PredictedC_USF12.csv", path = as_id(drive_folder_id))
-drive_upload(media = "predicted/PredictedC_USF20.csv", path = as_id(drive_folder_id))
-drive_upload(media = "predicted/PredictedC_USF21.csv", path = as_id(drive_folder_id))
+drive_upload(media = "predicted/PredictedC_USF12_vclean.csv", path = as_id(drive_folder_id))
+drive_upload(media = "predicted/PredictedC_USF20_vclean.csv", path = as_id(drive_folder_id))
+drive_upload(media = "predicted/PredictedC_USF21_vclean.csv", path = as_id(drive_folder_id))
 
-drive_upload(media = "predicted/PredictedN_USF12.csv", path = as_id(drive_folder_id))
-drive_upload(media = "predicted/PredictedN_USF20.csv", path = as_id(drive_folder_id))
-drive_upload(media = "predicted/PredictedN_USF21.csv", path = as_id(drive_folder_id))
+drive_upload(media = "predicted/PredictedN_USF12_vclean.csv", path = as_id(drive_folder_id))
+drive_upload(media = "predicted/PredictedN_USF20_vclean.csv", path = as_id(drive_folder_id))
+drive_upload(media = "predicted/PredictedN_USF21_vclean.csv", path = as_id(drive_folder_id))
 
 ## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 
 # You might need to use a moving window approach to the calibraiton (i.e., calibrate 1 month at a time)
