@@ -5,7 +5,6 @@
 library(dataRetrieval) # download USGS discharge data
 library(googledrive) # download docs from Drive
 library(tidyverse)
-library(readxl) # to read Excel
 library(lubridate) # Edit date format
 library(xts) # time series
 library(ggplot2)
@@ -21,10 +20,10 @@ file.remove(files)
 files <- list.files(path = "data", full.names = TRUE)
 file.remove(files)
 
-#####################
-#### Import Data ####
-#####################
-# load data from Google Drive. his is the "filtered" folder
+################################
+#### Import calibrated Data ####
+################################
+# load data from Google Drive. his is the "predicted" folder
 scan <- googledrive::as_id("https://drive.google.com/drive/folders/1wa1ycqUYv56y3fTn1-VaN2K-NLU3rFeU")
 scan_csvs <- googledrive::drive_ls(path = scan, type = "csv")
 3
@@ -57,18 +56,48 @@ for (i in seq_along(scan_csvs$id)) {
 # remove extra files for this
 # scan_list <- scan_list[-c(4:9)]
 
-#################
-#### Tidying ####
-#################
-# # change some names for easier manipulation
-# scan_list <- lapply(scan_list, function(df) {
-#   # make sure numeric variables are numeric
-#   df <- df %>%
-#     mutate(across(c(DOC_mg.l, NO3.N_mg.l, NO3_mg.l, TOC_mg.l, TSS_mg.l, Temp_C), as.numeric)) %>%
-#     mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
-#   
-#   return(df)
-# })
+#######################################
+#### Import GLOBAL calibrated Data ####
+#######################################
+# load data from Google Drive. his is the "with chem" folder
+scan <- googledrive::as_id("https://drive.google.com/drive/u/1/folders/1qjM3Zze-I5ycFCHNcd997UG6gYXBUoX8")
+global_csvs <- googledrive::drive_ls(path = scan, type = "csv")
+3
+
+# create empty list to store data frames
+global_list <- list()
+
+# loop over each file in the `global_csvs` data frame
+for (i in seq_along(global_csvs$id)) {
+  # define the local file path
+  local_path <- file.path("googledrive", global_csvs$name[i])
+  
+  # download the file
+  googledrive::drive_download(
+    file = global_csvs$id[i],
+    path = local_path,
+    overwrite = TRUE
+  )
+  
+  # read the header row (row 2)
+  header <- read_csv(local_path, n_max = 1, col_names = TRUE)
+  
+  # read the data starting from row 4 using the header as column names
+  data <- read_csv(local_path)
+  
+  # store the data in the list
+  global_list[[global_csvs$name[i]]] <- data
+}
+
+# loop over each data frame in the list
+for (file_name in names(global_list)) {
+  # Get the data frame
+  data <- global_list[[file_name]]
+  # filter to only character columns
+  data <- data[, -c(19:110)]
+  # store the data in the list
+  global_list[[file_name]] <- data
+}
 
 ##################################
 #### Pull USGS discharge data ####
@@ -93,26 +122,29 @@ santafeUSGS_21$DateTime <- santafeUSGS_21$dateTime
 ####################################
 #### Combine data for each site ####
 ####################################
+# combine lists
+mlist =  c(scan_list, global_list)
+
 # loop through each data frame in the list to change DateTime column name
-for (i in seq_along(scan_list)) {
+for (i in seq_along(mlist)) {
   # Access the current data frame
-  df <- scan_list[[i]]
+  df <- mlist[[i]]
   # change name of first column
   colnames(df)[1] ="DateTime"
   # Update the data frame in the list
-  scan_list[[i]] <- df
+  mlist[[i]] <- df
 }
 
 # site names
 site_names <- c("USF12", "USF20", "USF21")
 
-# group files in `scan_list` by matching `site_names` in file names
+# group files in `mlist` by matching `site_names` in file names
 scan_list_by_site <- lapply(site_names, function(site) {
-  # names(scan_list) gives the names of all files in scan_list.
-  site_files <- names(scan_list)[grepl(site, names(scan_list))] 
-  # grep checks if the current site (e.g., USF12) appears in each file name in scan_list. 
+  # names(mlist) gives the names of all files in mlist
+  site_files <- names(mlist)[grepl(site, names(mlist))] 
+  # grep checks if the current site (e.g., USF12) appears in each file name in mlist 
   # this returns a logical vector (TRUE for matches, FALSE otherwise).
-  scan_list[site_files] # select only the files for this site
+  mlist[site_files] # select only the files for this site
   # the [ ] indexing selects only the file names where the match is TRUE.
 })
 
@@ -201,11 +233,11 @@ plot_usgs_faceted <- function(df, usgs_df, label) {
   combined_df <- data.frame(DateTime = index(combined_xts), coredata(combined_xts))
   
   # convert columns to numeric, if necessary
-  combined_df <- combined_df %>% mutate(across(c(NO3N.comps_clean, NO3N.comps, DOC.comps_clean, DOC.comps, Flow_Inst), as.numeric))
+  combined_df <- combined_df %>% mutate(across(c(NO3N.comps_clean, NO3N.comps, NO3.N_mg.l, DOC.comps_clean, DOC.comps, DOC_mg.l, Flow_Inst), as.numeric))
   
   # reshape data to long format for faceting
   combined_long <- combined_df %>%
-    dplyr::select(DateTime, NO3N.comps_clean, NO3N.comps, DOC.comps_clean, DOC.comps, Flow_Inst) %>%
+    dplyr::select(DateTime, NO3N.comps_clean, NO3N.comps, NO3.N_mg.l, DOC.comps_clean, DOC.comps, DOC_mg.l, Flow_Inst) %>%
     pivot_longer(cols = -DateTime, names_to = "Variable", values_to = "Value")
 
   # plot using facet_wrap for each variable
@@ -222,7 +254,6 @@ plot_usgs_faceted <- function(df, usgs_df, label) {
 print(plot_usgs_faceted(combined_by_site[[1]], santafeUSGS_12, "USF12"))
 print(plot_usgs_faceted(combined_by_site[[2]], santafeUSGS_20, "USF20"))
 print(plot_usgs_faceted(combined_by_site[[3]], santafeUSGS_21, "USF21"))
-
 
 ### save figures to folder ###
 for (i in seq_along(combined_by_site)) {
@@ -273,11 +304,11 @@ plot_usgs_faceted <- function(df, usgs_df, label) {
   combined_df <- data.frame(DateTime = index(combined_xts), coredata(combined_xts))
   
   # convert columns to numeric, if necessary
-  combined_df <- combined_df %>% mutate(across(c(NO3N.comps_clean, NO3N.comps, DOC.comps_clean, DOC.comps, Flow_Inst), as.numeric))
+  combined_df <- combined_df %>% mutate(across(c(NO3N.comps_clean, NO3N.comps, NO3.N_mg.l, DOC.comps_clean, DOC.comps, DOC_mg.l, Flow_Inst), as.numeric))
   
   # reshape data to long format for faceting
   combined_long <- combined_df %>%
-    dplyr::select(DateTime, NO3N.comps_clean, NO3N.comps, DOC.comps_clean, DOC.comps, Flow_Inst) %>%
+    dplyr::select(DateTime, NO3N.comps_clean, NO3N.comps, NO3.N_mg.l, DOC.comps_clean, DOC.comps, DOC_mg.l, Flow_Inst) %>%
     pivot_longer(cols = -DateTime, names_to = "Variable", values_to = "Value")
   
   # plot using facet_wrap for each variable
@@ -290,11 +321,68 @@ plot_usgs_faceted <- function(df, usgs_df, label) {
     theme(legend.position = "none") 
 }
 
-
 # generate plots
 print(plot_usgs_faceted(scan_subdf[[1]], short_USGS12, "USF12"))
 print(plot_usgs_faceted(scan_subdf[[2]], short_USGS20, "USF20"))
 print(plot_usgs_faceted(scan_subdf[[3]], short_USGS21, "USF21"))
+
+#######################
+#### Plot with SNV ####
+#######################
+USF12 <- scan_with_usgs[["USF12"]]
+
+USF12 <- USF12 %>%
+  rename("CalibratedCleaned" = "NO3N.comps_clean",
+         "Calibrated" = "NO3N.comps",
+         "SNV" = "NO3N12.2.comps",
+        "Global" = "NO3.N_mg.l")
+
+plot_usgs_faceted <- function(df, usgs_df, label) {
+  # convert to xts and merge data frames
+  df_xts <- xts(df, order.by = df$DateTime)
+  usgs_xts <- xts(usgs_df, order.by = usgs_df$DateTime)
+  combined_xts <- merge(df_xts, usgs_xts, join = "outer")
+  combined_df <- data.frame(DateTime = index(combined_xts), coredata(combined_xts))
+  
+  # convert columns to numeric, if necessary
+  USF12 <- USF12 %>% mutate(across(c(CalibratedCleaned, Calibrated, SNV, Global, Flow_Inst), as.numeric))
+  
+  # reshape data to long format for faceting
+  USF12_long <- USF12 %>%
+  dplyr::select(DateTime, CalibratedCleaned, Calibrated, SNV, Global, Flow_Inst) %>%
+  pivot_longer(cols = -DateTime, names_to = "Variable", values_to = "Value")
+  
+  # plot using facet_wrap for each variable
+  ggplot(data = USF12_long, aes(x = DateTime, y = Value, color = Variable)) +
+  geom_line() +
+  facet_wrap(~Variable, scales = "free_y", ncol = 1) +  # separate facet for each variable
+  scale_x_datetime(date_breaks = "2 week", date_labels = "%m/%d") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ggtitle(label) +
+  theme(legend.position = "none") 
+}
+
+# generate plots
+print(plot_usgs_faceted(scan_with_usgs[[1]], santafeUSGS_12, "USF12"))
+
+############################################
+#### Plot time series with grab samples ####
+############################################
+USF12 <- scan_with_usgs[["USF12"]]
+
+# make sure everything is numeric
+USF12$NO3N.comps <- as.numeric(USF12$NO3N.comps)
+USF12$NO3..mg.N.L. <- as.numeric(USF12$NO3..mg.N.L.)
+
+# plot
+ggplot(data = USF12) +
+  geom_line(aes(x = DateTime, y = NO3N.comps, color = "Sensor (SNV-PLSR)"), 
+            linewidth = 0.5) +
+  geom_point(aes(x = DateTime, y = NO3..mg.N.L., color = "Grab Samples"), 
+             size = 3) +
+  scale_color_manual(values = c("Sensor (SNV-PLSR)" = "blue", "Grab Samples" = "red")) +
+  labs(y = "NO3-N (mg/L)", x = "Date") +
+  theme_bw()
 
 ###################################
 #### Save merged data to Drive ####
