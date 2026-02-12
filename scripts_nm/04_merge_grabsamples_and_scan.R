@@ -22,7 +22,6 @@ file.remove(files)
 ##########################
 #### Import chem data ####
 ##########################
-#### load chem data ####
 # chem data is for all the sites
 chem <- googledrive::as_id("https://drive.google.com/drive/folders/1ZCVAoIamyMMtwh-Cy3SpeQx2IWYu6gg2")
 
@@ -92,7 +91,7 @@ samplelogsheet$Time <- as.POSIXct(samplelogsheet$Time, format = "%Y-%mm-%dd %H:%
 samplelogsheet$Time <- format(as.POSIXct(samplelogsheet$Time, format = "%Y-%m-%d %H:%M:%S"), "%H:%M:%S")
 
 # clean up a bit
-samplelogsheet <- samplelogsheet[ -c(1, 5:31) ]
+samplelogsheet <- samplelogsheet[ -c(1, 5:31, 33:38) ]
 
 #### change sample time to fit scan time ####
 ###USF12###
@@ -111,10 +110,24 @@ samplelogsheet$Time[samplelogsheet$Site == "USF20" &
 samplelogsheet$Time[samplelogsheet$Site == "USF21" & 
                       samplelogsheet$Date == "2024-06-27" & 
                       samplelogsheet$Time == "11:00:00"] <- "18:30:00"
+
+##########################
+#### Import TSS data ####
+##########################
+tss <- drive_get("https://docs.google.com/spreadsheets/d/1f7LXHGubFcBGVTavNCwS7rve_djajuqd/edit?gid=1123637453#gid=1123637453")
+# download spreadsheet
+drive_download(as_id(tss$id), path = "googledrive/TSS & AFDM Data.xlsx", overwrite = T)
+# fetch the file
+TSS <- readxl::read_excel("googledrive/TSS & AFDM Data.xlsx")
+
+# format date and time columns
+samplelogsheet$Date <- as.Date(samplelogsheet$Date, format = "%Y-%m-%d")
+
+TSS <- TSS[, -c(3:12, 14:19)]
  
-#######################################################################
-#### Merge chem and sample log sheet to get sample collection time ####
-#######################################################################
+############################################################################
+#### Merge chem, TSS and sample log sheet to get sample collection time ####
+############################################################################
 # filter only data for USF12, 20 and 21 (scan sites)
 wqual_scans <- data_avg %>% filter(Site %in% c("USF12", "USF21", "USF20"))
 
@@ -125,14 +138,19 @@ sample_times <- merge(wqual_scans, samplelogsheet, by = c("Date", "Site"))
 sum(duplicated(sample_times))
 # remove duplicates from the original datasets
 sample_times <- sample_times %>% distinct()
-
 # remove duplicates ignoring QuEST_ID column
 sample_times <- sample_times %>% 
   distinct(
-    across(-QuEST_ID), # Check for distinctness on all columns EXCEPT QuEST
+    across(-QuEST_ID), # Check for distinctness on all columns EXCEPT QuEST_ID
     .keep_all = TRUE # This argument is not strictly needed here because across() is used to select columns
     # but it is good practice to ensure all columns are kept.
   )
+
+# filter only data for USF12, 20 and 21 (scan sites)
+TSS <- TSS %>% filter(Site %in% c("USF12", "USF21", "USF20"))
+
+# Now do TSS
+sample_times <- merge(sample_times, TSS, by = c("Date", "Site"), all.x = TRUE, all.y = TRUE)
 
 # combine Date and Time columns into a new DateTime column
 sample_times$DateTime <- paste(sample_times$Date, sample_times$Time, sep = " ")
@@ -212,16 +230,16 @@ data21 <- merge(USF21, U21, by = "DateTime", all.x = TRUE)
 #### Clean up ####
 ##################
 data12 <- data12 %>%
-  dplyr::select(-c(NPOC_mg_L, TN_mg_L, Processing_Notes, Storage_Notes, ID_bottle_type, ...38, 
+  dplyr::select(-c(Processing_Notes, Storage_Notes, ID_bottle_type, 
          Temperature_40...F....Measured.status, Temperature_40...F....Measured.value,
          Device.Rotation.......Measured.status, Device.Tilt.......Measured.status,
          Supply.Current..mA....Measured.status, Supply.Voltage..V....Measured.status, serial_number))
 data20 <- data20 %>%
-  dplyr::select(-NPOC_mg_L, -TN_mg_L, -Processing_Notes, -Storage_Notes, -ID_bottle_type, -...38, 
+  dplyr::select(-Processing_Notes, -Storage_Notes, -ID_bottle_type, 
                 -Temperature_20...F....Measured.value, -Temperature_20...F....Measured.status,
                 -X725.00.nm, -X727.50.nm, -serial_number )
 data21 <- data21 %>% 
-  dplyr::select(-NPOC_mg_L, -TN_mg_L, -Processing_Notes, -Storage_Notes, -ID_bottle_type, -...38, 
+  dplyr::select(-Processing_Notes, -Storage_Notes, -ID_bottle_type, 
          -Temperature_26...F....Measured.value, -Temperature_26...F....Measured.status,
          -Device.Rotation.......Measured.status, -Device.Tilt.......Measured.status,
          -Supply.Current..mA....Measured.status, -Supply.Voltage..V....Measured.status, -serial_number)

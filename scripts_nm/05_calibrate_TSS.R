@@ -93,10 +93,10 @@ USF12 <- rename_columns(USF12)
 USF20 <- rename_columns(USF20)
 USF21 <- rename_columns(USF21)
 
-# Extract DOC data as time series objects (xts)
-scan_DOC_USF12 <- xts(USF12$DOC_mg.l , order.by = USF12$DateTime)
-scan_DOC_USF20 <- xts(USF20$DOC_mg.l, order.by = USF20$DateTime)
-scan_DOC_USF21 <- xts(USF21$DOC_mg.l, order.by = USF21$DateTime)
+# Extract TSS data as time series objects (xts)
+scan_TSS_USF12 <- xts(USF12$TSS_mg.l , order.by = USF12$DateTime)
+scan_TSS_USF20 <- xts(USF20$TSS_mg.l, order.by = USF20$DateTime)
+scan_TSS_USF21 <- xts(USF21$TSS_mg.l, order.by = USF21$DateTime)
 
 # Extract spectral data (assuming spectral columns are in range "200.00.nm" to "4.00.nm")
 scan.spec12 = xts(USF12[16:115], as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
@@ -112,10 +112,6 @@ scan.spec21 = xts(USF21[16:115], as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %
 # This is just a check to see how well the s::can did relative to your known concentrations 
 # I upload this as a new data frame, just because in the previous step I had assigned these XTS values
 # Feel free to change this! It's not the most efficient way to do this...
-
-USF12 <- USF12[,-1]
-USF20 <- USF20[,-1]
-USF21 <- USF21[,-1]
 
 # Creating "Grab_sample" column based on values in "Sample.Name"
 # Modify the Grab_sample column
@@ -142,37 +138,37 @@ grab_USF12 = USF12[USF12$Grab_sample == "Y",] # Ony gets data when there is a Y
 grab_USF20 = USF20[USF20$Grab_sample == "Y",] # Ony gets data when there is a Y
 grab_USF21 = USF21[USF21$Grab_sample == "Y",] # Ony gets data when there is a Y
 
-grab.DOC12 = grab_USF12$NPOC..mg.C.L.
-
-grab.DOC20 = grab_USF20$NPOC..mg.C.L.
-
-grab.DOC21 = grab_USF21$NPOC..mg.C.L.
+grab.TSS12 = grab_USF12$TSS_mg.l
+grab.TSS20 = grab_USF20$TSS_mg.l
+grab.TSS21 = grab_USF21$TSS_mg.l
 
 #### remove a couple of problematic samples ####
 grab_USF12 <- grab_USF12 %>%
-  mutate(NPOC..mg.C.L. = ifelse(DateTime == "2025-01-02 12:15:00" | is.na(NPOC..mg.C.L.),NA,NPOC..mg.C.L.))
+  mutate(TSS_mg.l = ifelse(Date %in% c("2024-08-28","2024-09-11","2025-01-02") | is.na(TSS_mg.l),NA,TSS_mg.l))
 grab_USF20 <- grab_USF20 %>%
-  mutate(NPOC..mg.C.L. = ifelse(DateTime == "2024-06-19 14:00:00" | is.na(NPOC..mg.C.L.),NA,NPOC..mg.C.L.))
+  mutate(TSS_mg.l = ifelse(Date %in% c("2024-08-28","2024-09-11","2024-09-25") | is.na(TSS_mg.l),NA,TSS_mg.l))
+grab_USF21 <- grab_USF21 %>%
+  mutate(TSS_mg.l = ifelse(Date %in% c("2024-08-30","2024-09-12","2024-09-18") | is.na(TSS_mg.l),NA,TSS_mg.l))
+"2024-09-25"
 
-# compare grab vs scan DOC
-plot(grab_USF12$DOC_mg.l ~ grab_USF12$NPOC..mg.C.L.)
-ggplot(grab_USF12, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +
+# compare grab vs scan TSS
+ggplot(grab_USF12, aes(x = TSS_mg.l, y = TSS_mg_L)) +
   geom_point(color = "blue") +
   geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
-calib.mod.DOC12 = lm(grab_USF12$DOC_mg.l ~ grab_USF12$NPOC..mg.C.L.)
-summary(calib.mod.DOC12)
+calib.mod.TSS12 = lm(grab_USF12$TSS_mg.l ~ grab_USF12$TSS_mg_L)
+summary(calib.mod.TSS12)
 
-ggplot(grab_USF20, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +
+ggplot(grab_USF20, aes(x = TSS_mg.l, y = TSS_mg_L)) +
   geom_point(color = "blue") +
   geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
-calib.mod.DOC20 = lm(grab_USF20$DOC_mg.l ~ grab_USF20$NPOC..mg.C.L.)
-summary(calib.mod.DOC20)
+calib.mod.TSS20 = lm(grab_USF20$TSS_mg.l ~ grab_USF20$TSS_mg_L)
+summary(calib.mod.TSS20)
 
-ggplot(grab_USF21, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +
+ggplot(grab_USF21, aes(x = TSS_mg.l, y = TSS_mg_L)) +
   geom_point(color = "blue") +
   geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
-calib.mod.DOC21 = lm(grab_USF21$DOC_mg.l ~ grab_USF21$NPOC..mg.C.L.)
-summary(calib.mod.DOC21)
+calib.mod.TSS21 = lm(grab_USF21$TSS_mg.l ~ grab_USF21$TSS_mg_L)
+summary(calib.mod.TSS21)
 
 #######################################################################################
 #### STEP 4: Create matrices of GRAB spectral data - this is the training data set ####
@@ -363,31 +359,31 @@ attributes(scan.spectra21)
 #### STEP 6: Create a new data frame with the spectral matrices ####
 ####################################################################
 # This creates a data frame with 
-# 1. DOC (scan)
+# 1. TSS (scan)
 # 3. Full s::can spectra (from 220-750nm)
 
-length(scan_DOC_USF12)
+length(scan_TSS_USF12)
 dim(scan.spectra12) 
 class(scan.spectra12)
 
 # NOTE: We use the I() function to protect the Spectra 
-spectralcal.df12 = data.frame(DOC12 = scan_DOC_USF12, Spectra12 = I(scan.spectra12))
+spectralcal.df12 = data.frame(TSS12 = scan_TSS_USF12, Spectra12 = I(scan.spectra12))
 str(spectralcal.df12)
 
-spectralcal.df20 = data.frame(DOC20 = scan_DOC_USF20, Spectra20 = I(scan.spectra20))
+spectralcal.df20 = data.frame(TSS20 = scan_TSS_USF20, Spectra20 = I(scan.spectra20))
 str(spectralcal.df20)
 
-spectralcal.df21 = data.frame(DOC21 = scan_DOC_USF21, Spectra21 = I(scan.spectra21))
+spectralcal.df21 = data.frame(TSS21 = scan_TSS_USF21, Spectra21 = I(scan.spectra21))
 str(spectralcal.df21)
 
 # Also do this for the GRAB sample data
-grabcal.df12 = data.frame(DOC12 = grab.DOC12, Spectra12 = I(grab.spectra12))
+grabcal.df12 = data.frame(TSS12 = grab.TSS12, Spectra12 = I(grab.spectra12))
 str(grabcal.df12)
 
-grabcal.df20 = data.frame(DOC20 = grab.DOC20, Spectra20 = I(grab.spectra20))
+grabcal.df20 = data.frame(TSS20 = grab.TSS20, Spectra20 = I(grab.spectra20))
 str(grabcal.df20)
 
-grabcal.df21 = data.frame(DOC21 = grab.DOC21, Spectra21 = I(grab.spectra21))
+grabcal.df21 = data.frame(TSS21 = grab.TSS21, Spectra21 = I(grab.spectra21))
 str(grabcal.df21)
 
 #################################################
@@ -404,7 +400,7 @@ NTest12 = spectralcal.df12
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-Cmod12 = plsr(DOC12 ~ Spectra12, ncomp = 25, data = CTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
+Cmod12 = plsr(TSS12 ~ Spectra12, ncomp = 25, data = CTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod12) # optimized for 4 components
 
 # Plot RMSE of the predictions to optimize model
@@ -434,8 +430,8 @@ p <- ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
   geom_line(color = "steelblue") +
   labs(
     x = "DateTime",
-    y = "Predicted DOC (mg/L)",
-    title = "Predicted DOC over Time (USF12)"
+    y = "Predicted TSS (mg/L)",
+    title = "Predicted TSS over Time (USF12)"
   ) +
   theme_minimal()
 ggplotly(p)
@@ -453,7 +449,7 @@ CTest20 = spectralcal.df20
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-Cmod20 = plsr(DOC20 ~ Spectra20, ncomp = 15, data = CTrain20, validation = "LOO") # usually ncomp is N-1 grab samples you have
+Cmod20 = plsr(TSS20 ~ Spectra20, ncomp = 15, data = CTrain20, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod20) # optimized for 4 components
 
 # Plot RMSE of the predictions to optimize model
@@ -489,8 +485,8 @@ ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
   geom_point(color = "steelblue") +
   labs(
     x = "DateTime",
-    y = "Predicted DOC (mg/L)",
-    title = "Predicted DOC over Time (USF20)"
+    y = "Predicted TSS (mg/L)",
+    title = "Predicted TSS over Time (USF20)"
   ) +
   theme_minimal()
 
@@ -504,7 +500,7 @@ CTest21 = spectralcal.df21
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-Cmod21 = plsr(DOC21 ~ Spectra21, ncomp = 9, data = CTrain21, validation = "LOO") # usually ncomp is N-1 grab samples you have
+Cmod21 = plsr(TSS21 ~ Spectra21, ncomp = 9, data = CTrain21, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod21) # optimized for 4 components
 
 # Plot RMSE of the predictions to optimize model
@@ -552,8 +548,8 @@ ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
   geom_point(color = "steelblue") +
   labs(
     x = "DateTime",
-    y = "Predicted DOC (mg/L)",
-    title = "Predicted DOC over Time (USF21)"
+    y = "Predicted TSS (mg/L)",
+    title = "Predicted TSS over Time (USF21)"
   ) +
   theme_minimal()
 
