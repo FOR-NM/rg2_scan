@@ -21,6 +21,7 @@ library(spectrolab)
 # Make sure to hit "no" for install
 library(ggplot2)
 library(plotly)
+library(ggrepel) # Makes labels readable
 
 ###################################
 #### Clear folders we will use ####
@@ -47,22 +48,22 @@ merged <- googledrive::drive_ls(path = scan, type = "csv")
 3
 
 #USF12
-googledrive::drive_download(file = merged$id[merged$name=="USF12_chem_Buttercup.csv"], 
-                            path = "googledrive/USF12_chem_Buttercup.csv",
+googledrive::drive_download(file = merged$id[merged$name=="USF12_chemtss_Buttercup.csv"], 
+                            path = "googledrive/USF12_chemtss_Buttercup.csv",
                             overwrite = T)
 #USF20
-googledrive::drive_download(file = merged$id[merged$name=="USF20_chem_Blossom.csv"], 
-                            path = "googledrive/USF20_chem_Blossom.csv",
+googledrive::drive_download(file = merged$id[merged$name=="USF20_chemtss_Blossom.csv"], 
+                            path = "googledrive/USF20_chemtss_Blossom.csv",
                             overwrite = T)
 #USF21
-googledrive::drive_download(file = merged$id[merged$name=="USF21_chem_Bubbles.csv"], 
-                            path = "googledrive/USF21_chem_Bubbles.csv",
+googledrive::drive_download(file = merged$id[merged$name=="USF21_chemtss_Bubbles.csv"], 
+                            path = "googledrive/USF21_chemtss_Bubbles.csv",
                             overwrite = T)
 
 # Let's load them separately first
-USF12 <- read.csv("googledrive/USF12_chem_Buttercup.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
-USF20 <- read.csv("googledrive/USF20_chem_Blossom.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
-USF21 <- read.csv("googledrive/USF21_chem_Bubbles.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+USF12 <- read.csv("googledrive/USF12_chemtss_Buttercup.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+USF20 <- read.csv("googledrive/USF20_chemtss_Blossom.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+USF21 <- read.csv("googledrive/USF21_chemtss_Bubbles.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
 
 # DateTime at midnight is missing 00:00:00 time, so filling in using grep
 USF12$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",USF12$DateTime)] <- paste(
@@ -99,9 +100,9 @@ scan_TSS_USF20 <- xts(USF20$TSS_mg.l, order.by = USF20$DateTime)
 scan_TSS_USF21 <- xts(USF21$TSS_mg.l, order.by = USF21$DateTime)
 
 # Extract spectral data (assuming spectral columns are in range "200.00.nm" to "4.00.nm")
-scan.spec12 = xts(USF12[16:115], as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
-scan.spec20 = xts(USF20[16:115], as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
-scan.spec21 = xts(USF21[16:115], as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
+scan.spec12 = xts(USF12[19:219], as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
+scan.spec20 = xts(USF20[19:219], as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
+scan.spec21 = xts(USF21[19:219], as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
 # select full spectra
 # note here that if there are 0s in your spectra, this code will throw an error
 # so only use the wavelengths where you have detectable absorbance
@@ -138,18 +139,23 @@ grab_USF12 = USF12[USF12$Grab_sample == "Y",] # Ony gets data when there is a Y
 grab_USF20 = USF20[USF20$Grab_sample == "Y",] # Ony gets data when there is a Y
 grab_USF21 = USF21[USF21$Grab_sample == "Y",] # Ony gets data when there is a Y
 
+#### remove a couple of problematic samples ####
+#grab_USF12 <- grab_USF12 %>%
+  #mutate(TSS_mg.l = ifelse(Date %in% c("2024-08-14") | is.na(TSS_mg.l),NA,TSS_mg.l))
+# grab_USF20 <- grab_USF20 %>%
+#   mutate(TSS_mg.l = ifelse(Date %in% c("2024-09-25") | is.na(TSS_mg.l),NA,TSS_mg.l))
+# grab_USF20 <- grab_USF20 %>%
+#   mutate(TSS_mg_L = ifelse(Date %in% c("2024-09-25") | is.na(TSS_mg_L),NA,TSS_mg_L))
+
+grab_USF20 <- grab_USF20 %>%
+  filter(!Date %in% c("2024-09-25")) # Remove that specific date
+
+#grab_USF21 <- grab_USF21 %>%
+  #mutate(TSS_mg.l = ifelse(Date %in% c("2024-10-29") | is.na(TSS_mg.l),NA,TSS_mg.l))
+
 grab.TSS12 = grab_USF12$TSS_mg.l
 grab.TSS20 = grab_USF20$TSS_mg.l
 grab.TSS21 = grab_USF21$TSS_mg.l
-
-#### remove a couple of problematic samples ####
-grab_USF12 <- grab_USF12 %>%
-  mutate(TSS_mg.l = ifelse(Date %in% c("2024-08-28","2024-09-11","2025-01-02") | is.na(TSS_mg.l),NA,TSS_mg.l))
-grab_USF20 <- grab_USF20 %>%
-  mutate(TSS_mg.l = ifelse(Date %in% c("2024-08-28","2024-09-11","2024-09-25") | is.na(TSS_mg.l),NA,TSS_mg.l))
-grab_USF21 <- grab_USF21 %>%
-  mutate(TSS_mg.l = ifelse(Date %in% c("2024-08-30","2024-09-12","2024-09-18") | is.na(TSS_mg.l),NA,TSS_mg.l))
-"2024-09-25"
 
 # compare grab vs scan TSS
 ggplot(grab_USF12, aes(x = TSS_mg.l, y = TSS_mg_L)) +
@@ -175,9 +181,9 @@ summary(calib.mod.TSS21)
 #######################################################################################
 # 1. Index data set with columns with absorbances
 # raw spectra
-grab.spec.dat12 = grab_USF12[15:114] # Full spectra, with no NAs?
-grab.spec.dat20 = grab_USF20[15:114]
-grab.spec.dat21 = grab_USF21[15:114] 
+grab.spec.dat12 = grab_USF12[19:219] # Full spectra, with no NAs?
+grab.spec.dat20 = grab_USF20[19:219]
+grab.spec.dat21 = grab_USF21[19:219] 
 
 # Rename columns for all data frames (e.g., USF12, USF20, USF21)
 rename_columns <- function(df) {
@@ -277,9 +283,9 @@ attributes(grab.spectra21)
 ########################################################################################
 # 1. Index FULL dataset with columns with absorbances
 # raw spectra
-scan.spec12 = USF12[15:114]
-scan.spec20 = USF20[15:114] 
-scan.spec21 = USF21[15:114]
+scan.spec12 = USF12[19:219]
+scan.spec20 = USF20[19:219] 
+scan.spec21 = USF21[19:219]
 
 # 2. Create an absorbance matrix 
 # Rows = wavelength
@@ -391,40 +397,53 @@ str(grabcal.df21)
 #################################################
 # Create a training and test data set
 # Carbon
-CTrain12 = grabcal.df12
-CTest12 = spectralcal.df12
-
-# NO3N
-NTrain12 = grabcal.df12
-NTest12 = spectralcal.df12
+TTrain12 = grabcal.df12
+TTest12 = spectralcal.df12
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-Cmod12 = plsr(TSS12 ~ Spectra12, ncomp = 25, data = CTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
-summary(Cmod12) # optimized for 4 components
+Tmod12 = plsr(TSS12 ~ Spectra12, ncomp = 25, data = TTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
+summary(Tmod12) 
 
 # Plot RMSE of the predictions to optimize model
-plot(RMSEP(Cmod12), legendpos = "topright")
+plot(RMSEP(Tmod12), legendpos = "topright")
 
 # Plot predicted vs. measured from optimized model
 # Pick the number of components with the least error
 # NOTE: This plot may be messy, given low number of grab samples 
-plot(Cmod12, ncomp = 5, asp = 1, line = TRUE)
+plot(Tmod12, ncomp = 4, asp = 1, line = TRUE)
 
 ####################################################################
 #### STEP 8: Make predictions based on reduced-error PLSR model #### 
 ####################################################################
 # Predict model!
-predictedC12 = predict(Cmod12, ncomp = 5, newdata = spectralcal.df12) # use reduced error model
-str(predictedC12)
-plot(predictedC12)
+predictedT12 = predict(Tmod12, ncomp = 4, newdata = spectralcal.df12) # use reduced error model
+str(predictedT12)
+plot(predictedT12)
 
-write.csv(predictedC12, file = "predicted/PredictedC_USF12_vclean.csv") # <- this is your newly calibrated dataset!
+### Extract the predicted vs measured data for the training set ###
+# We force it to be a simple data frame for ggplot
+plot_data <- data.frame(
+  Measured = TTrain12$TSS12,
+  Predicted = as.numeric(predict(Tmod12, ncomp = 4, newdata = TTrain12)),
+  Date = rownames(TTrain12) # Or use TTrain12$DateTime if available
+)
 
-# Convert predictedC12 to a data frame
+ggplot(plot_data, aes(x = Measured, y = Predicted, label = Date)) +
+  geom_point(color = "blue") +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +
+  geom_text_repel(size = 3) +
+  labs(title = "TSS Calibration: Identify Outliers",
+       x = "Actual Grab Sample (mg/L)",
+       y = "Model Predicted (mg/L)") +
+  theme_minimal()
+
+write.csv(predictedT12, file = "predicted/PredictedT_USF12_vclean.csv") # <- this is your newly calibrated dataset!
+
+# Convert predictedT12 to a data frame
 pred_df <- data.frame(
-  DateTime = as.POSIXct(dimnames(predictedC12)[[1]]),
-  Predicted = as.numeric(predictedC12))
+  DateTime = as.POSIXct(dimnames(predictedT12)[[1]]),
+  Predicted = as.numeric(predictedT12))
 # Plot
 p <- ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
   geom_line(color = "steelblue") +
@@ -444,42 +463,58 @@ ggplotly(p)
 #################################################
 # Create a training and test dataset
 # Carbon
-CTrain20 = grabcal.df20
-CTest20 = spectralcal.df20
+TTrain20 = grabcal.df20
+TSSTest20 = spectralcal.df20
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-Cmod20 = plsr(TSS20 ~ Spectra20, ncomp = 15, data = CTrain20, validation = "LOO") # usually ncomp is N-1 grab samples you have
-summary(Cmod20) # optimized for 4 components
+TSSmod20 = plsr(TSS20 ~ Spectra20, ncomp = 15, data = TTrain20, validation = "LOO") # usually ncomp is N-1 grab samples you have
+summary(TSSmod20) # optimized for 4 components
 
 # Plot RMSE of the predictions to optimize model
-plot(RMSEP(Cmod20), legendpos = "topright")
+plot(RMSEP(TSSmod20), legendpos = "topright")
 
 # Plot predicted vs. measured from optimized model
 # Pick the number of components with the least error (in this case, x)
 # NOTE: This plot may be messy, given low number of grab samples 
-plot(Cmod20, ncomp = 1, asp = 1, line = TRUE)
+plot(TSSmod20, ncomp = 8, asp = 1, line = TRUE)
 
 ####################################################################
 #### STEP 8: Make predictions based on reduced-error PLSR model #### 
 ####################################################################
 # Predict model!
-predictedC20 = predict(Cmod20, ncomp = 1, newdata = spectralcal.df20) # use reduced error model
-str(predictedC20)
+predictedT20 = predict(TSSmod20, ncomp = 8, newdata = spectralcal.df20) # use reduced error model
+str(predictedT20)
 # Plot final predictions
-plot(predictedC20)
+plot(predictedT20)
 
+### Extract the predicted vs measured data for the training set ###
+# We force it to be a simple data frame for ggplot
+plot_data <- data.frame(
+  Measured = TTrain20$TSS20,
+  Predicted = as.numeric(predict(TSSmod20, ncomp = 7, newdata = TTrain20)),
+  Date = rownames(TTrain20) # Or use TTrain20$DateTime if available
+)
 
-write.csv(predictedC20, file = "predicted/PredictedC_USF20_vclean.csv") # <- this is your newly calibrated dataset!
+ggplot(plot_data, aes(x = Measured, y = Predicted, label = Date)) +
+  geom_point(color = "blue") +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +
+  geom_text_repel(size = 3) +
+  labs(title = "TSS Calibration: Identify Outliers",
+       x = "Actual Grab Sample (mg/L)",
+       y = "Model Predicted (mg/L)") +
+  theme_minimal()
+
+write.csv(predictedT20, file = "predicted/PredictedT_USF20_vclean.csv") # <- this is your newly calibrated dataset!
 
 ## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 
 # You might need to use a moving window approach to the calibraiton (i.e., calibrate 1 month at a time)
 # This is a bit more complicated, so start with this simple calibration first. 
 
-# Convert predictedC20 to a data frame
+# Convert predictedT20 to a data frame
 pred_df <- data.frame(
-  DateTime = as.POSIXct(dimnames(predictedC20)[[1]]),
-  Predicted = as.numeric(predictedC20))
+  DateTime = as.POSIXct(dimnames(predictedT20)[[1]]),
+  Predicted = as.numeric(predictedT20))
 # Plot
 ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
   geom_point(color = "steelblue") +
@@ -495,54 +530,71 @@ ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
 #################################################
 # Create a training and test dataset
 # Carbon
-CTrain21 = grabcal.df21
-CTest21 = spectralcal.df21
+TSSTrain21 = grabcal.df21
+TSSTest21 = spectralcal.df21
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-Cmod21 = plsr(TSS21 ~ Spectra21, ncomp = 9, data = CTrain21, validation = "LOO") # usually ncomp is N-1 grab samples you have
-summary(Cmod21) # optimized for 4 components
+TSSmod21 = plsr(TSS21 ~ Spectra21, ncomp = 9, data = TSSTrain21, validation = "LOO") # usually ncomp is N-1 grab samples you have
+summary(TSSmod21) # optimized for 4 components
 
 # Plot RMSE of the predictions to optimize model
-plot(RMSEP(Cmod21), legendpos = "topright")
+plot(RMSEP(TSSmod21), legendpos = "topright")
 
 # Plot predicted vs. measured from optimized model
 # Pick the number of components with the least error
 # NOTE: This plot may be messy, given low number of grab samples 
-plot(Cmod21, ncomp = 6, asp = 1, line = TRUE)
+plot(TSSmod21, ncomp = 3, asp = 1, line = TRUE)
 
 ####################################################################
 #### STEP 8: Make predictions based on reduced-error PLSR model #### 
 ####################################################################
 # Predict model!
-predictedC21 = predict(Cmod21, ncomp = 6, newdata = spectralcal.df21) # use reduced error model
-str(predictedC21)
+predictedT21 = predict(TSSmod21, ncomp = 3, newdata = spectralcal.df21) # use reduced error model
+str(predictedT21)
 # Plot
-plot(predictedC21)
+plot(predictedT21)
 
-write.csv(predictedC21, file = "predicted/PredictedC_USF21_vclean.csv") # <- this is your newly calibrated dataset!
+### Extract the predicted vs measured data for the training set ###
+# We force it to be a simple data frame for ggplot
+plot_data <- data.frame(
+  Measured = TSSTrain21$TSS21,
+  Predicted = as.numeric(predict(TSSmod21, ncomp = 3, newdata = TSSTrain21)),
+  Date = rownames(TSSTrain21) # Or use TSSTrain21$DateTime if available
+)
+
+ggplot(plot_data, aes(x = Measured, y = Predicted, label = Date)) +
+  geom_point(color = "blue") +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +
+  geom_text_repel(size = 3) +
+  labs(title = "TSS Calibration: Identify Outliers by Date",
+       x = "Actual Grab Sample (mg/L)",
+       y = "Model Predicted (mg/L)") +
+  theme_minimal()
+
+write.csv(predictedT21, file = "predicted/PredictedT_USF21_vclean.csv") # <- this is your newly calibrated dataset!
 
 # 1. Loadings Plot for USF12 (Opposite Trend)
 # This shows how the wavelengths contribute to each component (ncomp = 1, 2, 3, etc.)
-plot(Cmod12, plottype = "loading",
+plot(Tmod12, plottype = "loading",
      comps = 1:2, # Plot the first two components for initial inspection
      main = "USF12 NO3-N PLSR Loadings")
 
 # 2. Loadings Plot for USF20 (Flat Trend)
-plot(Cmod20, plottype = "loading",
+plot(TSSmod20, plottype = "loading",
      comps = 1:2, # Plot the first two components
      main = "USF20 NO3-N PLSR Loadings")
 
 # 3. Loadings Plot for USF21 (Flat Trend)
 # Examine the first few components for USF21
-plot(Cmod21, plottype = "loading",
+plot(TSSmod21, plottype = "loading",
      comps = 1:2, # Plot the first two components
      main = "USF21 NO3-N PLSR Loadings")
 
-# Convert predictedC21 to a data frame
+# Convert predictedT21 to a data frame
 pred_df <- data.frame(
-  DateTime = as.POSIXct(dimnames(predictedC21)[[1]]),
-  Predicted = as.numeric(predictedC21))
+  DateTime = as.POSIXct(dimnames(predictedT21)[[1]]),
+  Predicted = as.numeric(predictedT21))
 # Plot
 ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
   geom_point(color = "steelblue") +
@@ -561,9 +613,9 @@ ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
 drive_folder_id <- "1wa1ycqUYv56y3fTn1-VaN2K-NLU3rFeU"
 
 # Upload the file to the specified Google Drive folder
-drive_upload(media = "predicted/PredictedC_USF12_vclean.csv", path = as_id(drive_folder_id))
-drive_upload(media = "predicted/PredictedC_USF20_vclean.csv", path = as_id(drive_folder_id))
-drive_upload(media = "predicted/PredictedC_USF21_vclean.csv", path = as_id(drive_folder_id))
+drive_upload(media = "predicted/PredictedT_USF12_vclean.csv", path = as_id(drive_folder_id))
+drive_upload(media = "predicted/PredictedT_USF20_vclean.csv", path = as_id(drive_folder_id))
+drive_upload(media = "predicted/PredictedT_USF21_vclean.csv", path = as_id(drive_folder_id))
 
 ## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 
 # You might need to use a moving window approach to the calibraiton (i.e., calibrate 1 month at a time)

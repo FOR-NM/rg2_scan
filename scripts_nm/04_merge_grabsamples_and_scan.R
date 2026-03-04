@@ -4,7 +4,7 @@
 ## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
 
-library(googledrive) 
+library(googledrive)
 library(googlesheets4)
 library(dplyr)
 library(xts)
@@ -121,9 +121,9 @@ drive_download(as_id(tss$id), path = "googledrive/TSS & AFDM Data.xlsx", overwri
 TSS <- readxl::read_excel("googledrive/TSS & AFDM Data.xlsx")
 
 # format date and time columns
-samplelogsheet$Date <- as.Date(samplelogsheet$Date, format = "%Y-%m-%d")
+TSS$Date <- as.Date(TSS$Date, format = "%Y-%m-%d")
 
-TSS <- TSS[, -c(3:12, 14:19)]
+TSS <- TSS[, -c(3:12, 14:17, 19)]
  
 ############################################################################
 #### Merge chem, TSS and sample log sheet to get sample collection time ####
@@ -230,17 +230,14 @@ data21 <- merge(USF21, U21, by = "DateTime", all.x = TRUE)
 #### Clean up ####
 ##################
 data12 <- data12 %>%
-  dplyr::select(-c(Processing_Notes, Storage_Notes, ID_bottle_type, 
-         Temperature_40...F....Measured.status, Temperature_40...F....Measured.value,
+  dplyr::select(-c(Temperature_40...F....Measured.status, Temperature_40...F....Measured.value,
          Device.Rotation.......Measured.status, Device.Tilt.......Measured.status,
          Supply.Current..mA....Measured.status, Supply.Voltage..V....Measured.status, serial_number))
 data20 <- data20 %>%
-  dplyr::select(-Processing_Notes, -Storage_Notes, -ID_bottle_type, 
-                -Temperature_20...F....Measured.value, -Temperature_20...F....Measured.status,
+  dplyr::select(-Temperature_20...F....Measured.value, -Temperature_20...F....Measured.status,
                 -X725.00.nm, -X727.50.nm, -serial_number )
 data21 <- data21 %>% 
-  dplyr::select(-Processing_Notes, -Storage_Notes, -ID_bottle_type, 
-         -Temperature_26...F....Measured.value, -Temperature_26...F....Measured.status,
+  dplyr::select(-Temperature_26...F....Measured.value, -Temperature_26...F....Measured.status,
          -Device.Rotation.......Measured.status, -Device.Tilt.......Measured.status,
          -Supply.Current..mA....Measured.status, -Supply.Voltage..V....Measured.status, -serial_number)
 
@@ -248,10 +245,15 @@ data21 <- data21 %>%
 #### Clean up spectra ####
 ##########################
 # Here you find when your spectra go negative. For USF data is around 450-460nm (column 123)
+# Do not remove any spectral values if for tss
 data12_clean <- data12[,-c(119:228)]
 data20_clean <- data20[,-c(119:228)]
 data21_clean <- data21[,-c(119:228)]
-  
+
+data12 <- data12[,-c(220:228)]
+data20 <- data20[,-c(220:228)]
+data21 <- data21[,-c(220:228)]
+
 ################################################
 #### Clean up spectra very low or high rows ####
 ################################################
@@ -265,6 +267,16 @@ data20_clean <- data20_clean %>%
 data21_clean <- data21_clean %>%
   dplyr::filter(!if_any(c(19:118),
                         ~ . < 0 | . > 60))
+# for tss
+data12_tss <- data12 %>%
+  dplyr::filter(!if_any(c(119:219),
+                        ~ . < -5 | . > 60))
+data20_tss <- data20 %>%
+  dplyr::filter(!if_any(c(119:219),
+                        ~ . < -5 | . > 60))
+data21_tss <- data21 %>%
+  dplyr::filter(!if_any(c(119:219),
+                        ~ . < -5 | . > 60))
 
 ############################
 #### Save matched files ####
@@ -282,6 +294,19 @@ data21_clean$DateTime <- format(data21_clean$DateTime, "%Y-%m-%d %H:%M:%S")
 # save the new data frame to a CSV file
 write.csv(data21_clean,"googledrive/USF21_chem_Bubbles.csv" , row.names=FALSE, quote=FALSE)
 
+# make sure it is in datetime format
+data12_tss$DateTime <- format(data12_tss$DateTime, "%Y-%m-%d %H:%M:%S")
+# save the new data frame to a CSV file
+write.csv(data12_tss,"googledrive/USF12_chemtss_Buttercup.csv" , row.names=FALSE, quote=FALSE)
+# make sure it is in datetime format
+data20_tss$DateTime <- format(data20_tss$DateTime, "%Y-%m-%d %H:%M:%S")
+# save the new data frame to a CSV file
+write.csv(data20_tss,"googledrive/USF20_chemtss_Blossom.csv" , row.names=FALSE, quote=FALSE)
+# make sure it is in datetime format
+data21_tss$DateTime <- format(data21_tss$DateTime, "%Y-%m-%d %H:%M:%S")
+# save the new data frame to a CSV file
+write.csv(data21_tss,"googledrive/USF21_chemtss_Bubbles.csv" , row.names=FALSE, quote=FALSE)
+
 # define the target folder ID in Google Drive
 # this is the "with chem" folder
 drive_folder_id <- "1qjM3Zze-I5ycFCHNcd997UG6gYXBUoX8"
@@ -290,4 +315,9 @@ drive_folder_id <- "1qjM3Zze-I5ycFCHNcd997UG6gYXBUoX8"
 drive_put(media = "googledrive/USF12_chem_Buttercup.csv", path = as_id(drive_folder_id))
 drive_put(media = "googledrive/USF20_chem_Blossom.csv", path = as_id(drive_folder_id))
 drive_put(media = "googledrive/USF21_chem_Bubbles.csv", path = as_id(drive_folder_id))
+
+# upload the file to the specified Google Drive folder
+drive_put(media = "googledrive/USF12_chemtss_Buttercup.csv", path = as_id(drive_folder_id))
+drive_put(media = "googledrive/USF20_chemtss_Blossom.csv", path = as_id(drive_folder_id))
+drive_put(media = "googledrive/USF21_chemtss_Bubbles.csv", path = as_id(drive_folder_id))
 

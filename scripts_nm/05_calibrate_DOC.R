@@ -99,9 +99,9 @@ scan_DOC_USF20 <- xts(USF20$DOC_mg.l, order.by = USF20$DateTime)
 scan_DOC_USF21 <- xts(USF21$DOC_mg.l, order.by = USF21$DateTime)
 
 # Extract spectral data (assuming spectral columns are in range "200.00.nm" to "4.00.nm")
-scan.spec12 = xts(USF12[16:115], as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
-scan.spec20 = xts(USF20[16:115], as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
-scan.spec21 = xts(USF21[16:115], as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
+scan.spec12 = xts(USF12[19:118], as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
+scan.spec20 = xts(USF20[19:118], as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
+scan.spec21 = xts(USF21[19:118], as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
 # select full spectra
 # note here that if there are 0s in your spectra, this code will throw an error
 # so only use the wavelengths where you have detectable absorbance
@@ -112,10 +112,9 @@ scan.spec21 = xts(USF21[16:115], as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %
 # This is just a check to see how well the s::can did relative to your known concentrations 
 # I upload this as a new data frame, just because in the previous step I had assigned these XTS values
 # Feel free to change this! It's not the most efficient way to do this...
-
-USF12 <- USF12[,-1]
-USF20 <- USF20[,-1]
-USF21 <- USF21[,-1]
+# USF12 <- USF12[,-1]
+# USF20 <- USF20[,-1]
+# USF21 <- USF21[,-1]
 
 # Creating "Grab_sample" column based on values in "Sample.Name"
 # Modify the Grab_sample column
@@ -172,16 +171,16 @@ ggplot(grab_USF21, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +
   geom_point(color = "blue") +
   geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
 calib.mod.DOC21 = lm(grab_USF21$DOC_mg.l ~ grab_USF21$NPOC..mg.C.L.)
-summary(calib.mod.DOC21)
+ summary(calib.mod.DOC21)
 
 #######################################################################################
 #### STEP 4: Create matrices of GRAB spectral data - this is the training data set ####
 #######################################################################################
 # 1. Index data set with columns with absorbances
 # raw spectra
-grab.spec.dat12 = grab_USF12[15:114] # Full spectra, with no NAs?
-grab.spec.dat20 = grab_USF20[15:114]
-grab.spec.dat21 = grab_USF21[15:114] 
+grab.spec.dat12 = grab_USF12[19:118] # Full spectra, with no NAs?
+grab.spec.dat20 = grab_USF20[19:118]
+grab.spec.dat21 = grab_USF21[19:118] 
 
 # Rename columns for all data frames (e.g., USF12, USF20, USF21)
 rename_columns <- function(df) {
@@ -281,9 +280,9 @@ attributes(grab.spectra21)
 ########################################################################################
 # 1. Index FULL dataset with columns with absorbances
 # raw spectra
-scan.spec12 = USF12[15:114]
-scan.spec20 = USF20[15:114] 
-scan.spec21 = USF21[15:114]
+scan.spec12 = USF12[19:118]
+scan.spec20 = USF20[19:118] 
+scan.spec21 = USF21[19:118]
 
 # 2. Create an absorbance matrix 
 # Rows = wavelength

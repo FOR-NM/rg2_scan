@@ -198,18 +198,18 @@ plot_usgs_faceted <- function(df, usgs_df, label) {
   combined_df <- data.frame(DateTime = index(combined_xts), coredata(combined_xts))
   
   # convert columns to numeric, if necessary
-  combined_df <- combined_df %>% mutate(across(c(Temp_C, TSS_clean, TOC_clean, NO3.N_clean, NO3_clean, DOC_clean, Flow_Inst), as.numeric))
+  combined_df <- combined_df %>% mutate(across(c(TSS_clean, TOC_clean, NO3.N_clean, NO3_clean, DOC_clean, Flow_Inst), as.numeric))
   
   # reshape data to long format for faceting
   combined_long <- combined_df %>%
-    dplyr::select(DateTime, Temp_C, TSS_clean, TOC_clean, NO3.N_clean, NO3_clean, DOC_clean, Flow_Inst) %>%
+    dplyr::select(DateTime, TSS_clean, TOC_clean, NO3.N_clean, NO3_clean, DOC_clean, Flow_Inst) %>%
     pivot_longer(cols = -DateTime, names_to = "Variable", values_to = "Value")
   
   # plot using facet_wrap for each variable
   ggplot(data = combined_long, aes(x = DateTime, y = Value, color = Variable)) +
     geom_line() +
     facet_wrap(~Variable, scales = "free_y", ncol = 1) +  # separate facet for each variable
-    scale_x_datetime(date_breaks = "1 week", date_labels = "%m/%d") +
+    scale_x_datetime(date_breaks = "2 week", date_labels = "%m/%d") +
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
     ylab(label) +
     ggtitle(label) +
@@ -217,9 +217,9 @@ plot_usgs_faceted <- function(df, usgs_df, label) {
 }
 
 # plot
-print(plot_usgs_faceted(scan_list[[1]], santafeUSGS_12, scan_csvs$name[1]))
-print(plot_usgs_faceted(scan_list[[2]], santafeUSGS_21, scan_csvs$name[2]))
-print(plot_usgs_faceted(scan_list[[3]], santafeUSGS_20, scan_csvs$name[3]))
+print(plot_usgs_faceted(global_list[[1]], santafeUSGS_21, global_csvs$name[1]))
+print(plot_usgs_faceted(global_list[[2]], santafeUSGS_20, global_csvs$name[2]))
+print(plot_usgs_faceted(global_list[[3]], santafeUSGS_12, global_csvs$name[3]))
 
 #########################################################
 #### Plot all variables separate for calibrated data ####
