@@ -2,7 +2,6 @@
 ## Project: QuEST
 ## Here we will be Calibrating s::can data using Partial Least Squares Regression (PLSR) 
 ## Following Arial's s::can guide
-## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
 
 library(googledrive) 
@@ -221,7 +220,7 @@ lastrow21 = as.numeric(nrow(abs21))
 Num21 = c(1:lastrow21)
 
 # 5. Create the final matrix 
-grab.matrix12 = cbind(abs12) # this is not binding anything and just copying abs12 again as grab.matrix12 
+grab.matrix12 = cbind(abs12) # this is not binding anything and just copying abs12 again as grab.matrix12?
 rownames(grab.matrix12) = as.numeric(Num12)
 colnames(grab.matrix12) = as.numeric(wl12)
 grab.matrix12 = as.matrix(grab.matrix12)
@@ -475,10 +474,6 @@ plot(predictedC20)
 
 write.csv(predictedC20, file = "predicted/PredictedC_USF20_vclean.csv") # <- this is your newly calibrated dataset!
 
-## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 
-# You might need to use a moving window approach to the calibraiton (i.e., calibrate 1 month at a time)
-# This is a bit more complicated, so start with this simple calibration first. 
-
 # Convert predictedC20 to a data frame
 pred_df <- data.frame(
   DateTime = as.POSIXct(dimnames(predictedC20)[[1]]),
@@ -567,7 +562,3 @@ drive_folder_id <- "1wa1ycqUYv56y3fTn1-VaN2K-NLU3rFeU"
 drive_upload(media = "predicted/PredictedC_USF12_vclean.csv", path = as_id(drive_folder_id))
 drive_upload(media = "predicted/PredictedC_USF20_vclean.csv", path = as_id(drive_folder_id))
 drive_upload(media = "predicted/PredictedC_USF21_vclean.csv", path = as_id(drive_folder_id))
-
-## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 
-# You might need to use a moving window approach to the calibraiton (i.e., calibrate 1 month at a time)
-# This is a bit more complicated, so start with this simple calibration first. 

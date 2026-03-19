@@ -2,7 +2,6 @@
 ## Project: QuEST
 ## Here we will be Calibrating s::can data using Partial Least Squares Regression (PLSR) 
 ## Following Arial's s::can guide
-## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
 
 library(googledrive) 
@@ -26,7 +25,7 @@ library(plotly)
 #### Clear folders we will use ####
 ###################################
 # List and delete all files in the folder
-files <- list.files(path = "predicted", full.names = TRUE)
+files <- list.files(path = "googledrive", full.names = TRUE)
 file.remove(files)
 
 ######################################
@@ -115,12 +114,12 @@ LMP27 <- LMP27 %>%
 # USFSMB <- rename_columns(USFSMB)
 # USFNCBd <- rename_columns(USFNCBd)
 
-# Extract DOC data as time series objects (xts)
-scan_DOC_SMB <- xts(SMB$DOCeq..mg.l....Measured.value, order.by = SMB$DateTime)
-scan_DOC_CTB <- xts(CTB$DOCeq..mg.l....Measured.value, order.by = CTB$DateTime)
-scan_DOC_NCBd <- xts(NCBd$DOCeq..mg.l....Measured.value, order.by = NCBd$DateTime)
-scan_DOC_LMP07 <- xts(LMP07$DOCeq..mg.l....Measured.value, order.by = LMP07$DateTime)
-scan_DOC_LMP27 <- xts(LMP27$DOCeq..mg.l....Measured.value, order.by = LMP27$DateTime)
+# Extract NO3.N data as time series objects (xts)
+scan_NO3_SMB <- xts(SMB$NO3eq..mg.l....Measured.value, order.by = SMB$DateTime)
+scan_NO3_CTB <- xts(CTB$NO3eq..mg.l....Measured.value, order.by = CTB$DateTime)
+scan_NO3_NCBd <- xts(NCBd$NO3eq..mg.l....Measured.value, order.by = NCBd$DateTime)
+scan_NO3_LMP07 <- xts(LMP07$NO3eq..mg.l....Measured.value, order.by = LMP07$DateTime)
+scan_NO3_LMP27 <- xts(LMP27$NO3eq..mg.l....Measured.value, order.by = LMP27$DateTime)
 
 # Extract spectral data (assuming spectral columns are in range "SMB0.00.nm" to "4.00.nm")
 scan.specSMB= xts(SMB[16:99], as.POSIXct(SMB$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
@@ -147,27 +146,27 @@ scan.spec27 = xts(LMP27[16:118], as.POSIXct(LMP27$DateTime, format = "%Y-%m-%d %
 # Modify the Grab_sample column
 SMB <- SMB %>% 
   mutate(Grab_sample = case_when(
-    !is.na(NPOC..mg.C.L.) & NPOC..mg.C.L. != "" ~ "Y",  # Assign "Y" if data exists
+    !is.na(NO3..mg.N.L.) & NO3..mg.N.L. != "" ~ "Y",  # Assign "Y" if data exists
     TRUE ~ NA_character_  # Leave as NA otherwise
   ))
 CTB <- CTB %>% 
   mutate(Grab_sample = case_when(
-    !is.na(NPOC..mg.C.L.) & NPOC..mg.C.L. != "" ~ "Y",
+    !is.na(NO3..mg.N.L.) & NO3..mg.N.L. != "" ~ "Y",
     TRUE ~ NA_character_
   ))
 NCBd <- NCBd %>% 
   mutate(Grab_sample = case_when(
-    !is.na(NPOC..mg.C.L.) & NPOC..mg.C.L. != "" ~ "Y",
+    !is.na(NO3..mg.N.L.) & NO3..mg.N.L. != "" ~ "Y",
     TRUE ~ NA_character_
   ))
 LMP07 <- LMP07 %>% 
   mutate(Grab_sample = case_when(
-    !is.na(NPOC..mg.C.L.) & NPOC..mg.C.L. != "" ~ "Y",
+    !is.na(NO3..mg.N.L.) & NO3..mg.N.L. != "" ~ "Y",
     TRUE ~ NA_character_
   ))
 LMP27 <- LMP27 %>% 
   mutate(Grab_sample = case_when(
-    !is.na(NPOC..mg.C.L.) & NPOC..mg.C.L. != "" ~ "Y",
+    !is.na(NO3..mg.N.L.) & NO3..mg.N.L. != "" ~ "Y",
     TRUE ~ NA_character_
   ))
 
@@ -178,49 +177,50 @@ grab_NCBd = NCBd[NCBd$Grab_sample == "Y",] # Ony gets data when there is a Y
 grab_LMP07 = LMP07[LMP07$Grab_sample == "Y",] # Ony gets data when there is a Y
 grab_LMP27 = LMP27[LMP27$Grab_sample == "Y",] # Ony gets data when there is a Y
 
-grab.DOCSMB = grab_SMB$NPOC..mg.C.L.
-grab.DOCCTB = grab_CTB$NPOC..mg.C.L.
-grab.DOCNCBd = grab_NCBd$NPOC..mg.C.L.
-grab.DOC07 = grab_LMP07$NPOC..mg.C.L.
-grab.DOC27 = grab_LMP27$NPOC..mg.C.L.
+grab.NO3.NSMB = grab_SMB$NO3..mg.N.L.
+grab.NO3.NCTB = grab_CTB$NO3..mg.N.L.
+grab.NO3.NNCBd = grab_NCBd$NO3..mg.N.L.
+grab.NO3.N07 = grab_LMP07$NO3..mg.N.L.
+grab.NO3.N27 = grab_LMP27$NO3..mg.N.L.
 
 #### remove a couple of problematic samples ####
 # grab_USFCTB <- grab_USFCTB %>%
-#   mutate(NPOC..mg.C.L. = ifelse(DateTime == "SMB25-01-02 CTB:15:00" | is.na(NPOC..mg.C.L.),NA,NPOC..mg.C.L.))
+#   mutate(NO3..mg.N.L. = ifelse(DateTime == "SMB25-01-02 CTB:15:00" | is.na(NO3..mg.N.L.),NA,NO3..mg.N.L.))
 # grab_USFSMB <- grab_USFSMB %>%
-#   mutate(NPOC..mg.C.L. = ifelse(DateTime == "SMB24-06-19 14:00:00" | is.na(NPOC..mg.C.L.),NA,NPOC..mg.C.L.))
+#   mutate(NO3..mg.N.L. = ifelse(DateTime == "SMB24-06-19 14:00:00" | is.na(NO3..mg.N.L.),NA,NO3..mg.N.L.))
 
-# compare grab vs scan DOC
-plot(grab_CTB$DOCeq..mg.l....Measured.value ~ grab_CTB$NPOC..mg.C.L.)
-ggplot(grab_CTB, aes(x = NPOC..mg.C.L., y = DOCeq..mg.l....Measured.value)) +
+# compare grab vs scan NO3.N
+plot(grab_CTB$NO3eq..mg.l....Measured.value ~ grab_CTB$NO3..mg.N.L.)
+ggplot(grab_CTB, aes(x = NO3..mg.N.L., y = NO3eq..mg.l....Measured.value)) +
   geom_point(color = "blue") +
   geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
-calib.mod.DOCCTB = lm(grab_CTB$DOCeq..mg.l....Measured.value ~ grab_CTB$NPOC..mg.C.L.)
-summary(calib.mod.DOCCTB)
+calib.mod.NO3.NCTB = lm(grab_CTB$NO3eq..mg.l....Measured.value ~ grab_CTB$NO3..mg.N.L.)
+summary(calib.mod.NO3.NCTB)
 
-ggplot(grab_SMB, aes(x = NPOC..mg.C.L., y = DOCeq..mg.l....Measured.value)) +
+ggplot(grab_SMB, aes(x = NO3..mg.N.L., y = NO3eq..mg.l....Measured.value)) +
   geom_point(color = "blue") +
   geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
-calib.mod.DOCSMB = lm(grab_SMB$DOCeq..mg.l....Measured.value ~ grab_SMB$NPOC..mg.C.L.)
-summary(calib.mod.DOCSMB)
+calib.mod.NO3.NSMB = lm(grab_SMB$NO3eq..mg.l....Measured.value ~ grab_SMB$NO3..mg.N.L.)
+summary(calib.mod.NO3.NSMB)
 
-ggplot(grab_NCBd, aes(x = NPOC..mg.C.L., y = DOCeq..mg.l....Measured.value)) +
+ggplot(grab_NCBd, aes(x = NO3..mg.N.L., y = NO3eq..mg.l....Measured.value)) +
   geom_point(color = "blue") +
   geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
-calib.mod.DOCNCBs = lm(grab_NCBd$DOCeq..mg.l....Measured.value ~ grab_NCBd$NPOC..mg.C.L.)
-summary(calib.mod.DOCNCBs)
+calib.mod.NO3.NNCBs = lm(grab_NCBd$NO3eq..mg.l....Measured.value ~ grab_NCBd$NO3..mg.N.L.)
+summary(calib.mod.NO3.NNCBs)
 
-ggplot(grab_LMP07, aes(x = NPOC..mg.C.L., y = DOCeq..mg.l....Measured.value)) +
+
+ggplot(grab_LMP07, aes(x = NO3..mg.N.L., y = NO3eq..mg.l....Measured.value)) +
   geom_point(color = "blue") +
   geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
-calib.mod.DOC07 = lm(grab_LMP07$DOCeq..mg.l....Measured.value ~ grab_LMP07$NPOC..mg.C.L.)
-summary(calib.mod.DOC07)
+calib.mod.NO3.N07 = lm(grab_LMP07$NO3eq..mg.l....Measured.value ~ grab_LMP07$NO3..mg.N.L.)
+summary(calib.mod.NO3.N07)
 
-ggplot(grab_LMP27, aes(x = NPOC..mg.C.L., y = DOCeq..mg.l....Measured.value)) +
+ggplot(grab_LMP27, aes(x = NO3..mg.N.L., y = NO3eq..mg.l....Measured.value)) +
   geom_point(color = "blue") +
   geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
-calib.mod.DOC27 = lm(grab_LMP27$DOCeq..mg.l....Measured.value ~ grab_LMP27$NPOC..mg.C.L.)
-summary(calib.mod.DOC27)
+calib.mod.NO3.N27 = lm(grab_LMP27$NO3eq..mg.l....Measured.value ~ grab_LMP27$NO3..mg.N.L.)
+summary(calib.mod.NO3.N27)
 
 #######################################################################################
 #### STEP 4: Create matrices of GRAB spectral data - this is the training data set ####
@@ -509,49 +509,49 @@ attributes(scan.spectra27)
 #### STEP 6: Create a new data frame with the spectral matrices ####
 ####################################################################
 # This creates a data frame with 
-# 1. DOC (scan)
+# 1. NO3.N (scan)
 # 3. Full s::can spectra (from 2SMB-750nm)
 
-length(scan_DOC_CTB)
+length(scan_NO3_CTB)
 dim(scan.spectraCTB) 
 class(scan.spectraCTB)
 
 # NOTE: We use the I() function to protect the Spectra 
-spectralcal.dfCTB = data.frame(DOCCTB = scan_DOC_CTB, SpectraCTB = I(scan.spectraCTB))
+spectralcal.dfCTB = data.frame(NO3.NCTB = scan_NO3_CTB, SpectraCTB = I(scan.spectraCTB))
 str(spectralcal.dfCTB)
 
-spectralcal.dfSMB = data.frame(DOCSMB = scan_DOC_SMB, SpectraSMB = I(scan.spectraSMB))
+spectralcal.dfSMB = data.frame(NO3.NSMB = scan_NO3_SMB, SpectraSMB = I(scan.spectraSMB))
 str(spectralcal.dfSMB)
 
-spectralcal.dfNCBd = data.frame(DOCNCBd = scan_DOC_NCBd, SpectraNCBd = I(scan.spectraNCBd))
+spectralcal.dfNCBd = data.frame(NO3.NNCBd = scan_NO3_NCBd, SpectraNCBd = I(scan.spectraNCBd))
 str(spectralcal.dfNCBd)
 
-spectralcal.df07 = data.frame(DOC07 = scan_DOC_LMP07, Spectra07 = I(scan.spectra07))
+spectralcal.df07 = data.frame(NO3.N07 = scan_NO3_LMP07, Spectra07 = I(scan.spectra07))
 str(spectralcal.df07)
-spectralcal.df27 = data.frame(DOC27 = scan_DOC_LMP27, Spectra27 = I(scan.spectra27))
+spectralcal.df27 = data.frame(NO3.N27 = scan_NO3_LMP27, Spectra27 = I(scan.spectra27))
 str(spectralcal.df27)
 
 # Also do this for the GRAB sample data
-grabcal.dfCTB = data.frame(DOCCTB = grab.DOCCTB, SpectraCTB = I(grab.spectraCTB))
+grabcal.dfCTB = data.frame(NO3.NCTB = grab.NO3.NCTB, SpectraCTB = I(grab.spectraCTB))
 str(grabcal.dfCTB)
 
-grabcal.dfSMB = data.frame(DOCSMB = grab.DOCSMB, SpectraSMB = I(grab.spectraSMB))
+grabcal.dfSMB = data.frame(NO3.NSMB = grab.NO3.NSMB, SpectraSMB = I(grab.spectraSMB))
 str(grabcal.dfSMB)
 
-grabcal.dfNCBd = data.frame(DOCNCBd = grab.DOCNCBd, SpectraNCBd = I(grab.spectraNCBd))
+grabcal.dfNCBd = data.frame(NO3.NNCBd = grab.NO3.NNCBd, SpectraNCBd = I(grab.spectraNCBd))
 str(grabcal.dfNCBd)
-grabcal.df07 = data.frame(DOC07 = grab.DOC07, Spectra07 = I(grab.spectra07))
+grabcal.df07 = data.frame(NO3.N07 = grab.NO3.N07, Spectra07 = I(grab.spectra07))
 str(grabcal.df07)
-grabcal.df27 = data.frame(DOC27 = grab.DOC27, Spectra27 = I(grab.spectra27))
+grabcal.df27 = data.frame(NO3.N27 = grab.NO3.N27, Spectra27 = I(grab.spectra27))
 str(grabcal.df27)
 
-##################################################### 
+#####################################################
 #### STEP 7 CTB: Develop PLSR training data sets ####
-##################################################### 
+#####################################################
 # Create a training and test data set
 # Carbon
-CTrainCTB = grabcal.dfCTB
-CTestCTB = spectralcal.dfCTB
+NTrainCTB = grabcal.dfCTB
+NTestCTB = spectralcal.dfCTB
 
 # NO3N
 NTrainCTB = grabcal.dfCTB
@@ -559,38 +559,38 @@ NTestCTB = spectralcal.dfCTB
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-CmodCTB = plsr(DOCCTB ~ SpectraCTB, ncomp = 2, data = CTrainCTB, validation = "LOO") # usually ncomp is N-1 grab samples you have
-summary(CmodCTB) # optimized for 4 components
+NmodCTB = plsr(NO3.NCTB ~ SpectraCTB, ncomp = 2, data = NTrainCTB, validation = "LOO") # usually ncomp is N-1 grab samples you have
+summary(NmodCTB) # optimized for 4 components
 
 # Plot RMSE of the predictions to optimize model
-plot(RMSEP(CmodCTB), legendpos = "topright")
+plot(RMSEP(NmodCTB), legendpos = "topright")
 
 # Plot predicted vs. measured from optimized model
 # Pick the number of components with the least error
 # NOTE: This plot may be messy, given low number of grab samples 
-plot(CmodCTB, ncomp = 1, asp = 1, line = TRUE)
+plot(NmodCTB, ncomp = 1, asp = 1, line = TRUE)
 
 ########################################################################
 #### STEP 8 CTB: Make predictions based on reduced-error PLSR model #### 
 ########################################################################
 # Predict model!
-predictedCCTB = predict(CmodCTB, ncomp = 1, newdata = spectralcal.dfCTB) # use reduced error model
-str(predictedCCTB)
-plot(predictedCCTB)
+predictedNCTB = predict(NmodCTB, ncomp = 1, newdata = spectralcal.dfCTB) # use reduced error model
+str(predictedNCTB)
+plot(predictedNCTB)
 
-write.csv(predictedCCTB, file = "predicted/PredictedC_CTB_vclean.csv") # <- this is your newly calibrated dataset!
+write.csv(predictedNCTB, file = "predicted/predictedN_CTB_vclean.csv") # <- this is your newly calibrated dataset!
 
-# Convert predictedCCTB to a data frame
+# Convert predictedNCTB to a data frame
 pred_df <- data.frame(
-  DateTime = as.POSIXct(dimnames(predictedCCTB)[[1]]),
-  Predicted = as.numeric(predictedCCTB))
+  DateTime = as.POSIXct(dimnames(predictedNCTB)[[1]]),
+  Predicted = as.numeric(predictedNCTB))
 # Plot
 p <- ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
   geom_line(color = "steelblue") +
   labs(
     x = "DateTime",
-    y = "Predicted DOC (mg/L)",
-    title = "Predicted DOC over Time (CTB)"
+    y = "Predicted NO3.N (mg/L)",
+    title = "Predicted NO3.N over Time (CTB)"
   ) +
   theme_minimal()
 ggplotly(p)
@@ -598,53 +598,53 @@ ggplotly(p)
 ## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 
 # You might need to use a moving window approach to the calibraiton (i.e., calibrate 1 month at a time)
 
-#################################################
+#####################################################
 #### STEP 7 SMB: Develop PLSR training data sets ####
-#################################################
+#####################################################
 # Create a training and test dataset
 # Carbon
-CTrainSMB = grabcal.dfSMB
-CTestSMB = spectralcal.dfSMB
+NTrainSMB = grabcal.dfSMB
+NTestSMB = spectralcal.dfSMB
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-CmodSMB = plsr(DOCSMB ~ SpectraSMB, ncomp = 1, data = CTrainSMB, validation = "LOO") # usually ncomp is N-1 grab samples you have
-summary(CmodSMB) # optimized for 4 components
+NmodSMB = plsr(NO3.NSMB ~ SpectraSMB, ncomp = 1, data = NTrainSMB, validation = "LOO") # usually ncomp is N-1 grab samples you have
+summary(NmodSMB) # optimized for 4 components
 
 # Plot RMSE of the predictions to optimize model
-plot(RMSEP(CmodSMB), legendpos = "topright")
+plot(RMSEP(NmodSMB), legendpos = "topright")
 
 # Plot predicted vs. measured from optimized model
 # Pick the number of components with the least error (in this case, x)
 # NOTE: This plot may be messy, given low number of grab samples 
-plot(CmodSMB, ncomp = 1, asp = 1, line = TRUE)
+plot(NmodSMB, ncomp = 1, asp = 1, line = TRUE)
 
 ########################################################################
 #### STEP 8 SMB: Make predictions based on reduced-error PLSR model #### 
 ########################################################################
 # Predict model!
-predictedCSMB = predict(CmodSMB, ncomp = 1, newdata = spectralcal.dfSMB) # use reduced error model
-str(predictedCSMB)
+predictedNSMB = predict(NmodSMB, ncomp = 1, newdata = spectralcal.dfSMB) # use reduced error model
+str(predictedNSMB)
 # Plot final predictions
-plot(predictedCSMB)
+plot(predictedNSMB)
 
-write.csv(predictedCSMB, file = "predicted/PredictedC_SMB_vclean.csv") # <- this is your newly calibrated dataset!
+write.csv(predictedNSMB, file = "predicted/predictedN_SMB_vclean.csv") # <- this is your newly calibrated dataset!
 
 ## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 
 # You might need to use a moving window approach to the calibraiton (i.e., calibrate 1 month at a time)
 # This is a bit more complicated, so start with this simple calibration first. 
 
-# Convert predictedCSMB to a data frame
+# Convert predictedNSMB to a data frame
 pred_df <- data.frame(
-  DateTime = as.POSIXct(dimnames(predictedCSMB)[[1]]),
-  Predicted = as.numeric(predictedCSMB))
+  DateTime = as.POSIXct(dimnames(predictedNSMB)[[1]]),
+  Predicted = as.numeric(predictedNSMB))
 # Plot
 ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
   geom_point(color = "steelblue") +
   labs(
     x = "DateTime",
-    y = "Predicted DOC (mg/L)",
-    title = "Predicted DOC over Time (USFSMB)"
+    y = "Predicted NO3.N (mg/L)",
+    title = "Predicted NO3.N over Time (USFSMB)"
   ) +
   theme_minimal()
 
@@ -653,61 +653,61 @@ ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
 ######################################################
 # Create a training and test dataset
 # Carbon
-CTrainNCBd = grabcal.dfNCBd
-CTestNCBd = spectralcal.dfNCBd
+NTrainNCBd = grabcal.dfNCBd
+NTestNCBd = spectralcal.dfNCBd
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-CmodNCBd = plsr(DOCNCBd ~ SpectraNCBd, ncomp = 7, data = CTrainNCBd, validation = "LOO") # usually ncomp is N-1 grab samples you have
-summary(CmodNCBd) # optimized for 4 components
+NmodNCBd = plsr(NO3.NNCBd ~ SpectraNCBd, ncomp = 7, data = NTrainNCBd, validation = "LOO") # usually ncomp is N-1 grab samples you have
+summary(NmodNCBd) # optimized for 4 components
 
 # Plot RMSE of the predictions to optimize model
-plot(RMSEP(CmodNCBd), legendpos = "topright")
+plot(RMSEP(NmodNCBd), legendpos = "topright")
 
 # Plot predicted vs. measured from optimized model
 # Pick the number of components with the least error
 # NOTE: This plot may be messy, given low number of grab samples 
-plot(CmodNCBd, ncomp = 1, asp = 1, line = TRUE)
+plot(NmodNCBd, ncomp = 2, asp = 1, line = TRUE)
 
 #########################################################################
 #### STEP 8 NCBd: Make predictions based on reduced-error PLSR model #### 
 #########################################################################
 # Predict model!
-predictedCNCBd = predict(CmodNCBd, ncomp = 1, newdata = spectralcal.dfNCBd) # use reduced error model
-str(predictedCNCBd)
+predictedNNCBd = predict(NmodNCBd, ncomp = 2, newdata = spectralcal.dfNCBd) # use reduced error model
+str(predictedNNCBd)
 # Plot
-plot(predictedCNCBd)
+plot(predictedNNCBd)
 
-write.csv(predictedCNCBd, file = "predicted/PredictedC_NCBd_vclean.csv") # <- this is your newly calibrated dataset!
+write.csv(predictedNNCBd, file = "predicted/predictedN_NCBd_vclean.csv") # <- this is your newly calibrated dataset!
 
 # 1. Loadings Plot for USFCTB (Opposite Trend)
 # This shows how the wavelengths contribute to each component (ncomp = 1, 2, 3, etc.)
-plot(CmodCTB, plottype = "loading",
+plot(NmodCTB, plottype = "loading",
      comps = 1:2, # Plot the first two components for initial inspection
      main = "CTB NO3-N PLSR Loadings")
 
 # 2. Loadings Plot for USFSMB (Flat Trend)
-plot(CmodSMB, plottype = "loading",
+plot(NmodSMB, plottype = "loading",
      comps = 1:2, # Plot the first two components
      main = "SMB NO3-N PLSR Loadings")
 
 # 3. Loadings Plot for USFNCBd (Flat Trend)
 # Examine the first few components for USFNCBd
-plot(CmodNCBd, plottype = "loading",
+plot(NmodNCBd, plottype = "loading",
      comps = 1:2, # Plot the first two components
      main = "NCBd NO3-N PLSR Loadings")
 
-# Convert predictedCNCBd to a data frame
+# Convert predictedNNCBd to a data frame
 pred_df <- data.frame(
-  DateTime = as.POSIXct(dimnames(predictedCNCBd)[[1]]),
-  Predicted = as.numeric(predictedCNCBd))
+  DateTime = as.POSIXct(dimnames(predictedNNCBd)[[1]]),
+  Predicted = as.numeric(predictedNNCBd))
 # Plot
 ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
   geom_point(color = "steelblue") +
   labs(
     x = "DateTime",
-    y = "Predicted DOC (mg/L)",
-    title = "Predicted DOC over Time (USFNCBd)"
+    y = "Predicted NO3.N (mg/L)",
+    title = "Predicted NO3.N over Time (USFNCBd)"
   ) +
   theme_minimal()
 
@@ -716,64 +716,64 @@ ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
 #######################################################
 # Create a training and test dataset
 # Carbon
-CTrain07 = grabcal.df07
-CTest07 = spectralcal.df07
+NTrain07 = grabcal.df07
+NTest07 = spectralcal.df07
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-Cmod07 = plsr(DOC07 ~ Spectra07, ncomp = 7, data = CTrain07, validation = "LOO") # usually ncomp is N-1 grab samples you have
-summary(Cmod07) # optimized for 4 components
+Nmod07 = plsr(NO3.N07 ~ Spectra07, ncomp = 7, data = NTrain07, validation = "LOO") # usually ncomp is N-1 grab samples you have
+summary(Nmod07) # optimized for 4 components
 
 # Plot RMSE of the predictions to optimize model
-plot(RMSEP(Cmod07), legendpos = "topright")
+plot(RMSEP(Nmod07), legendpos = "topright")
 
 # Plot predicted vs. measured from optimized model
 # Pick the number of components with the least error
 # NOTE: This plot may be messy, given low number of grab samples 
-plot(Cmod07, ncomp = 7, asp = 1, line = TRUE)
+plot(Nmod07, ncomp = 1, asp = 1, line = TRUE)
 
 ##########################################################################
 #### STEP 8 LMP07: Make predictions based on reduced-error PLSR model #### 
 ##########################################################################
 # Predict model!
-predictedC07 = predict(Cmod07, ncomp = 7, newdata = spectralcal.df07) # use reduced error model
-str(predictedC07)
+predictedN07 = predict(Nmod07, ncomp = 1, newdata = spectralcal.df07) # use reduced error model
+str(predictedN07)
 # Plot
-plot(predictedC07)
+plot(predictedN07)
 
-write.csv(predictedC07, file = "predicted/PredictedC_LMP07_vclean.csv") # <- this is your newly calibrated dataset!
+write.csv(predictedN07, file = "predicted/predictedN_LMP07_vclean.csv") # <- this is your newly calibrated dataset!
 
 #######################################################
 #### STEP 7 LMP27: Develop PLSR training data sets ####
 #######################################################
 # Create a training and test dataset
 # Carbon
-CTrain27 = grabcal.df27
-CTest27 = spectralcal.df27
+NTrain27 = grabcal.df27
+NTest27 = spectralcal.df27
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-Cmod27 = plsr(DOC27 ~ Spectra27, ncomp = 6, data = CTrain27, validation = "LOO") # usually ncomp is N-1 grab samples you have
-summary(Cmod27) # optimized for 4 components
+Nmod27 = plsr(NO3.N27 ~ Spectra27, ncomp = 6, data = NTrain27, validation = "LOO") # usually ncomp is N-1 grab samples you have
+summary(Nmod27) # optimized for 4 components
 
 # Plot RMSE of the predictions to optimize model
-plot(RMSEP(Cmod27), legendpos = "topright")
+plot(RMSEP(Nmod27), legendpos = "topright")
 
 # Plot predicted vs. measured from optimized model
 # Pick the number of components with the least error
 # NOTE: This plot may be messy, given low number of grab samples 
-plot(Cmod27, ncomp = 1, asp = 1, line = TRUE)
+plot(Nmod27, ncomp = 1, asp = 1, line = TRUE)
 
 ##########################################################################
 #### STEP 8 LMP27: Make predictions based on reduced-error PLSR model #### 
 ##########################################################################
 # Predict model!
-predictedC27 = predict(Cmod27, ncomp = 1, newdata = spectralcal.df27) # use reduced error model
-str(predictedC27)
+predictedN27 = predict(Nmod27, ncomp = 1, newdata = spectralcal.df27) # use reduced error model
+str(predictedN27)
 # Plot
-plot(predictedC27)
+plot(predictedN27)
 
-write.csv(predictedC27, file = "predicted/PredictedC_LMP27_vclean.csv") # <- this is your newly calibrated dataset!
+write.csv(predictedN27, file = "predicted/predictedN_LMP27_vclean.csv") # <- this is your newly calibrated dataset!
 
 #######################
 #### Save in Drive #### 
@@ -783,9 +783,9 @@ write.csv(predictedC27, file = "predicted/PredictedC_LMP27_vclean.csv") # <- thi
 drive_folder_id <- "1wa1ycqUYv56y3fTn1-VaN2K-NLU3rFeU"
 
 # Upload the file to the specified Google Drive folder
-drive_upload(media = "predicted/PredictedC_USFCTB_vclean.csv", path = as_id(drive_folder_id))
-drive_upload(media = "predicted/PredictedC_USFSMB_vclean.csv", path = as_id(drive_folder_id))
-drive_upload(media = "predicted/PredictedC_USFNCBd_vclean.csv", path = as_id(drive_folder_id))
+drive_upload(media = "predicted/predictedN_USFCTB_vclean.csv", path = as_id(drive_folder_id))
+drive_upload(media = "predicted/predictedN_USFSMB_vclean.csv", path = as_id(drive_folder_id))
+drive_upload(media = "predicted/predictedN_USFNCBd_vclean.csv", path = as_id(drive_folder_id))
 
 ## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 
 # You might need to use a moving window approach to the calibraiton (i.e., calibrate 1 month at a time)

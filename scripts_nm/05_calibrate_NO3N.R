@@ -81,6 +81,8 @@ USF20$DateTime <- as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")
 USF21$DateTime <- as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")
 
 # Remove NAs from DateTime column
+USF12 <- USF12 %>%
+  filter(!is.na(DateTime))
 USF20 <- USF20 %>%
   filter(!is.na(DateTime))
 USF21 <- USF21 %>%
@@ -102,9 +104,9 @@ scan_NO3N_USF20 <- xts(USF20$NO3.N_mg.l, order.by = USF20$DateTime)
 scan_NO3N_USF21 <- xts(USF21$NO3.N_mg.l, order.by = USF21$DateTime)
 
 # Extract spectral data (assuming spectral columns are in range "215.00.nm" to "250.00.nm")
-scan.spec12 = xts(USF12[25:39], as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
-scan.spec20 = xts(USF20[25:39], as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
-scan.spec21 = xts(USF21[25:39], as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
+scan.spec12 = xts(USF12[, c(14, 25:39)], as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
+scan.spec20 = xts(USF20[, c(14, 25:39)], as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
+scan.spec21 = xts(USF21[, c(14, 25:39)], as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
 # select full spectra
 # note here that if there are 0s in your spectra, this code will throw an error
 # so only use the wavelengths where you have detectable absorbance
@@ -177,9 +179,9 @@ summary(calib.mod.NO3N21)
 #######################################################################################
 # 1. Index data set with columns with absorbances
 # raw spectra
-grab.spec.dat12 = grab_USF12[25:39]
-grab.spec.dat20 = grab_USF20[25:39]
-grab.spec.dat21 = grab_USF21[25:39] 
+grab.spec.dat12 = grab_USF12[, c(14, 25:39)]
+grab.spec.dat20 = grab_USF20[, c(14, 25:39)]
+grab.spec.dat21 = grab_USF21[, c(14, 25:39)]
 
 # Rename columns for all data frames (e.g., USF12, USF20, USF21)
 rename_columns <- function(df) {
