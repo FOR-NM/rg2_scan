@@ -381,7 +381,7 @@ p12 <- ggplot(pred_df12, aes(x = DateTime, y = Predicted)) +
 ggplotly(p12)
 
 ## USF20 ##
-predictedDOC20 <- predict(Cmod20.B, ncomp = ncomp_20B, newdata = spectralcal.df20.B)
+predictedDOC20 <- predict(Cmod20.A, ncomp = ncomp_20A, newdata = spectralcal.df20.A)
 
 pred_df20 <- data.frame(
   DateTime  = USF20$DateTime,
@@ -395,7 +395,7 @@ p20 <- ggplot(pred_df20, aes(x = DateTime, y = Predicted)) +
 ggplotly(p20)
 
 ## USF21 ##
-predictedDOC21 <- predict(Cmod21.B, ncomp = ncomp_21B, newdata = spectralcal.df21.B)
+predictedDOC21 <- predict(Cmod21.A, ncomp = ncomp_21A, newdata = spectralcal.df21.A)
 
 pred_df21 <- data.frame(
   DateTime  = USF21$DateTime,
@@ -408,9 +408,9 @@ p21 <- ggplot(pred_df21, aes(x = DateTime, y = Predicted)) +
   theme_minimal()
 ggplotly(p21)
 
-##########################################################
-#### STEP 12: Save outputs                             ####
-##########################################################
+###############################
+#### STEP 12: Save outputs ####
+###############################
 # NOTE: If your s::can has significant drift (e.g. biofouling), consider a
 # moving-window calibration (calibrate 1 month at a time) rather than a
 # single model across the full record.

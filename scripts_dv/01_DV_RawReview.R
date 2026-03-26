@@ -72,7 +72,6 @@ for (i in seq_along(scan_list)) {
 # Check the contents of the list and make sure there are no NAs
 str(scan_list)
 
-
 #################
 #### Tidying #### 
 #################
@@ -131,7 +130,6 @@ for (i in seq_along(scan_list)) {
 ##################
 #### Plotting ####
 ##################
-
 ### DOC ###
 for (i in seq_along(scan_list)) {
   # Access the current data frame
@@ -230,7 +228,7 @@ for (i in seq_along(scan_list)) {
     geom_line(aes(x=DateTime, y=NO3.N_mg.l, color='NO3-N')) +
     geom_line(aes(x=DateTime, y=NO3_mg.l, color='NO3')) +
     geom_line(aes(x=DateTime, y=DOCeq_mg.l, color='DOC')) +
-    scale_x_datetime(date_breaks = "4 day", date_labels = "%m/%d") +
+    scale_x_datetime(date_breaks = "2 week", date_labels = "%m/%d") +
     ggtitle(paste(scan_csvs$name[i])) +
     theme(axis.text.x = element_text(angle=45)) +
     ylab("Measured")

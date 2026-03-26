@@ -138,7 +138,7 @@ sum(duplicated(sample_times))
 # Remove duplicates from the original datasets
 # sample_times <- sample_times %>% distinct()
 
-write.csv(sample_times, "sample_times_DV.csv")
+#write.csv(sample_times, "sample_times_DV.csv")
 
 ##########################
 #### Import scan data ####
@@ -226,21 +226,33 @@ dataMS1 <- dataMS1 %>%
 ##########################
 #### Clean up spectra ####
 ##########################
+# Here you find when your spectra go negative. For USF data is around 450-460nm (column 123)
+# Do not remove any spectral values if for tss
+# dataDVO_clean <- dataO[,-c(117:224)]
+# dataDVNWT5_clean <- dataNWT5[,-c(97:224)]
+# dataDVMS1_clean <- dataMS1[,-c(100:224)]
+
+# data12 <- data12[,-c(220:228)]
+# data20 <- data20[,-c(220:228)]
+# data21 <- data21[,-c(220:228)]
+
+#################################################
+#### Clean up spectra, very low or high rows ####
+#################################################
 dataO_clean <- dataO %>%
   # Remove rows where the condition under -1 and above 100 is not met.
-  dplyr::filter(!if_any(c(15
-                          :224), 
-                        ~ . < -0.5 | . > 60))
+  dplyr::filter(!if_any(c(15:99), 
+                        ~ . < -1 | . > 60))
 
 dataNWT5_clean <- dataNWT5 %>%
   # Remove rows where the condition under -1 and above 100 is not met.
-  dplyr::filter(!if_any(c(15:224), 
-                        ~ . < -0.5 | . > 60))
+  dplyr::filter(!if_any(c(15:99), 
+                        ~ . < -1 | . > 60))
 
 dataMS1_clean <- dataMS1 %>%
   # Remove rows where the condition under -1 and above 100 is not met.
-  dplyr::filter(!if_any(c(15:224), 
-                        ~ . < -0.5 | . > 60))
+  dplyr::filter(!if_any(c(15:99), 
+                        ~ . < -1 | . > 60))
 
 ############################
 #### Save matched files ####
@@ -263,7 +275,7 @@ write.csv(dataMS1_clean,"googledrive/DVMS1_chem.csv" , row.names=FALSE, quote=FA
 drive_folder_id <- "12N6uUxXTttdnadDrn43mL6ilz-Ui2eQX"
 
 # Upload the file to the specified Google Drive folder
-drive_upload(media = "googledrive/DVO_chem.csv", path = as_id(drive_folder_id))
-drive_upload(media = "googledrive/DVNWT5_chem.csv", path = as_id(drive_folder_id))
-drive_upload(media = "googledrive/DVMS1_chem.csv", path = as_id(drive_folder_id))
+drive_put(media = "googledrive/DVO_chem.csv", path = as_id(drive_folder_id))
+drive_put(media = "googledrive/DVNWT5_chem.csv", path = as_id(drive_folder_id))
+drive_put(media = "googledrive/DVMS1_chem.csv", path = as_id(drive_folder_id))
 

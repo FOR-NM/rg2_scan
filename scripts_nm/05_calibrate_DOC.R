@@ -4,20 +4,12 @@
 ## Following Arial's s::can guide
 ##==============================================================================
 
-library(googledrive) 
+library(googledrive)
 library(data.table)
-
 library(xts)
 library(dplyr)
 library(pls)
-library(merTools)
-library(devtools)
-#install.packages("devtools")
-#install.packages("devtools", repos = "http://cran.us.r-project.org")
 library(spectrolab)
-#install_github("meireles/spectrolab")
-#install_github(repo = "meireles/spectrolab") # Install analysis package
-# Make sure to hit "no" for install
 library(ggplot2)
 library(plotly)
 
@@ -77,6 +69,8 @@ USF20$DateTime <- as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")
 USF21$DateTime <- as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")
 
 # Remove NAs from DateTime column
+USF12 <- USF12 %>%
+  filter(!is.na(DateTime))
 USF20 <- USF20 %>%
   filter(!is.na(DateTime))
 USF21 <- USF21 %>%
@@ -396,10 +390,6 @@ str(grabcal.df21)
 CTrain12 = grabcal.df12
 CTest12 = spectralcal.df12
 
-# NO3N
-NTrain12 = grabcal.df12
-NTest12 = spectralcal.df12
-
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
 Cmod12 = plsr(DOC12 ~ Spectra12, ncomp = 25, data = CTrain12, validation = "LOO") # usually ncomp is N-1 grab samples you have
@@ -422,21 +412,6 @@ str(predictedC12)
 plot(predictedC12)
 
 write.csv(predictedC12, file = "predicted/PredictedC_USF12_vclean.csv") # <- this is your newly calibrated dataset!
-
-# Convert predictedC12 to a data frame
-pred_df <- data.frame(
-  DateTime = as.POSIXct(dimnames(predictedC12)[[1]]),
-  Predicted = as.numeric(predictedC12))
-# Plot
-p <- ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
-  geom_line(color = "steelblue") +
-  labs(
-    x = "DateTime",
-    y = "Predicted DOC (mg/L)",
-    title = "Predicted DOC over Time (USF12)"
-  ) +
-  theme_minimal()
-ggplotly(p)
 
 ## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 
 # You might need to use a moving window approach to the calibraiton (i.e., calibrate 1 month at a time)
@@ -473,20 +448,6 @@ plot(predictedC20)
 
 
 write.csv(predictedC20, file = "predicted/PredictedC_USF20_vclean.csv") # <- this is your newly calibrated dataset!
-
-# Convert predictedC20 to a data frame
-pred_df <- data.frame(
-  DateTime = as.POSIXct(dimnames(predictedC20)[[1]]),
-  Predicted = as.numeric(predictedC20))
-# Plot
-ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
-  geom_point(color = "steelblue") +
-  labs(
-    x = "DateTime",
-    y = "Predicted DOC (mg/L)",
-    title = "Predicted DOC over Time (USF20)"
-  ) +
-  theme_minimal()
 
 #################################################
 #### STEP 7: Develop PLSR training data sets ####

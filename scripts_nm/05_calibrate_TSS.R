@@ -5,23 +5,14 @@
 ## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
 
-library(googledrive) 
+library(googledrive)
 library(data.table)
-
 library(xts)
 library(dplyr)
 library(pls)
-library(merTools)
-library(devtools)
-#install.packages("devtools")
-#install.packages("devtools", repos = "http://cran.us.r-project.org")
 library(spectrolab)
-#install_github("meireles/spectrolab")
-#install_github(repo = "meireles/spectrolab") # Install analysis package
-# Make sure to hit "no" for install
 library(ggplot2)
 library(plotly)
-library(ggrepel) # Makes labels readable
 
 ###################################
 #### Clear folders we will use ####
@@ -79,6 +70,8 @@ USF20$DateTime <- as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")
 USF21$DateTime <- as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")
 
 # Remove NAs from DateTime column
+USF12 <- USF12 %>%
+  filter(!is.na(DateTime))
 USF20 <- USF20 %>%
   filter(!is.na(DateTime))
 USF21 <- USF21 %>%
@@ -477,13 +470,13 @@ plot(RMSEP(TSSmod20), legendpos = "topright")
 # Plot predicted vs. measured from optimized model
 # Pick the number of components with the least error (in this case, x)
 # NOTE: This plot may be messy, given low number of grab samples 
-plot(TSSmod20, ncomp = 8, asp = 1, line = TRUE)
+plot(TSSmod20, ncomp = 13, asp = 1, line = TRUE)
 
 ####################################################################
 #### STEP 8: Make predictions based on reduced-error PLSR model #### 
 ####################################################################
 # Predict model!
-predictedT20 = predict(TSSmod20, ncomp = 8, newdata = spectralcal.df20) # use reduced error model
+predictedT20 = predict(TSSmod20, ncomp = 13, newdata = spectralcal.df20) # use reduced error model
 str(predictedT20)
 # Plot final predictions
 plot(predictedT20)
@@ -544,13 +537,13 @@ plot(RMSEP(TSSmod21), legendpos = "topright")
 # Plot predicted vs. measured from optimized model
 # Pick the number of components with the least error
 # NOTE: This plot may be messy, given low number of grab samples 
-plot(TSSmod21, ncomp = 3, asp = 1, line = TRUE)
+plot(TSSmod21, ncomp = 4, asp = 1, line = TRUE)
 
 ####################################################################
 #### STEP 8: Make predictions based on reduced-error PLSR model #### 
 ####################################################################
 # Predict model!
-predictedT21 = predict(TSSmod21, ncomp = 3, newdata = spectralcal.df21) # use reduced error model
+predictedT21 = predict(TSSmod21, ncomp = 4, newdata = spectralcal.df21) # use reduced error model
 str(predictedT21)
 # Plot
 plot(predictedT21)

@@ -254,9 +254,9 @@ data12 <- data12[,-c(220:228)]
 data20 <- data20[,-c(220:228)]
 data21 <- data21[,-c(220:228)]
 
-################################################
-#### Clean up spectra very low or high rows ####
-################################################
+#################################################
+#### Clean up spectra, very low or high rows ####
+#################################################
 # Remove rows where the condition under -0.5 and above 60 is not met.
 data12_clean <- data12_clean %>%
   dplyr::filter(!if_any(c(19:118),

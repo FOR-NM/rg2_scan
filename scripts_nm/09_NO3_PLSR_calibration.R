@@ -250,7 +250,7 @@ plot(Nmod12.A, ncomp = ncomp_12A, asp = 1, line = TRUE,
 Nmod20.A <- plsr(NO3 ~ Spectra, ncomp = 15, data = grabcal.df20.A, validation = "LOO")
 summary(Nmod20.A)
 plot(RMSEP(Nmod20.A), legendpos = "topright", main = "USF20 Model A (spectra only): RMSEP")
-ncomp_20A <- 3   # <- UPDATE
+ncomp_20A <- 2   # <- UPDATE
 plot(Nmod20.A, ncomp = ncomp_20A, asp = 1, line = TRUE,
      main = paste0("USF20 Model A: predicted vs measured (ncomp = ", ncomp_20A, ")"))
 
@@ -336,7 +336,7 @@ plot(Nmod21.B, plottype = "loading", comps = 1:2, main = "USF21 Model B: Loading
 # Default: using Model B (spectra + TSS) — swap .B to .A and _12B to _12A to revert.
 
 ## USF12 ##
-predictedNO312 <- predict(Nmod12.A, ncomp = ncomp_12A, newdata = spectralcal.df12.A)
+predictedNO312 <- predict(Nmod12.B, ncomp = ncomp_12B, newdata = spectralcal.df12.B)
 
 pred_df12 <- data.frame(
   DateTime  = USF12$DateTime,
@@ -350,7 +350,7 @@ p12 <- ggplot(pred_df12, aes(x = DateTime, y = Predicted)) +
 ggplotly(p12)
 
 ## USF20 ##
-predictedNO320 <- predict(Nmod20.A, ncomp = ncomp_20A, newdata = spectralcal.df20.A)
+predictedNO320 <- predict(Nmod20.B, ncomp = ncomp_20B, newdata = spectralcal.df20.B)
 
 pred_df20 <- data.frame(
   DateTime  = USF20$DateTime,
@@ -364,7 +364,7 @@ p20 <- ggplot(pred_df20, aes(x = DateTime, y = Predicted)) +
 ggplotly(p20)
 
 ## USF21 ##
-predictedNO321 <- predict(Nmod21.A, ncomp = ncomp_21A, newdata = spectralcal.df21.A)
+predictedNO321 <- predict(Nmod21.B, ncomp = ncomp_21B, newdata = spectralcal.df21.B)
 
 pred_df21 <- data.frame(
   DateTime  = USF21$DateTime,

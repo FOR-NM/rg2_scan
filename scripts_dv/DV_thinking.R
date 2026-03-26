@@ -13,8 +13,8 @@
 ##   4. Coverage summary table: % of sensor range covered by grabs,
 ##                              % of sensor readings outside grab range
 ##
-## Variables: DOC (DOC_mg.l / NPOC..mg.C.L.)
-##            NO3 (NO3.N_mg.l / NO3..mg.N.L.)
+## Variables: DOC (DOCeq..mg.l....Measured.value / NPOC..mg.C.L.)
+##            NO3 (NO3.Neq..mg.l....Measured.value / NO3..mg.N.L.)
 ##            TSS (TSS_mg.l / TSS_mg_L)
 ##==============================================================================
 
@@ -25,37 +25,36 @@ library(ggplot2)
 ##==============================================================================
 ## SECTION 1: Pull scan and USGS discharge data
 ##==============================================================================
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1qjM3Zze-I5ycFCHNcd997UG6gYXBUoX8")
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/12N6uUxXTttdnadDrn43mL6ilz-Ui2eQX")
 
 merged <- googledrive::drive_ls(path = scan, type = "csv")
 
-googledrive::drive_download(file = merged$id[merged$name == "USF12_chem_Buttercup.csv"],
-                            path = "googledrive/USF12_chem_Buttercup.csv", overwrite = TRUE)
-googledrive::drive_download(file = merged$id[merged$name == "USF20_chem_Blossom.csv"],
-                            path = "googledrive/USF20_chem_Blossom.csv",  overwrite = TRUE)
-googledrive::drive_download(file = merged$id[merged$name == "USF21_chem_Bubbles.csv"],
-                            path = "googledrive/USF21_chem_Bubbles.csv",  overwrite = TRUE)
+googledrive::drive_download(file = merged$id[merged$name == "DVO_chem.csv"],
+                            path = "googledrive/DVO_chem.csv", overwrite = TRUE)
+googledrive::drive_download(file = merged$id[merged$name == "DVMS1_chem.csv"],
+                            path = "googledrive/DVMS1_chem.csv",  overwrite = TRUE)
+googledrive::drive_download(file = merged$id[merged$name == "DVNWT5_chem.csv"],
+                            path = "googledrive/DVNWT5_chem.csv",  overwrite = TRUE)
 
-USF12 <- read.csv("googledrive/USF12_chem_Buttercup.csv", na = c("", "NaN", "Na", "NA"))
-USF20 <- read.csv("googledrive/USF20_chem_Blossom.csv",   na = c("", "NaN", "Na", "NA"))
-USF21 <- read.csv("googledrive/USF21_chem_Bubbles.csv",   na = c("", "NaN", "Na", "NA"))
+DVO <- read.csv("googledrive/DVO_chem.csv", na = c("", "NaN", "Na", "NA"))
+DVMS1 <- read.csv("googledrive/DVMS1_chem.csv",   na = c("", "NaN", "Na", "NA"))
+DVNWT5 <- read.csv("googledrive/DVNWT5_chem.csv",   na = c("", "NaN", "Na", "NA"))
 
 # Fill midnight timestamps
-for (df_name in c("USF12", "USF20", "USF21")) {
+for (df_name in c("DVO", "DVMS1", "DVNWT5")) {
   df  <- get(df_name)
   idx <- grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$", df$DateTime)
   df$DateTime[idx] <- paste(df$DateTime[idx], "00:00:00")
   assign(df_name, df)
 }
 
-USF12$DateTime <- as.POSIXct(USF12$DateTime, format = "%Y-%m-%d %H:%M:%S")
-USF20$DateTime <- as.POSIXct(USF20$DateTime, format = "%Y-%m-%d %H:%M:%S")
-USF21$DateTime <- as.POSIXct(USF21$DateTime, format = "%Y-%m-%d %H:%M:%S")
+DVO$DateTime <- as.POSIXct(DVO$DateTime, format = "%Y-%m-%d %H:%M:%S")
+DVMS1$DateTime <- as.POSIXct(DVMS1$DateTime, format = "%Y-%m-%d %H:%M:%S")
+DVNWT5$DateTime <- as.POSIXct(DVNWT5$DateTime, format = "%Y-%m-%d %H:%M:%S")
 
-USF12 <- USF12 %>% filter(!is.na(DateTime))
-USF20 <- USF20 %>% filter(!is.na(DateTime))
-USF21 <- USF21 %>% filter(!is.na(DateTime))
-
+DVO <- DVO %>% filter(!is.na(DateTime))
+DVMS1 <- DVMS1 %>% filter(!is.na(DateTime))
+DVNWT5 <- DVNWT5 %>% filter(!is.na(DateTime))
 
 ##==============================================================================
 ## SECTION 1: Build tidy long-format data for each variable
@@ -104,15 +103,14 @@ build_coverage_df <- function(df, site_name,
 
 # Build for all sites and variables
 vars <- list(
-  list(sensor = "DOC_mg.l",   grab = "NPOC..mg.C.L.", label = "DOC (mg/L)"),
-  list(sensor = "NO3.N_mg.l", grab = "NO3..mg.N.L.",  label = "NO3 (mg N/L)"),
-  list(sensor = "TSS_mg.l",   grab = "TSS_mg_L",       label = "TSS (mg/L)")
+  list(sensor = "DOCeq..mg.l....Measured.value",   grab = "NPOC..mg.C.L.", label = "DOC (mg/L)"),
+  list(sensor = "NO3.Neq..mg.l....Measured.value", grab = "NO3..mg.N.L.",  label = "NO3 (mg N/L)")
 )
 
 sites <- list(
-  list(df = USF12, name = "USF12"),
-  list(df = USF20, name = "USF20"),
-  list(df = USF21, name = "USF21")
+  list(df = DVO, name = "DVO"),
+  list(df = DVMS1, name = "DVMS1"),
+  list(df = DVNWT5, name = "DVNWT5")
 )
 
 # Collect everything into combined data frames
@@ -248,19 +246,14 @@ plot_timeseries_coverage <- function(full_df, grabs_df, sensor_col,
 }
 
 # DOC
-plot_timeseries_coverage(USF12, USF12, "DOC_mg.l", "NPOC..mg.C.L.", "USF12", "DOC", "DOC / NPOC (mg/L)")
-plot_timeseries_coverage(USF20, USF20, "DOC_mg.l", "NPOC..mg.C.L.", "USF20", "DOC", "DOC / NPOC (mg/L)")
-plot_timeseries_coverage(USF21, USF21, "DOC_mg.l", "NPOC..mg.C.L.", "USF21", "DOC", "DOC / NPOC (mg/L)")
+plot_timeseries_coverage(DVO, DVO, "DOCeq..mg.l....Measured.value", "NPOC..mg.C.L.", "DVO", "DOC", "DOC / NPOC (mg/L)")
+plot_timeseries_coverage(DVMS1, DVMS1, "DOCeq..mg.l....Measured.value", "NPOC..mg.C.L.", "DVMS1", "DOC", "DOC / NPOC (mg/L)")
+plot_timeseries_coverage(DVNWT5, DVNWT5, "DOCeq..mg.l....Measured.value", "NPOC..mg.C.L.", "DVNWT5", "DOC", "DOC / NPOC (mg/L)")
 
 # NO3
-plot_timeseries_coverage(USF12, USF12, "NO3.N_mg.l", "NO3..mg.N.L.", "USF12", "NO3", "NO3 (mg N/L)")
-plot_timeseries_coverage(USF20, USF20, "NO3.N_mg.l", "NO3..mg.N.L.", "USF20", "NO3", "NO3 (mg N/L)")
-plot_timeseries_coverage(USF21, USF21, "NO3.N_mg.l", "NO3..mg.N.L.", "USF21", "NO3", "NO3 (mg N/L)")
-
-# TSS
-plot_timeseries_coverage(USF12, USF12, "TSS_mg.l", "TSS_mg_L", "USF12", "TSS", "TSS (mg/L)")
-plot_timeseries_coverage(USF20, USF20, "TSS_mg.l", "TSS_mg_L", "USF20", "TSS", "TSS (mg/L)")
-plot_timeseries_coverage(USF21, USF21, "TSS_mg.l", "TSS_mg_L", "USF21", "TSS", "TSS (mg/L)")
+plot_timeseries_coverage(DVO, DVO, "NO3.Neq..mg.l....Measured.value", "NO3..mg.N.L.", "DVO", "NO3", "NO3 (mg N/L)")
+plot_timeseries_coverage(DVMS1, DVMS1, "NO3.Neq..mg.l....Measured.value", "NO3..mg.N.L.", "DVMS1", "NO3", "NO3 (mg N/L)")
+plot_timeseries_coverage(DVNWT5, DVNWT5, "NO3.Neq..mg.l....Measured.value", "NO3..mg.N.L.", "DVNWT5", "NO3", "NO3 (mg N/L)")
 
 ##==============================================================================
 ## SECTION 5: Coverage summary table
@@ -278,7 +271,7 @@ coverage_summary <- function(df, site_name, sensor_col, grab_col, var_label) {
   sensor_vals <- df[[sensor_col]][!is.na(df[[sensor_col]])]
   
   grab_rows <- df %>%
-    filter(!is.na(Grab_sample) & Grab_sample == "Y",
+    filter(!is.na(Sample.Name) & Sample.Name == "Y",
            !is.na(.data[[grab_col]]),
            !is.na(.data[[sensor_col]]))
   
@@ -319,17 +312,13 @@ coverage_summary <- function(df, site_name, sensor_col, grab_col, var_label) {
 
 summary_table <- bind_rows(
   # DOC
-  coverage_summary(USF12, "USF12", "DOC_mg.l",   "NPOC..mg.C.L.", "DOC"),
-  coverage_summary(USF20, "USF20", "DOC_mg.l",   "NPOC..mg.C.L.", "DOC"),
-  coverage_summary(USF21, "USF21", "DOC_mg.l",   "NPOC..mg.C.L.", "DOC"),
+  coverage_summary(DVO, "DVO", "DOCeq..mg.l....Measured.value",   "NPOC..mg.C.L.", "DOC"),
+  coverage_summary(DVMS1, "DVMS1", "DOCeq..mg.l....Measured.value",   "NPOC..mg.C.L.", "DOC"),
+  coverage_summary(DVNWT5, "DVNWT5", "DOCeq..mg.l....Measured.value",   "NPOC..mg.C.L.", "DOC"),
   # NO3
-  coverage_summary(USF12, "USF12", "NO3.N_mg.l", "NO3..mg.N.L.",  "NO3"),
-  coverage_summary(USF20, "USF20", "NO3.N_mg.l", "NO3..mg.N.L.",  "NO3"),
-  coverage_summary(USF21, "USF21", "NO3.N_mg.l", "NO3..mg.N.L.",  "NO3"),
-  # TSS
-  coverage_summary(USF12, "USF12", "TSS_mg.l",   "TSS_mg_L",      "TSS"),
-  coverage_summary(USF20, "USF20", "TSS_mg.l",   "TSS_mg_L",      "TSS"),
-  coverage_summary(USF21, "USF21", "TSS_mg.l",   "TSS_mg_L",      "TSS")
+  coverage_summary(DVO, "DVO", "NO3.Neq..mg.l....Measured.value", "NO3..mg.N.L.",  "NO3"),
+  coverage_summary(DVMS1, "DVMS1", "NO3.Neq..mg.l....Measured.value", "NO3..mg.N.L.",  "NO3"),
+  coverage_summary(DVNWT5, "DVNWT5", "NO3.Neq..mg.l....Measured.value", "NO3..mg.N.L.",  "NO3"),
 ) %>% arrange(Variable, Site)
 
 cat("\n=== Grab sample coverage summary ===\n")
