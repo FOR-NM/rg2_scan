@@ -23,7 +23,7 @@ file.remove(files)
 #######################################
 #### Import abs and parameter data ####
 #######################################
-# Load data from Google drive, this is the "merged" folder
+# Load data from Google drive, This is the "abs and params" folder
 scan <- googledrive::as_id("https://drive.google.com/drive/folders/1llXcmKVhauTAHcnTuXuhhatPtEaMoeW2")
 # List all CSV files in the folder
 scan_csvs <- googledrive::drive_ls(path = scan)
@@ -37,7 +37,7 @@ googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="NHLMP27_abs.csv
                             overwrite = T)
 
 LMP27_params <- read.csv("googledrive/NHLMP27_params.csv")
-LMP27_abs <- ("googledrive/NHLMP27_abs.csv")
+LMP27_abs <-  read.csv("googledrive/NHLMP27_abs.csv")
 
 #############################
 #### Tidy both data sets ####
@@ -71,7 +71,7 @@ write.csv(LMP27_merged,"data/LMP27_absparams.csv" , row.names=FALSE, quote=FALSE
 drive_folder_id <- "1CeCmX0mGh1wZ3IL4Exu4oPHUuzYOk4T_"
 
 # Upload the file to the specified Google Drive folder
-drive_upload(media = "data/LMP27_absparams.csv", path = as_id(drive_folder_id))
+drive_put(media = "data/LMP27_absparams.csv", path = as_id(drive_folder_id))
 
 ##==============================================================================
 ## LMP72
@@ -80,10 +80,10 @@ drive_upload(media = "data/LMP27_absparams.csv", path = as_id(drive_folder_id))
 #### Import abs and parameter data ####
 #######################################
 # Load only LMP72 files
-googledrive::drive_download(file = scan_xlsx$id[scan_csvs$name=="NHLMP72_params.csv"], 
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="NHLMP72_params.csv"], 
                             path = "googledrive/NHLMP72_params.csv",
                             overwrite = T)
-googledrive::drive_download(file = scan_xlsx$id[scan_csvs$name=="NHLMP72_abs.csv"], 
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="NHLMP72_abs.csv"], 
                             path = "googledrive/NHLMP72_abs.csv",
                             overwrite = T)
 
@@ -118,11 +118,11 @@ LMP72_merged$DateTime <- as.POSIXct(LMP72_merged$DateTime, "%Y-%m-%d %H:%M:%S")
 write.csv(LMP72_merged,"data/LMP72_absparams.csv" , row.names=FALSE, quote=FALSE)
 
 # Define the target folder ID in Google Drive
-# This is the "merged" folder
+# This is the "abs and params" folder
 drive_folder_id <- "1CeCmX0mGh1wZ3IL4Exu4oPHUuzYOk4T_"
 
 # Upload the file to the specified Google Drive folder
-drive_upload(media = "data/LMP72_absparams.csv", path = as_id(drive_folder_id))
+drive_put(media = "data/LMP72_absparams.csv", path = as_id(drive_folder_id))
 
 ##==============================================================================
 ## NCB
@@ -131,10 +131,10 @@ drive_upload(media = "data/LMP72_absparams.csv", path = as_id(drive_folder_id))
 #### Import abs and parameter data ####
 #######################################
 # Load only NCB files
-googledrive::drive_download(file = scan_xlsx$id[scan_csvs$name=="NHNCBd_params.csv"], 
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="NHNCBd_params.csv"], 
                             path = "googledrive/NHNCBd_params.csv",
                             overwrite = T)
-googledrive::drive_download(file = scan_xlsx$id[scan_csvs$name=="NHNCBd_abs.csv"], 
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="NHNCBd_abs.csv"], 
                             path = "googledrive/NHNCBd_abs.csv",
                             overwrite = T)
 
@@ -166,11 +166,11 @@ NCB_merged$DateTime <- as.POSIXct(NCB_merged$DateTime, "%Y-%m-%d %H:%M:%S")
 write.csv(NCB_merged,"data/NCB_absparams.csv" , row.names=FALSE, quote=FALSE)
 
 # Define the target folder ID in Google Drive
-# This is the "merged" folder
+# This is the "abs and params" folder
 drive_folder_id <- "1CeCmX0mGh1wZ3IL4Exu4oPHUuzYOk4T_"
 
 # Upload the file to the specified Google Drive folder
-drive_upload(media = "data/NCB_absparams.csv", path = as_id(drive_folder_id))
+drive_put(media = "data/NCB_absparams.csv", path = as_id(drive_folder_id))
 
 ##==============================================================================
 ## CTB
@@ -179,10 +179,10 @@ drive_upload(media = "data/NCB_absparams.csv", path = as_id(drive_folder_id))
 #### Import abs and parameter data ####
 #######################################
 # Load only CTB files
-googledrive::drive_download(file = scan_xlsx$id[scan_csvs$name=="NHCTB_params.csv"], 
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="NHCTB_params.csv"], 
                             path = "googledrive/NHCTB_params.csv",
                             overwrite = T)
-googledrive::drive_download(file = scan_xlsx$id[scan_csvs$name=="NHCTB_abs.csv"], 
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="NHCTB_abs.csv"], 
                             path = "googledrive/NHCTB_abs.csv",
                             overwrite = T)
 
@@ -215,11 +215,11 @@ CTB_merged$DateTime <- format(CTB_merged$DateTime, "%Y-%m-%d %H:%M:%S")
 write.csv(CTB_merged,"data/CTB_absparams.csv" , row.names=FALSE, quote=FALSE)
 
 # Define the target folder ID in Google Drive
-# This is the "merged" folder
+# This is the "abs and params" folder
 drive_folder_id <- "1CeCmX0mGh1wZ3IL4Exu4oPHUuzYOk4T_"
 
 # Upload the file to the specified Google Drive folder
-drive_upload(media = "data/CTB_absparams.csv", path = as_id(drive_folder_id))
+drive_put(media = "data/CTB_absparams.csv", path = as_id(drive_folder_id))
 
 ##==============================================================================
 ## LMP07
@@ -228,10 +228,10 @@ drive_upload(media = "data/CTB_absparams.csv", path = as_id(drive_folder_id))
 #### Import abs and parameter data ####
 #######################################
 # Load only LMP07 files
-googledrive::drive_download(file = scan_xlsx$id[scan_csvs$name=="NHLMP07_params.csv"], 
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="NHLMP07_params.csv"], 
                             path = "googledrive/NHLMP07_params.csv",
                             overwrite = T)
-googledrive::drive_download(file = scan_xlsx$id[scan_csvs$name=="NHLMP07_abs.csv"], 
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="NHLMP07_abs.csv"], 
                             path = "googledrive/NHLMP07_abs.csv",
                             overwrite = T)
 
@@ -265,36 +265,36 @@ LMP07_merged$DateTime <- format(LMP07_merged$DateTime, "%Y-%m-%d %H:%M:%S")
 write.csv(LMP07_merged,"data/LMP07_absparams.csv" , row.names=FALSE, quote=FALSE)
 
 # Define the target folder ID in Google Drive
-# This is the "merged" folder
+# This is the "abs and params" folder
 drive_folder_id <- "1CeCmX0mGh1wZ3IL4Exu4oPHUuzYOk4T_"
 
 # Upload the file to the specified Google Drive folder
-drive_upload(media = "data/LMP07_absparams.csv", path = as_id(drive_folder_id))
+drive_put(media = "data/LMP07_absparams.csv", path = as_id(drive_folder_id))
 
 ##==============================================================================
-## SBM
+## SMB
 ##==============================================================================
 #######################################
 #### Import abs and parameter data ####
 #######################################
-# Load only SBM files
-googledrive::drive_download(file = scan_xlsx$id[scan_csvs$name=="NHSBM_params.csv"], 
-                            path = "googledrive/NHSBM_params.csv",
+# Load only SMB files
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="NHSMB_params.csv"], 
+                            path = "googledrive/NHSMB_params.csv",
                             overwrite = T)
-googledrive::drive_download(file = scan_xlsx$id[scan_csvs$name=="NHSBM_abs.csv"], 
-                            path = "googledrive/NHSBM_abs.csv",
+googledrive::drive_download(file = scan_csvs$id[scan_csvs$name=="NHSMB_abs.csv"], 
+                            path = "googledrive/NHSMB_abs.csv",
                             overwrite = T)
 
-SBM_params <- read.csv("googledrive/NHSBM_params.csv")
-SBM_abs <- read.csv("googledrive/NHSBM_abs.csv")
+SMB_params <- read.csv("googledrive/NHSMB_params.csv")
+SMB_abs <- read.csv("googledrive/NHSMB_abs.csv")
 
 #############################
 #### Tidy both data sets ####
 #############################
 # Change DateTime format
-SBM_params <- SBM_params %>%
+SMB_params <- SMB_params %>%
   mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
-SBM_abs <- SBM_abs %>%
+SMB_abs <- SMB_abs %>%
   # Convert the DateTime column to POSIXct format
   mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
 
@@ -302,24 +302,24 @@ SBM_abs <- SBM_abs %>%
 #### Merge parameter and abs ####
 #################################
 # Param data first
-SBM_merged <- left_join(SBM_params, SBM_abs, by = "DateTime")
+SMB_merged <- left_join(SMB_params, SMB_abs, by = "DateTime")
 
-SBM_merged <- SBM_merged[-c(1:3231), -c(1, 22)]
+SMB_merged <- SMB_merged[-c(1:3231), -c(1, 22)]
 
 #########################################
-#### Save merged SBM file to Drive ####
+#### Save merged SMB file to Drive ####
 #########################################
 # Make sure it is in DateTime format
-SBM_merged$DateTime <- format(SBM_merged$DateTime, "%Y-%m-%d %H:%M:%S")
+SMB_merged$DateTime <- format(SMB_merged$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
-write.csv(SBM_merged,"data/SBM_absparams.csv" , row.names=FALSE, quote=FALSE)
+write.csv(SMB_merged,"data/SMB_absparams.csv" , row.names=FALSE, quote=FALSE)
 
 # Define the target folder ID in Google Drive
-# This is the "merged" folder
+# This is the "abs and params" folder
 drive_folder_id <- "1CeCmX0mGh1wZ3IL4Exu4oPHUuzYOk4T_"
 
 # Upload the file to the specified Google Drive folder
-drive_upload(media = "data/SBM_absparams.csv", path = as_id(drive_folder_id))
+drive_put(media = "data/SMB_absparams.csv", path = as_id(drive_folder_id))
 
 
 

@@ -30,14 +30,14 @@ chem_csv <- googledrive::drive_ls(path = chem, type = "csv")
 3
 
 # call the specific file you want (go to link and check which one is the most recent one)
-googledrive::drive_download(file = chem_csv$id[chem_csv$name=="2026-01-07_chem_data.csv"], 
-                            path = "googledrive/2026-01-07_chem_data.csv",
+googledrive::drive_download(file = chem_csv$id[chem_csv$name=="2026-03-31_chem_data.csv"], 
+                            path = "googledrive/2026-03-31_chem_data.csv",
                             overwrite = T)
 # load it into R
-wqual = read.csv("googledrive/2026-01-07_chem_data.csv")
+wqual = read.csv("googledrive/2026-03-31_chem_data.csv")
 
 # Format date columns
-wqual$Collection.Date <- as.Date(wqual$Collection.Date, format = "%m/%d/%y")
+wqual$Collection.Date <- as.Date(wqual$Collection.Date, format = "%Y-%m-%d")
 
 # Rename Collection Date column
 wqual <- wqual %>% rename(Date = Collection.Date)
@@ -90,9 +90,9 @@ samplelogsheet <- samplelogsheet[ , !(names(samplelogsheet) %in% drops)]
 #                       samplelogsheet$Date == "2024-05-23" &
 #                       samplelogsheet$Time == "09:30:00"] <- "09:45:00"
 
-##################################
+####################################
 #### Formatting collection time ####
-##################################
+####################################
 # Combine Date and Time columns into a new DateTime column
 samplelogsheet$DateTime <- paste(samplelogsheet$Date, samplelogsheet$Time, sep = " ")
 # Convert the DateTime column to POSIXct
@@ -139,7 +139,7 @@ merged <- googledrive::drive_ls(path = scan, type = "csv")
 googledrive::drive_download(file = merged$id[merged$name=="CTB_absparams.csv"], 
                             path = "googledrive/CTB_absparams.csv",
                             overwrite = T)
-#SBM
+#SMB
 googledrive::drive_download(file = merged$id[merged$name=="SMB_absparams.csv"], 
                             path = "googledrive/SMB_absparams.csv",
                             overwrite = T)
@@ -232,11 +232,11 @@ dataLMP27 <- dataLMP27 %>%
 ##########################
 # Here you find when your spectra go negative. For USF data is around 450-460nm (column 123)
 # Do not remove any spectral values if for tss
-dataCTB_clean <- dataCTB[,-c(100:225)]
-dataSMB_clean <- dataSMB[,-c(100:225)]
-dataNCBd_clean <- dataNCBd[,-c(116:225)]
-dataLMP07_clean <- dataLMP07[,-c(103:225)]
-dataLMP27_clean <- dataLMP27[,-c(119:225)]
+dataCTB_clean <- dataCTB[,-c(96:225)]
+dataSMB_clean <- dataSMB[,-c(96:225)]
+dataNCBd_clean <- dataNCBd[,-c(96:225)]
+dataLMP07_clean <- dataLMP07[,-c(96:225)]
+dataLMP27_clean <- dataLMP27[,-c(96:225)]
 
 # data12 <- data12[,-c(220:228)]
 # data20 <- data20[,-c(220:228)]
@@ -250,7 +250,7 @@ dataCTB_clean <- dataCTB_clean %>%
   dplyr::filter(!if_any(c(16:99),
                         ~ . < 0 | . > 60))
 dataSMB_clean <- dataSMB_clean %>%
-  dplyr::filter(!if_any(c(16:99),
+  dplyr::filter(!if_any(c(16:115),
                         ~ . < 0 | . > 60))
 dataNCBd_clean <- dataNCBd_clean %>%
   dplyr::filter(!if_any(c(16:115),

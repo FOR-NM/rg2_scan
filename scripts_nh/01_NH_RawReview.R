@@ -54,8 +54,9 @@ for (i in seq_along(scan_csvs$id)) {
   # store the data in the list
   scan_list[[scan_csvs$name[i]]] <- data
 }
+
 # remove abs
-scan_list <- scan_list[-c(1,3:7)]
+scan_list <- scan_list[-c(1:6)]
 
 # Ensure DateTime column is properly formatted
 scan_list <- lapply(scan_list, function(df) {
@@ -212,12 +213,12 @@ retrieve_usgs_data <- function(start_date, end_date, site_no = "01073319", p_cod
 }
 
 # retrieve USGS data for different s::can sites, each has different deployment dates
-USGS_CTB <- retrieve_usgs_data("2024-05-20", "2025-09-01")
-USGS_NCBd <- retrieve_usgs_data("2024-05-20", "2025-09-01")
-USGS_SBM <- retrieve_usgs_data("2024-05-20", "2025-09-01")
-USGS_LMP72 <- retrieve_usgs_data("2024-05-20", "2025-09-01")
-USGS_LMP27 <- retrieve_usgs_data("2024-05-20", "2025-09-01")
-USGS_LMP07 <- retrieve_usgs_data("2024-05-20", "2025-09-01")
+USGS_CTB <- retrieve_usgs_data("2024-05-20", "2026-03-01")
+USGS_NCBd <- retrieve_usgs_data("2024-05-20", "2026-03-01")
+USGS_SBM <- retrieve_usgs_data("2024-05-20", "2026-03-01")
+USGS_LMP72 <- retrieve_usgs_data("2024-05-20", "2026-03-01")
+USGS_LMP27 <- retrieve_usgs_data("2024-05-20", "2026-03-01")
+USGS_LMP07 <- retrieve_usgs_data("2024-05-20", "2026-03-01")
 
 USGS_CTB$DateTime <- USGS_CTB$dateTime
 USGS_NCBd$DateTime <- USGS_NCBd$dateTime
