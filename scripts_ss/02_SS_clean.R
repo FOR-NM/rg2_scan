@@ -21,8 +21,11 @@ file.remove(files)
 #####################
 #### Import Data ####
 #####################
-# load data from Google Drive. his is the "merged" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1Wju54VbyACZ_RFtfeInSvBCiVDKFScGj")
+# load data from Google Drive. his is the "Params and abs" folder
+# Manual merge
+#scan <- googledrive::as_id("https://drive.google.com/drive/folders/1WbfZWpSeXVLoSEvxqbVnjgvgo4uUwGtm")
+# from raw
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1fXvhb7aCanVicVbnQPwC26Gy2yZVMHAk")
 scan_csvs <- googledrive::drive_ls(path = scan, type = "csv")
 3
 
@@ -53,11 +56,6 @@ for (i in seq_along(scan_csvs$id)) {
 
 head(scan_list)
 
-#### remove abs files from list ####
-# we just want merged parameters and abs file
-# check position of abs and params files
-# scan_list = scan_list[-c(1:3)]
-
 #################
 #### Tidying ####
 #################
@@ -75,7 +73,7 @@ scan_list <- lapply(scan_list, function(df) {
   # ensure numeric variables are converted to numeric
   df <- df %>%
     mutate(across(c(DOC_mg.l, NO3.N_mg.l, NO3_mg.l, TOC_mg.l, TSS_mg.l), as.numeric)) %>%
-    mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S", tz = "US/Mountain"))
+    mutate(datetime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
   
   return(df)
 })
@@ -83,13 +81,19 @@ scan_list <- lapply(scan_list, function(df) {
 #################
 #### Cleaning ###
 #################
-SSM01 <- scan_list[["SSM01_merged.csv"]]
-SSM20 <- scan_list[["SSM20_merged.csv"]]
-SST13 <- scan_list[["SST13_merged.csv"]]
+SSM01 <- scan_list[["SSM01_absparams.csv"]]
+SSM20 <- scan_list[["SSM20_absparams.csv"]]
+SST13 <- scan_list[["SST13_absparams.csv"]]
 
-SSM01 <- SSM01[, -c(2, 18, 19, 25, 26)]
-SSM20 <- SSM20[, -c(2, 18, 24:26)]
-SST13 <- SST13[, -c(2, 21:36, 39, 40)]
+# manual merge cleaning
+SSM01 <- SSM01[, -c(17:18)]
+SSM20 <- SSM20[, -c(17:18)]
+SST13 <- SST13[, -c(17:30, 243:253)]
+
+# my cleaning
+SSM01 <- SSM01[, -c(1, 17:18, 20:25)]
+SSM20 <- SSM20[, -c(1, 18:25)]
+SST13 <- SST13[, -c(1, 17:36, 38, 39, 243:253)]
 
 #########################################################################################
 #### Count number of service dates (out of water days) and 'ABOVE' and 'BELOW' values####
@@ -166,7 +170,8 @@ scan_list <- lapply(scan_list, function(df) {
     )
   
   # define status values to replace with NA
-  status_values_to_replace <- c("NO_MEDIUM", "VAL_BELOW:NO_MEDIUM", "MATH_ERR", "NEG_MED", "DARK_MAX", "NEG_FP")
+  status_values_to_replace <- c("NO_MEDIUM", "VAL_BELOW:NO_MEDIUM")
+  #"NEG_MED", "DARK_MAX", "NEG_FP"
   
   #################################################
   #### Create a single "bad row" logical flag ####
@@ -178,7 +183,7 @@ scan_list <- lapply(scan_list, function(df) {
         NO3_status   %in% status_values_to_replace |
         TOC_status   %in% status_values_to_replace |
         TSS_status   %in% status_values_to_replace |
-        Measured_Status %in% status_values_to_replace
+        Measured.status %in% status_values_to_replace
     )
   
   ###################################
@@ -194,9 +199,9 @@ scan_list <- lapply(scan_list, function(df) {
     )
   
   #######################################
-  #### Clean spectral columns 23:243 ####
+  #### Clean spectral columns 18:228 ####
   #######################################
-  spectral_cols <- names(df)[23:243]
+  spectral_cols <- names(df)[18:228]
   
   df <- df %>%
     mutate(across(
@@ -243,11 +248,11 @@ scan_filtered2[["SST13"]] <- SST13
 plot_variables <- function(df, file_name) {
   # ensure column selection works correctly
   df_long <- df %>%
-    dplyr::select("DateTime", "TSS_clean", "TOC_clean", "NO3.N_clean", "NO3_clean", "DOC_clean") %>%
-    pivot_longer(cols = -DateTime, names_to = "Variable", values_to = "Value")
+    dplyr::select("datetime", "TSS_mg.l", "TOC_mg.l", "NO3.N_mg.l", "NO3_mg.l", "DOC_mg.l") %>%
+    pivot_longer(cols = -datetime, names_to = "Variable", values_to = "Value")
   
   # generate the plot
-  ggplot(data = df_long, aes(x = DateTime, y = Value, color = Variable)) +
+  ggplot(data = df_long, aes(x = datetime, y = Value, color = Variable)) +
     geom_line() +
     facet_wrap(~Variable, scales = "free_y", ncol = 1) +  # separate plot for each variable, stacked vertically
     scale_x_datetime(date_breaks = "15 days", date_labels = "%m/%d") +
@@ -318,24 +323,6 @@ for (i in seq_along(scan_subdf)) {
   ggsave(paste0("scan_figs/", scan_csvs$name[i], "_subdf.png"), plot_variables(scan_subdf[[i]], scan_csvs$name[i]))
 }
 
-##########################
-#### Clean up spectra ####
-##########################
-data12_clean <- data12 %>%
-  # Remove rows where the condition under -1 and above 100 is not met.
-  dplyr::filter(!if_any(c(19:228), 
-                        ~ . < -0.1 | . > 60))
-
-data20_clean <- data20 %>%
-  # Remove rows where the condition under -1 and above 100 is not met.
-  dplyr::filter(!if_any(c(19:228), 
-                        ~ . < -0.09 | . > 60))
-
-data21_clean <- data21 %>%
-  # Remove rows where the condition under -1 and above 100 is not met.
-  dplyr::filter(!if_any(c(19:228), 
-                        ~ . < -0.1 | . > 60))
-
 ####################################
 #### Save cleaned data to Drive ####
 ####################################
@@ -362,3 +349,4 @@ for (i in seq_along(scan_filtered2)) {
   # upload the file to the specified Google Drive folder
   drive_put(media = file_name, path = as_id(drive_folder_id))
 }
+

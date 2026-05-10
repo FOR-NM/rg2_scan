@@ -1,26 +1,29 @@
 ##==============================================================================
 ## Project: QuEST
-## Here we will be Calibrating s::can data using Partial Least Squares Regression (PLSR) for South Sandy
+## Here we will be Calibrating s::can data using Partial Least Squares Regression (PLSR) 
 ## Following Arial's s::can guide
 ## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
 
-# Importing data
 library(googledrive) 
 library(data.table)
 
 library(xts)
 library(dplyr)
+
 library(pls)
+library(prospectr) #to preprocess spectroscopic data 
+
 library(merTools)
 library(devtools)
-library(tidyr)
 #install.packages("devtools")
 #install.packages("devtools", repos = "http://cran.us.r-project.org")
 library(spectrolab)
 #install_github("meireles/spectrolab")
 #install_github(repo = "meireles/spectrolab") # Install analysis package
 # Make sure to hit "no" for install
+library(ggplot2)
+library(plotly)
 
 ###################################
 #### Clear folders we will use ####
@@ -33,15 +36,16 @@ file.remove(files)
 #### STEP 1: Prep grab sample data ###
 ######################################
 # What you need to do here is match the grab samples with the time stamp of the s::can
-# See scripts 03_merge_params_and_abs and 04_merge_grabsamples_and_scan
+# This data was matched using previous scripts #
+# See scripts merge_params_and_abs and merge_grabsamples_and_scan
 
-######################################################
+#######################################################
 #### STEP 2: Upload scan data frame [with spectra] ####
-######################################################
-# This data is already matched #
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1BNCKA7LdysjDH5_REI4WhH_P0Z4FIe0r")
+#######################################################
+# This is the "with chem" folder
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1Wju54VbyACZ_RFtfeInSvBCiVDKFScGj")
 
-# List all CSVs files in the folder
+# List all xlsx files in the folder
 merged <- googledrive::drive_ls(path = scan, type = "csv")
 3
 
@@ -58,57 +62,51 @@ googledrive::drive_download(file = merged$id[merged$name=="SST13_merged.csv"],
                             path = "googledrive/SST13_merged.csv",
                             overwrite = T)
 
-# Load them separately 
+# Let's load them separately first
 SSM01 <- read.csv("googledrive/SSM01_merged.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
 SSM20 <- read.csv("googledrive/SSM20_merged.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
 SST13 <- read.csv("googledrive/SST13_merged.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+
+# DateTime at midnight is missing 00:00:00 time, so filling in using grep
+SSM01$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",SSM01$DateTime)] <- paste(
+  SSM01$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",SSM01$DateTime)],"00:00:00")
+SSM20$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",SSM20$DateTime)] <- paste(
+  SSM20$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",SSM20$DateTime)],"00:00:00")
+SST13$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",SST13$DateTime)] <- paste(
+  SST13$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",SST13$DateTime)],"00:00:00")
 
 # Convert the DateTime column to POSIXct
 SSM01$DateTime <- as.POSIXct(SSM01$DateTime, format = "%Y-%m-%d %H:%M:%S")
 SSM20$DateTime <- as.POSIXct(SSM20$DateTime, format = "%Y-%m-%d %H:%M:%S")
 SST13$DateTime <- as.POSIXct(SST13$DateTime, format = "%Y-%m-%d %H:%M:%S")
 
-# Drop empty column names
-SSM01 <- SSM01[, !(is.na(colnames(SSM01)) | colnames(SSM01) == "")]
-SSM20 <- SSM20[, !(is.na(colnames(SSM20)) | colnames(SSM20) == "")]
-SST13 <- SST13[, !(is.na(colnames(SST13)) | colnames(SST13) == "")]
+# Remove NAs from DateTime column
+SSM01 <- SSM01 %>%
+  filter(!is.na(DateTime))
+SSM20 <- SSM20 %>%
+  filter(!is.na(DateTime))
+SST13 <- SST13 %>%
+  filter(!is.na(DateTime))
 
-# Rename columns by removing the X in front of the spectra (that brakes the core somehow)
+# Rename columns by removing the X in front of the spectra (that brakes the code somehow)
 rename_columns <- function(df) {
   colnames(df) <- gsub("^X|\\.nm$", "", colnames(df))
   return(df)
 }
-
 # Apply the renaming to each data frame
 SSM01 <- rename_columns(SSM01)
 SSM20 <- rename_columns(SSM20)
 SST13 <- rename_columns(SST13)
 
-# Remove some NA DateTimes
-SSM01 <- SSM01 %>% drop_na(DateTime)
-SSM20 <- SSM20 %>% drop_na(DateTime)
-SST13 <- SST13 %>% drop_na(DateTime)
+# Extract NO3N data as time series objects (xts)
+scan_NO3N_SSM01 <- xts(SSM01$NO3.N_mg.l, order.by = SSM01$DateTime)
+scan_NO3N_SSM20 <- xts(SSM20$NO3.N_mg.l, order.by = SSM20$DateTime)
+scan_NO3N_SST13 <- xts(SST13$NO3.N_mg.l, order.by = SST13$DateTime)
 
-# Extract DOC NO3 NO3N and TSS data as time series objects (xts)
-scan_DOC_SSM01 <- xts(SSM01$DOC_mg.l, order.by = SSM01$DateTime)
-#scan_TSS_SSM01 <- xts(SSM01$TSS, order.by = SSM01$DateTime)
-scan_NO3N_SSM01 <- xts(SSM01$NO3_mg.l, order.by = SSM01$DateTime)
-#scan_NO3_SSM01 <- xts(SSM01$NO3, order.by = SSM01$DateTime)
-
-scan_DOC_SSM20 <- xts(SSM20$DOC_mg.l, order.by = SSM20$DateTime)
-#scan_TSS_SSM20 <- xts(SSM20$TSS, order.by = SSM20$DateTime)
-scan_NO3N_SSM20 <- xts(SSM20$NO3_mg.l, order.by = SSM20$DateTime)
-#scan_NO3_SSM20 <- xts(SSM20$NO3, order.by = SSM20$DateTime)
-
-scan_DOC_SST13 <- xts(SST13$DOC_mg.l, order.by = SST13$DateTime)
-#scan_TSS_SST13 <- xts(SST13$TSS, order.by = SST13$DateTime)
-scan_NO3N_SST13 <- xts(SST13$NO3_mg.l, order.by = SST13$DateTime)
-#scan_NO3_SST13 <- xts(SST13$NO3, order.by = SST13$DateTime)
-
-# Extract spectral data (assuming spectral columns are in range "X200.00.nm" to "X750.00.nm")
-scan.spec01 = xts(SSM01[23:243], as.POSIXct(SSM01$DateTime, format = "%m/%d/%Y %H:%M:%S")) 
-scan.spec20 = xts(SSM20[23:243], as.POSIXct(SSM20$DateTime, format = "%m/%d/%Y %H:%M:%S")) 
-scan.spec13 = xts(SST13[23:243], as.POSIXct(SST13$DateTime, format = "%m/%d/%Y %H:%M:%S")) 
+# Extract spectral data (assuming spectral columns are in range "135.00.nm" to "400.00.nm")
+scan.specSSM01 = xts(SSM01[18:127], as.POSIXct(SSM01$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
+scan.specSSM20 = xts(SSM20[18:127], as.POSIXct(SSM20$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
+scan.specSST13 = xts(SST13[18:130], as.POSIXct(SST13$DateTime, format = "%Y-%m-%d %H:%M:%S")) 
 # select full spectra
 # note here that if there are 0s in your spectra, this code will throw an error
 # so only use the wavelengths where you have detectable absorbance
@@ -119,7 +117,6 @@ scan.spec13 = xts(SST13[23:243], as.POSIXct(SST13$DateTime, format = "%m/%d/%Y %
 # This is just a check to see how well the s::can did relative to your known concentrations 
 # I upload this as a new data frame, just because in the previous step I had assigned these XTS values
 # Feel free to change this! It's not the most efficient way to do this...
-
 # Creating "Grab_sample" column based on values in "Sample.Name"
 # Modify the Grab_sample column
 SSM01 <- SSM01 %>% 
@@ -127,13 +124,11 @@ SSM01 <- SSM01 %>%
     !is.na(Sample.Name) & Sample.Name != "" ~ "Y",  # Assign "Y" if data exists
     TRUE ~ NA_character_  # Leave as NA otherwise
   ))
-
 SSM20 <- SSM20 %>% 
   mutate(Grab_sample = case_when(
     !is.na(Sample.Name) & Sample.Name != "" ~ "Y",
     TRUE ~ NA_character_
   ))
-
 SST13 <- SST13 %>% 
   mutate(Grab_sample = case_when(
     !is.na(Sample.Name) & Sample.Name != "" ~ "Y",
@@ -141,70 +136,52 @@ SST13 <- SST13 %>%
   ))
 
 # Filter using "Grab_sample" column
-grab_SSM01 = SSM01[SSM01$Grab_sample == "Y",] # Only gets data when there is a Y
-grab_SSM20 = SSM20[SSM20$Grab_sample == "Y",] # Only gets data when there is a Y
-grab_SST13 = SST13[SST13$Grab_sample == "Y",] # Only gets data when there is a Y
+grab_SSM01 = SSM01[SSM01$Grab_sample == "Y",] # Ony gets data when there is a Y
+grab_SSM20 = SSM20[SSM20$Grab_sample == "Y",] # Ony gets data when there is a Y
+grab_SST13 = SST13[SST13$Grab_sample == "Y",] # Ony gets data when there is a Y
 
-grab.DOC01 = grab_SSM01$NPOC..mg.C.L.
 grab.NO3N01 = grab_SSM01$NO3..mg.N.L.
-
-grab.DOC20 = grab_SSM20$NPOC..mg.C.L.
 grab.NO3N20 = grab_SSM20$NO3..mg.N.L.
-
-grab.DOC13 = grab_SST13$NPOC..mg.C.L.
 grab.NO3N13 = grab_SST13$NO3..mg.N.L.
 
-# Compare grab vs scan DOC
-plot(grab_SSM01$DOC_mg.l ~ grab_SSM01$NPOC..mg.C.L.)
-ggplot(grab_SSM01, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +
-  geom_point(color = "blue") +
-  geom_text(aes(label = Date), vjust = -0.5, size = 3)  # adds date labels above points
-calib.mod.DOC01 = lm(grab_SSM01$DOC_mg.l ~ grab_SSM01$NPOC..mg.C.L.)
-summary(calib.mod.DOC01)
+#### remove a couple of problematic samples ####
+# grab_SSM01 <- grab_SSM01 %>%
+#   mutate(NO3..mg.N.L. = ifelse(Date %in% c("2024-09-25", "2025-05-01", "2025-04-10", "2025-04-03") | is.na(NO3..mg.N.L.), NA, NO3..mg.N.L.))
+# grab_SSM20 <- grab_SSM20 %>%
+#   mutate(NO3..mg.N.L. = ifelse(Date %in% c("2024-05-23", "2025-09-01", "2025-05-01", "2024-10-16", "2025-04-10", "2024-07-30") | is.na(NO3..mg.N.L.),NA,NO3..mg.N.L.))
+# grab_SST13 <- grab_SST13 %>%
+#   mutate(NO3..mg.N.L. = ifelse(Date %in% c("2024-09-18", "2025-06-13", "2025-09-01") | is.na(NO3..mg.N.L.), NA, NO3..mg.N.L.))
 
-plot(grab_SSM20$DOC_mg.l ~ grab_SSM20$NPOC..mg.C.L.)
-ggplot(grab_SSM20, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +
+# compare grab vs scan NO3N
+plot(grab_SSM01$NO3.N_mg.l ~ grab_SSM01$NO3..mg.N.L.)
+ggplot(grab_SSM01, aes(x = NO3..mg.N.L., y = NO3.N_mg.l)) +
   geom_point(color = "blue") +
-  geom_text(aes(label = Date), vjust = -0.5, size = 3) 
-calib.mod.DOC20 = lm(grab_SSM20$DOC_mg.l ~ grab_SSM20$NPOC..mg.C.L.)
-summary(calib.mod.DOC20)
+  geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
+calib.mod.NO3N01 = lm(grab_SSM01$NO3.N_mg.l ~ grab_SSM01$NO3..mg.N.L.)
+summary(calib.mod.NO3N01)
 
-plot(grab_SST13$DOC_mg.l ~ grab_SST13$NPOC..mg.C.L.)
-ggplot(grab_SST13, aes(x = NPOC..mg.C.L., y = DOC_mg.l)) +
+plot(grab_SSM20$NO3.N_mg.l ~ grab_SSM20$NO3..mg.N.L.)
+ggplot(grab_SSM20, aes(x = NO3..mg.N.L., y = NO3.N_mg.l)) +
   geom_point(color = "blue") +
-  geom_text(aes(label = Date), vjust = -0.5, size = 3) 
-calib.mod.DOC13 = lm(grab_SST13$DOC_mg.l ~ grab_SST13$NPOC..mg.C.L.)
-summary(calib.mod.DOC13)
+  geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
+calib.mod.NO3N20 = lm(grab_SSM20$NO3.N_mg.l ~ grab_SSM20$NO3..mg.N.L.)
+summary(calib.mod.NO3N20)
 
-# Compare grab vs scan NO3N
-plot(grab_SSM01$NO3_mg.l ~ grab_SSM01$NO3..mg.N.L.)
-ggplot(grab_SSM01, aes(x = NO3..mg.N.L., y = NO3_mg.l)) +
+plot(grab_SST13$NO3.N_mg.l ~ grab_SST13$NO3..mg.N.L.)
+ggplot(grab_SST13, aes(x = NO3..mg.N.L., y = NO3.N_mg.l)) +
   geom_point(color = "blue") +
-  geom_text(aes(label = Date), vjust = -0.5, size = 3)  # adds date labels above points
-calib.mod.NO301 = lm(grab_SSM01$NO3_mg.l ~ grab_SSM01$NO3..mg.N.L.)
-summary(calib.mod.NO301)
-
-plot(grab_SSM20$NO3_mg.l ~ grab_SSM20$NO3..mg.N.L.)
-ggplot(grab_SSM20, aes(x = NO3..mg.N.L., y = NO3_mg.l)) +
-  geom_point(color = "blue") +
-  geom_text(aes(label = Date), vjust = -0.5, size = 3)  
-calib.mod.NO320 = lm(grab_SSM20$NO3_mg.l ~ grab_SSM20$NO3..mg.N.L.)
-summary(calib.mod.NO320)
-
-plot(grab_SST13$NO3_mg.l ~ grab_SST13$NO3..mg.N.L.)
-ggplot(grab_SST13, aes(x = NO3..mg.N.L., y = NO3_mg.l)) +
-  geom_point(color = "blue") +
-  geom_text(aes(label = Date), vjust = -0.5, size = 3)
-calib.mod.NO313 = lm(grab_SST13$NO3_mg.l ~ grab_SST13$NO3..mg.N.L.)
-summary(calib.mod.NO313)
+  geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
+calib.mod.NO3N13 = lm(grab_SST13$NO3.N_mg.l ~ grab_SST13$NO3..mg.N.L.)
+summary(calib.mod.NO3N13)
 
 #######################################################################################
 #### STEP 4: Create matrices of GRAB spectral data - this is the training data set ####
 #######################################################################################
 # 1. Index data set with columns with absorbances
-grab.spec.dat01 = grab_SSM01[23:243] # Full spectra, with no NAs
-grab.spec.dat20 = grab_SSM20[23:243] # Full spectra, with no NAs
-grab.spec.dat13 = grab_SST13[23:243] # Full spectra, with no NAs
+# raw spectra
+grab.spec.dat01 = grab_SSM01[18:127]
+grab.spec.dat20 = grab_SSM20[18:127]
+grab.spec.dat13 = grab_SST13[18:130] 
 
 # Rename columns for all data frames (e.g., SSM01, SSM20, SST13)
 rename_columns <- function(df) {
@@ -222,13 +199,16 @@ grab.spec.dat13 <- rename_columns(grab.spec.dat13)
 # Columns = date/time
 abs01 = (grab.spec.dat01)  # this is not doing anything and just copying grab.spec.dat01 again as abs01
 abs20 = (grab.spec.dat20)
-abs13 = (grab.spec.dat13)
+abs13 = (grab.spec.datSST13)
 #str(abs)
 
 # 3. Create a vector with wavelength labels that match the absorbance matrix columns.
-wl01 = as.numeric(colnames(abs01))
-wl20 = as.numeric(colnames(abs20))
-wl13 = as.numeric(colnames(abs13))
+wl01 <- gsub("_clean", "", colnames(abs01))   
+wl01 <- as.numeric(wl01)
+wl20 <- gsub("_clean", "", colnames(abs20))   
+wl20 <- as.numeric(wl20)
+wl13 <- gsub("_clean", "", colnames(abs13))   
+wl13 <- as.numeric(wl13)
 str(wl13)
 
 # 4. Create a vector with sample labels that match the absorbance matrix rows. 
@@ -278,7 +258,6 @@ attributes(grab.spectra13)
 plot(grab.spectra13) # Note, bands here = absorbance from the scans
 
 #grab.spectra = as_spectra.list(grab.spectra, wave_unit = "wavenumber", measurement_nit = "absorbance")
-
 grab.spectra01 = as.matrix(grab.spectra01)
 grab.spectra20 = as.matrix(grab.spectra20)
 grab.spectra13 = as.matrix(grab.spectra13)
@@ -301,9 +280,10 @@ attributes(grab.spectra13)
 #### STEP 5: Create matrices of ALL spectral data - raw data that needs calibration ####
 ########################################################################################
 # 1. Index FULL dataset with columns with absorbances
-scan.spec01 = SSM01[23:243]
-scan.spec20 = SSM20[23:243]
-scan.spec13 = SST13[23:243]
+# raw spectra
+scan.spec01 = SSM01[18:127]
+scan.spec20 = SSM20[18:127] 
+scan.spec13 = SST13[18:130]
 
 # 2. Create an absorbance matrix 
 # Rows = wavelength
@@ -313,9 +293,12 @@ abs20 = (scan.spec20)
 abs13 = (scan.spec13) 
 
 # 3. Create a vector with wavelength labels that match the absorbance matrix columns.
-wl01 = as.numeric(colnames(abs01))
-wl20 = as.numeric(colnames(abs20))
-wl13 = as.numeric(colnames(abs13))
+wl01 <- gsub("_clean", "", colnames(abs01))   
+wl01 <- as.numeric(wl01)
+wl20 <- gsub("_clean", "", colnames(abs20))   
+wl20 <- as.numeric(wl20)
+wl13 <- gsub("_clean", "", colnames(abs13))   
+wl13 <- as.numeric(wl13)
 
 # 4. Create a vector with sample labels that match the absorbance matrix rows. 
 lastrow01 = as.numeric(nrow(abs01))
@@ -390,71 +373,58 @@ dim(scan.spectra01)
 class(scan.spectra01)
 
 # NOTE: We use the I() function to protect the Spectra 
-spectralcal.df01 = data.frame(DOC01 = scan_DOC_SSM01, NO3N01 = scan_NO3N_SSM01, Spectra01 = I(scan.spectra01))
+spectralcal.df01 = data.frame(NO3N01 = scan_NO3N_SSM01, Spectra01 = I(scan.spectra01))
 str(spectralcal.df01)
 
-spectralcal.df20 = data.frame(DOC20 = scan_DOC_SSM20, NO3N20 = scan_NO3N_SSM20, Spectra20 = I(scan.spectra20))
+spectralcal.df20 = data.frame(NO3N20 = scan_NO3N_SSM20, Spectra20 = I(scan.spectra20))
 str(spectralcal.df20)
 
-spectralcal.df13 = data.frame(DOC13 = scan_DOC_SST13, NO3N13 = scan_NO3N_SST13, Spectra13 = I(scan.spectra13))
+spectralcal.df13 = data.frame(NO3N13 = scan_NO3N_SST13, Spectra13 = I(scan.spectra13))
 str(spectralcal.df13)
 
 # Also do this for the GRAB sample data
-grabcal.df01 = data.frame(DOC01 = grab.DOC01, NO3N01 = grab.NO3N01, Spectra01 = I(grab.spectra01))
+grabcal.df01 = data.frame(NO3N01 = grab.NO3N01, Spectra01 = I(grab.spectra01))
 str(grabcal.df01)
 
-grabcal.df20 = data.frame(DOC20 = grab.DOC20, NO3N20 = grab.NO3N20, Spectra20 = I(grab.spectra20))
+grabcal.df20 = data.frame(NO3N20 = grab.NO3N20, Spectra20 = I(grab.spectra20))
 str(grabcal.df20)
 
-grabcal.df13 = data.frame(DOC13 = grab.DOC13, NO3N13 = grab.NO3N13, Spectra13 = I(grab.spectra13))
+grabcal.df13 = data.frame(NO3N13 = grab.NO3N13, Spectra13 = I(grab.spectra13))
 str(grabcal.df13)
 
 #################################################
 #### STEP 7: Develop PLSR training data sets ####
 #################################################
-# Create a training and test dataset
-# Carbon
-CTrain01 = grabcal.df01
-CTest01 = spectralcal.df01
-
+# Create a training and test data set
 # NO3N
+NTrain01 = grabcal.df01
+NTest01 = spectralcal.df01
+
+##########
 NTrain01 = grabcal.df01
 NTest01 = spectralcal.df01
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-Cmod01 = plsr(DOC01 ~ Spectra01, ncomp = 3, data = CTrain01, validation = "LOO") # usually ncomp is N-1 grab samples you have
-summary(Cmod01) # optimized for 4 components
-
-Nmod01 = plsr(NO3N01 ~ Spectra01, ncomp = 2, data = NTrain01, validation = "LOO") # usually ncomp is N-1 grab samples you have
-summary(Cmod01)
+Nmod01 = plsr(NO3N01 ~ Spectra01, ncomp = 7, data = NTrain01, validation = "LOO") # usually ncomp is N-1 grab samples you have
+summary(Nmod01)
 
 # Plot RMSE of the predictions to optimize model
-plot(RMSEP(Cmod01), legendpos = "topright")
 plot(RMSEP(Nmod01), legendpos = "topright")
 
 # Plot predicted vs. measured from optimized model
-# Pick the number of components with the least error (in this case, 1)
-# NOTE: This plot may be messy, given low number of grab samples 
-plot(Cmod01, ncomp = 2, asp = 1, line = TRUE)
-plot(Nmod01, ncomp = 1, asp = 1, line = TRUE)
+# Pick the number of components with the least error
+plot(Nmod01, ncomp = 2, asp = 1, line = TRUE)
 
 ####################################################################
 #### STEP 8: Make predictions based on reduced-error PLSR model #### 
 ####################################################################
-# Predict model!
-predictedC01 = predict(Cmod01, ncomp = 2, newdata = spectralcal.df01) # use reduced error model
-str(predictedC01)
-plot(predictedC01)
+# predictedN01 = predict(Nmod01, ncomp = 2, newdata = spectralcal.df01) # use reduced error model
+# str(predictedN01)
+# # Plot final predictions
+# plot(predictedN01)
 
-predictedN01 = predict(Nmod01, ncomp = 1, newdata = spectralcal.df01) # use reduced error model
-str(predictedN01)
-# Plot final predictions
-plot(predictedN01)
-
-write.csv(predictedC01, file = "PredictedC_SSM01.csv") # <- this is your newly calibrated dataset!
-write.csv(predictedN01, file = "PredictedN_SSM01.csv") # <- this is your newly calibrated dataset!
-
+write.csv(predictedN01_SNV, file = "predicted/PredictedN_SSM01_SNV.csv") # <- this is your newly calibrated dataset!
 
 ## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 
 # You might need to use a moving window approach to the calibraiton (i.e., calibrate 1 month at a time)
@@ -462,113 +432,128 @@ write.csv(predictedN01, file = "PredictedN_SSM01.csv") # <- this is your newly c
 #################################################
 #### STEP 7: Develop PLSR training data sets ####
 #################################################
-
-# Create a training and test dataset
-# Carbon
-CTrain20 = grabcal.df20
-CTest20 = spectralcal.df20
-
 # NO3N
 NTrain20 = grabcal.df20
 NTest20 = spectralcal.df20
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-Cmod20 = plsr(DOC20 ~ Spectra20, ncomp = 3, data = CTrain20, validation = "LOO") # usually ncomp is N-1 grab samples you have
-summary(Cmod20) # optimized for 4 components
-
-Nmod20 = plsr(NO3N20 ~ Spectra20, ncomp = 3, data = NTrain20, validation = "LOO") # usually ncomp is N-1 grab samples you have
+Nmod20 = plsr(NO3N20 ~ Spectra20, ncomp = 2, data = NTrain20, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(Cmod20)
 
 # Plot RMSE of the predictions to optimize model
-plot(RMSEP(Cmod20), legendpos = "topright")
 plot(RMSEP(Nmod20), legendpos = "topright")
 
 # Plot predicted vs. measured from optimized model
-# Pick the number of components with the least error (in this case, 1)
+# Pick the number of components with the least error (in this case, x)
 # NOTE: This plot may be messy, given low number of grab samples 
-plot(Cmod20, ncomp = 2, asp = 1, line = TRUE)
-plot(Nmod20, ncomp = 1, asp = 1, line = TRUE)
+plot(Nmod20, ncomp = 2, asp = 1, line = TRUE)
 
 ####################################################################
 #### STEP 8: Make predictions based on reduced-error PLSR model #### 
 ####################################################################
-
 # Predict model!
-predictedC20 = predict(Cmod20, ncomp = 1, newdata = spectralcal.df20) # use reduced error model
-str(predictedC20)
-plot(predictedC20)
-
-predictedN20 = predict(Nmod20, ncomp = 1, newdata = spectralcal.df20) # use reduced error model
+predictedN20 = predict(Nmod20, ncomp = 2, newdata = spectralcal.df20) # use reduced error model
 str(predictedN20)
 # Plot final predictions
 plot(predictedN20)
 
-write.csv(predictedC20, file = "PredictedC_SSM20.csv") # <- this is your newly calibrated dataset!
-write.csv(predictedN20, file = "PredictedN_SSM20.csv") # <- this is your newly calibrated dataset!
-
-# Invert it?
-#predictedC20 <- read.csv("predicted/PredictedC_SSM20.csv")
-#predictedC20_rev <- predictedC20
-
-#predictedC20_rev$DOC20_rev <- -predictedC20_rev$DOC.compensated
-
-# Check the result
-#head(predictedC20_rev)
-#write.csv(predictedC20_rev, file = "PredictedC_SSM20_inv.csv") 
+write.csv(predictedN20, file = "predicted/PredictedN_SSM20_vclean.csv") # <- this is your newly calibrated dataset!
 
 ## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 
 # You might need to use a moving window approach to the calibraiton (i.e., calibrate 1 month at a time)
 # This is a bit more complicated, so start with this simple calibration first. 
 
+# Convert predictedN20 to a data frame
+pred_df <- data.frame(
+  DateTime = as.POSIXct(dimnames(predictedN20)[[1]]),
+  Predicted = as.numeric(predictedN20))
+# Plot
+ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
+  geom_point(color = "steelblue") +
+  labs(
+    x = "DateTime",
+    y = "Predicted NO3N (mg/L)",
+    title = "Predicted NO3N over Time (SSM20)"
+  ) +
+  theme_minimal()
+
 #################################################
 #### STEP 7: Develop PLSR training data sets ####
 #################################################
-
 # Create a training and test dataset
-# Carbon
-CTrain13 = grabcal.df13
-CTest13 = spectralcal.df13
-
 # NO3N
 NTrain13 = grabcal.df13
 NTest13 = spectralcal.df13
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-Cmod13 = plsr(DOC13 ~ Spectra13, ncomp = 2, data = CTrain13, validation = "LOO") # usually ncomp is N-1 grab samples you have
-summary(Cmod13) # optimized for 4 components
-
 Nmod13 = plsr(NO3N13 ~ Spectra13, ncomp = 3, data = NTrain13, validation = "LOO") # usually ncomp is N-1 grab samples you have
-summary(Cmod13)
+summary(Nmod13)
 
 # Plot RMSE of the predictions to optimize model
-plot(RMSEP(Cmod13), legendpos = "topright")
 plot(RMSEP(Nmod13), legendpos = "topright")
 
 # Plot predicted vs. measured from optimized model
-# Pick the number of components with the least error (in this case, 1)
+# Pick the number of components with the least error
 # NOTE: This plot may be messy, given low number of grab samples 
-plot(Cmod13, ncomp = 2, asp = 1, line = TRUE)
-plot(Nmod13, ncomp = 1, asp = 1, line = TRUE)
+plot(Nmod13, ncomp = 2, asp = 1, line = TRUE)
 
 ####################################################################
 #### STEP 8: Make predictions based on reduced-error PLSR model #### 
 ####################################################################
-
-# Predict model!
-predictedC13 = predict(Cmod13, ncomp = 2, newdata = spectralcal.df13) # use reduced error model
-str(predictedC13)
-plot(predictedC13)
-
-head(predictedC20)
-predictedT13 = predict(Nmod13, ncomp = 1, newdata = spectralcal.df13) # use reduced error model
+predictedN13 = predict(Nmod13, ncomp = 2, newdata = spectralcal.df13) # use reduced error model
 str(predictedN13)
-# Plot final predictions
+# Plot
 plot(predictedN13)
 
-write.csv(predictedC, file = "PredictedC_SST13.csv") # <- this is your newly calibrated dataset!
-write.csv(predictedN, file = "PredictedN_SST13.csv") # <- this is your newly calibrated dataset!
+write.csv(predictedN13, file = "predicted/PredictedN_SST13_vclean.csv") # <- this is your newly calibrated dataset!
+
+# 1. Loadings Plot for SSM01 (Opposite Trend)
+# This shows how the wavelengths contribute to each component (ncomp = 1, 2, 3, etc.)
+plot(Nmod01, plottype = "loading",
+     comps = 1:2, # Plot the first two components for initial inspection
+     main = "SSM01 NO3-N PLSR Loadings")
+
+# 2. Loadings Plot for SSM20 (Flat Trend)
+plot(Nmod20, plottype = "loading",
+     comps = 1:2, # Plot the first two components
+     main = "SSM20 NO3-N PLSR Loadings")
+
+# 3. Loadings Plot for SST13 (Flat Trend)
+# Examine the first few components for SST13
+plot(Nmod13, plottype = "loading",
+     comps = 1:2, # Plot the first two components
+     main = "SST13 NO3-N PLSR Loadings")
+
+# Convert predictedN13 to a data frame
+pred_df <- data.frame(
+  DateTime = as.POSIXct(dimnames(predictedN13)[[1]]),
+  Predicted = as.numeric(predictedN13))
+# Plot
+p <- ggplot(pred_df, aes(x = DateTime, y = Predicted)) +
+  geom_point(color = "steelblue") +
+  labs(
+    x = "DateTime",
+    y = "Predicted NO3N (mg/L)",
+    title = "Predicted NO3N over Time (SST13)"
+  ) +
+  theme_minimal()
+ggplotly(p)
+
+#######################
+#### Save in Drive #### 
+#######################
+# Define the target folder ID in Google Drive
+# This is the "predicted" folder
+drive_folder_id <- "1wa1ycqUYv56y3fTn1-VaN2K-NLU3rFeU"
+
+drive_upload(media = "predicted/PredictedN_SSM01_vclean.csv", path = as_id(drive_folder_id))
+drive_upload(media = "predicted/PredictedN_SSM20_vclean.csv", path = as_id(drive_folder_id))
+drive_upload(media = "predicted/PredictedN_SST13_vclean.csv", path = as_id(drive_folder_id))
+
+drive_upload(media = "predicted/PredictedN_SSM01_SNV.csv", path = as_id(drive_folder_id))
+
 
 
 ## NOTE: If your s::can has significant drift (e.g., which often happens when there is biofouling), 

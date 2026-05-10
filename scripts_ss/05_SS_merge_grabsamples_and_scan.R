@@ -30,14 +30,14 @@ chem_csv <- googledrive::drive_ls(path = chem, type = "csv")
 3
 
 # call the specific file you want (most recent one)
-googledrive::drive_download(file = chem_csv$id[chem_csv$name=="2026-01-07_chem_data.csv"], 
-                            path = "googledrive/2026-01-07_chem_data.csv",
+googledrive::drive_download(file = chem_csv$id[chem_csv$name=="2026-03-31_chem_data.csv"], 
+                            path = "googledrive/2026-03-31_chem_data.csv",
                             overwrite = T)
 # load it into R
-wqual = read.csv("googledrive/2026-01-07_chem_data.csv")
+wqual = read.csv("googledrive/2026-03-31_chem_data.csv")
 
 # Format date columns
-wqual$Collection.Date <- as.Date(wqual$Collection.Date, format = "%m/%d/%y")
+wqual$Collection.Date <- as.Date(wqual$Collection.Date, format = "%Y-%m-%d")
 
 
 # Rename Collection Date column
@@ -138,28 +138,28 @@ sample_times <- sample_times[-6,]
 ##########################
 #### Import abs and parameter data ####
 # This is the "params and abs" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1WbfZWpSeXVLoSEvxqbVnjgvgo4uUwGtm")
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1BNCKA7LdysjDH5_REI4WhH_P0Z4FIe0r")
 
 # List all the files in the folder
 merged <- googledrive::drive_ls(path = scan, type = "csv")
 
 #SSM01
-googledrive::drive_download(file = merged$id[merged$name=="02_SSM01_absparams.csv"], 
-                            path = "googledrive/02_SSM01_absparams.csv",
+googledrive::drive_download(file = merged$id[merged$name=="SSM01_absparams_clean.csv"], 
+                            path = "googledrive/SSM01_absparams_clean.csv",
                             overwrite = T)
 #SSM20
-googledrive::drive_download(file = merged$id[merged$name=="02_SSM20_absparams.csv"], 
-                            path = "googledrive/02_SSM20_absparams.csv",
+googledrive::drive_download(file = merged$id[merged$name=="SSM20_absparams_clean.csv"], 
+                            path = "googledrive/SSM20_absparams_clean.csv",
                             overwrite = T)
 #SST13
-googledrive::drive_download(file = merged$id[merged$name=="02_SST13_absparams.csv"], 
-                            path = "googledrive/02_SST13_absparams.csv",
+googledrive::drive_download(file = merged$id[merged$name=="SST13_absparams_clean.csv"], 
+                            path = "googledrive/SST13_absparams_clean.csv",
                             overwrite = T)
 
 # Load them separately 
-SSM01 <- read.csv("googledrive/02_SSM01_absparams.csv")
-SSM20 <- read.csv("googledrive/02_SSM20_absparams.csv")
-SST13 <- read.csv("googledrive/02_SST13_absparams.csv")
+SSM01 <- read.csv("googledrive/SSM01_absparams_clean.csv")
+SSM20 <- read.csv("googledrive/SSM20_absparams_clean.csv")
+SST13 <- read.csv("googledrive/SST13_absparams_clean.csv")
 
 # Convert the DateTime column to POSIXct
 SSM01$DateTime <- as.POSIXct(SSM01$DateTime, format = "%Y-%m-%d %H:%M")
@@ -194,28 +194,144 @@ sum(duplicated(data01))
 sum(duplicated(data20))
 sum(duplicated(data13))
 
+########################################
+#### Clear corrupted spectral times ####
+########################################
+# List of your final dataframes
+dfs <- c("data01", "data20", "data13")
+
+for (df_name in dfs) {
+  if (exists(df_name)) {
+    df <- get(df_name)
+    
+    # Identify columns starting with X and a digit
+    # This avoids accidentally renaming columns like "X" (if it's an ID)
+    colnames(df) <- gsub("^X([0-9])", "\\1", colnames(df))
+    
+    # Force the spectral data to be numeric 
+    # (In case the merge turned them back into characters)
+    spec_cols <- grep("^[0-9]", colnames(df))
+    df <- df %>%
+      mutate(across(all_of(spec_cols), ~as.numeric(as.character(.))))
+    
+    assign(df_name, df)
+  }
+}
+
+# 1. Define a list of your merged datasets
+merged_list <- list(data01 = data01, data20 = data20, data13 = data13)
+
+# 2. Process each to handle corrupted data
+cleaned_data_list <- lapply(merged_list, function(df) {
+  
+  # Identify spectral columns
+  spec_cols <- grep("^[0-9]", colnames(df), value = TRUE)
+  
+  df_clean <- df %>%
+    # Masking with NA
+    # If Status is 'Corrupted_No_Match', we turn the spectral data into NA
+    mutate(across(all_of(spec_cols), 
+                  ~ifelse(Status == "Corrupted_No_Match", NA, .))) %>%
+    
+    # Add a flag for your calibration step
+    # This makes it easy to filter only good paired samples later
+    mutate(ReadyForCalibration = ifelse(!is.na(Site) & Status != "Corrupted_No_Match", 
+                                        TRUE, FALSE))
+  
+  return(df_clean)
+})
+
+# 3. Bring them back to the environment
+data01_final <- cleaned_data_list$data01
+data20_final <- cleaned_data_list$data20
+data13_final <- cleaned_data_list$data13
+
+# 4. QUICK CHECK: How many calibration points did we lose?
+# (Where we had a grab sample but the scan was corrupted)
+sum(data13_final$Status == "Corrupted_No_Match" & !is.na(data13_final$Site))
+sum(data20_final$Status == "Corrupted_No_Match" & !is.na(data20_final$Site))
+sum(data01_final$Status == "Corrupted_No_Match" & !is.na(data01_final$Site))
+
+#################################################
+#### Clean up spectra, very low or high rows ####
+#################################################
+data01_clean <- data01_final %>%
+  # Remove rows where the condition under -1 and above 100 is not met.
+  dplyr::filter(!if_any(c(18:126), 
+                        ~ . < -3 | . > 60))
+
+data20_clean <- data20_final %>%
+  # Remove rows where the condition under -1 and above 100 is not met.
+  dplyr::filter(!if_any(c(18:126), 
+                        ~ . < -3 | . > 60))
+
+data13_clean <- data13_final %>%
+  # Remove rows where the condition under -1 and above 100 is not met.
+  dplyr::filter(!if_any(c(18:129), 
+                        ~ . < -3 | . > 60))
+
+# Flag bad spectra — adapt column indices to your data
+data01_clean <- data01_clean %>%
+  mutate(spec_min = apply(.[, 25:39], 1, min, na.rm = TRUE),
+         spec_max = apply(.[, 25:39], 1, max, na.rm = TRUE),
+         bad_spec = spec_min < -20 | spec_max > 70)
+
+ggplot(data01_clean, aes(x = DateTime, y = spec_min, color = bad_spec)) +
+  geom_point(size = 0.5, alpha = 0.5) +
+  scale_color_manual(values = c("FALSE" = "grey60", "TRUE" = "red")) +
+  labs(title = "SSM01: minimum absorbance value over time",
+       subtitle = "Red = spectra flagged as bad (min < -20)",
+       x = "Date", y = "Minimum absorbance across all bands") +
+  theme_minimal()
+# Flag bad spectra — adapt column indices to your data
+data13_clean <- data13_clean %>%
+  mutate(spec_min = apply(.[, 25:39], 1, min, na.rm = TRUE),
+         spec_max = apply(.[, 25:39], 1, max, na.rm = TRUE),
+         bad_spec = spec_min < -20 | spec_max > 70)
+
+ggplot(data13_clean, aes(x = DateTime, y = spec_min, color = bad_spec)) +
+  geom_point(size = 0.5, alpha = 0.5) +
+  scale_color_manual(values = c("FALSE" = "grey60", "TRUE" = "red")) +
+  labs(title = "SST13: minimum absorbance value over time",
+       subtitle = "Red = spectra flagged as bad (min < -20)",
+       x = "Date", y = "Minimum absorbance across all bands") +
+  theme_minimal()
+# Flag bad spectra — adapt column indices to your data
+data20_clean <- data20_clean %>%
+  mutate(spec_min = apply(.[, 25:39], 1, min, na.rm = TRUE),
+         spec_max = apply(.[, 25:39], 1, max, na.rm = TRUE),
+         bad_spec = spec_min < -20 | spec_max > 70)
+
+ggplot(data20_clean, aes(x = DateTime, y = spec_min, color = bad_spec)) +
+  geom_point(size = 0.5, alpha = 0.5) +
+  scale_color_manual(values = c("FALSE" = "grey60", "TRUE" = "red")) +
+  labs(title = "SSM20: minimum absorbance value over time",
+       subtitle = "Red = spectra flagged as bad (min < -20)",
+       x = "Date", y = "Minimum absorbance across all bands") +
+  theme_minimal()
+
 ############################
 #### Save matched files ####
 ############################
 # Make sure it is in datetime format
-data01$DateTime <- format(data01$DateTime, "%Y-%m-%d %H:%M:%S")
+data01_clean$DateTime <- format(data01_clean$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
-write.csv(data01,"googledrive/SSM01_merged.csv" , row.names=FALSE, quote=FALSE)
+write.csv(data01_clean,"googledrive/SSM01_merged.csv" , row.names=FALSE, quote=FALSE)
 # Make sure it is in datetime format
-data20$DateTime <- format(data20$DateTime, "%Y-%m-%d %H:%M:%S")
+data20_clean$DateTime <- format(data20_clean$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
-write.csv(data20,"googledrive/SSM20_merged.csv" , row.names=FALSE, quote=FALSE)
+write.csv(data20_clean,"googledrive/SSM20_merged.csv" , row.names=FALSE, quote=FALSE)
 # Make sure it is in datetime format
-data13$DateTime <- format(data13$DateTime, "%Y-%m-%d %H:%M:%S")
+data13_clean$DateTime <- format(data13_clean$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
-write.csv(data13,"googledrive/SST13_merged.csv" , row.names=FALSE, quote=FALSE)
+write.csv(data13_clean,"googledrive/SST13_merged.csv" , row.names=FALSE, quote=FALSE)
 
 # Define the target folder ID in Google Drive
-# This is the "with grab" folder
+# This is the "with grab" folders
 drive_folder_id <- "1Wju54VbyACZ_RFtfeInSvBCiVDKFScGj"
 
 # Upload the file to the specified Google Drive folder
-drive_upload(media = "googledrive/SSM01_merged.csv", path = as_id(drive_folder_id))
-drive_upload(media = "googledrive/SSM20_merged.csv", path = as_id(drive_folder_id))
-drive_upload(media = "googledrive/SST13_merged.csv", path = as_id(drive_folder_id))
+drive_put(media = "googledrive/SSM01_merged.csv", path = as_id(drive_folder_id))
+drive_put(media = "googledrive/SSM20_merged.csv", path = as_id(drive_folder_id))
+drive_put(media = "googledrive/SST13_merged.csv", path = as_id(drive_folder_id))
 

@@ -6,36 +6,35 @@
 
 library(dplyr)
 library(spectrolab)
-library(googledrive) 
 
 ##############################################
 #### Upload scan dataframe [with spectra] ####
 ##############################################
 # This data is already matched #
-# This is the "clean" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1BNCKA7LdysjDH5_REI4WhH_P0Z4FIe0r")
+# This is the "params and abs" folder
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1WbfZWpSeXVLoSEvxqbVnjgvgo4uUwGtm")
 
 # List all xlsx files in the folder
 merged <- googledrive::drive_ls(path = scan, type = "csv")
 3
 
 #SSM01
-googledrive::drive_download(file = merged$id[merged$name=="SSM01_merged_clean.csv"], 
-                            path = "googledrive/SSM01_merged_clean.csv",
+googledrive::drive_download(file = merged$id[merged$name=="SSM01_absparams.csv"], 
+                            path = "googledrive/SSM01_absparams.csv",
                             overwrite = T)
 #SSM20
-googledrive::drive_download(file = merged$id[merged$name=="SSM20_merged_clean.csv"], 
-                            path = "googledrive/SSM20_merged_clean.csv",
+googledrive::drive_download(file = merged$id[merged$name=="SSM20_absparams.csv"], 
+                            path = "googledrive/SSM20_absparams.csv",
                             overwrite = T)
 #SST13
-googledrive::drive_download(file = merged$id[merged$name=="SST13_merged_clean.csv"], 
-                            path = "googledrive/SST13_merged_clean.csv",
+googledrive::drive_download(file = merged$id[merged$name=="SST13_absparams.csv"], 
+                            path = "googledrive/SST13_absparams.csv",
                             overwrite = T)
 
 # Let's load them separately first
-SSM01 <- read.csv("googledrive/SSM01_merged_clean.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
-SSM20 <- read.csv("googledrive/SSM20_merged_clean.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
-SST13 <- read.csv("googledrive/SST13_merged_clean.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+SSM01 <- read.csv("googledrive/SSM01_absparams.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+SSM20 <- read.csv("googledrive/SSM20_absparams.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
+SST13 <- read.csv("googledrive/SST13_absparams.csv", na = c("", "NaN", "Na", "NA")) # make sure this matches your non-detects)
 
 # DateTime at midnight is missing 00:00:00 time, so filling in that time using grep                     
 SSM01$DateTime[grep("[0-9]{4}-[0-9]{2}-[0-9]{2}$",SSM01$DateTime)] <- paste(
@@ -61,62 +60,111 @@ SSM01 <- rename_columns(SSM01)
 SSM20 <- rename_columns(SSM20)
 SST13 <- rename_columns(SST13)
 
+# cleaning
+SSM01 <- SSM01[, -1]
+SSM20 <- SSM20[, -1]
+SST13 <- SST13[, -1]
+
+# List of your data frames
+df_names <- c("SSM01", "SSM20", "SST13")
+
+for (name in df_names) {
+  if (exists(name)) {
+    df <- get(name)
+    
+    # Identify which columns are wavelengths (names starting with numbers)
+    spec_cols <- grep("^[0-9]", colnames(df))
+    
+    # Force those columns to be numeric
+    # We use as.character first just in case they were imported as factors
+    df <- df %>%
+      mutate(across(all_of(spec_cols), ~as.numeric(as.character(.))))
+    
+    # Assign it back to the environment
+    assign(name, df)
+  }
+}
+
 ####----------------------------------------------------------------------####
 # ----------------------------------------------------------------------
 # 2. Extract Unique Month-Year Combinations
 # ----------------------------------------------------------------------
 # Combine month name and year to get a unique identifier (e.g., "July 2024", "August 2024")
-# We use SSM01 to determine the months, assuming SSM20 and SST13 cover the same period.
+# We use SSM20 to determine the months, assuming SSM01 and SST13 cover the same period.
 
-SSM01$MonthYear <- format(SSM01$DateTime, "%B %Y")
-unique_months <- unique(SSM01$MonthYear)
+SSM20$MonthYear <- format(SSM20$DateTime, "%B %Y")
+unique_months <- unique(SSM20$MonthYear)
 
 # ----------------------------------------------------------------------
 # 3. Core Function to Process and Plot Data for a Single Month
 # ----------------------------------------------------------------------
-
 process_and_plot_month <- function(data_frame, df_name, month_year_label) {
   
   # a. Filter data for the specific month
   data_month <- data_frame %>%
     dplyr::filter(format(DateTime, "%B %Y") == month_year_label)
   
-  # Check if there is any data for this month
+  # Check 1a: Is the data frame physically empty?
   if (nrow(data_month) == 0) {
     message(paste("Skipping", df_name, "for", month_year_label, "- No data found."))
     return(NULL)
   }
   
-  # b. Index spectral data (columns 19 to 228, as in your original script)
-  scan.spec <- data_month[23:243]
+  # b. Index spectral data dynamically
+  # This selects only columns whose names are numbers (the wavelengths)
+  scan.spec <- data_month %>% 
+    dplyr::select(matches("^[0-9]"))
   
-  # c. Create absorbance object
-  abs_data <- scan.spec
+  # Check if we actually found spectral columns
+  if (ncol(scan.spec) == 0) {
+    message(paste("Skipping", df_name, "for", month_year_label, "- No spectral columns found."))
+    return(NULL)
+  }
+  
+  # --- NEW CHECK 1b: Is there actually numeric data? ---
+  # This checks if the entire spectral matrix is just NAs
+  if (all(is.na(scan.spec))) {
+    message(paste("Skipping", df_name, "for", month_year_label, "- Data contains only NAs."))
+    return(NULL)
+  }
+  
+  # Check if there are any finite values (not Inf or -Inf)
+  if (!any(is.finite(as.matrix(scan.spec)))) {
+    message(paste("Skipping", df_name, "for", month_year_label, "- No finite values to plot."))
+    return(NULL)
+  }
+  # ----------------------------------------------------
   
   # d. Create wavelength vector
-  wl <- as.numeric(colnames(abs_data))
+  wl <- as.numeric(colnames(scan.spec))
   
-  # e. Create sample vector
-  last_row <- as.numeric(nrow(abs_data))
-  num_samples <- c(1:last_row)
+  # If your column names are "200.00", "202.50", as.numeric works perfectly.
+  # If there are any stray characters, this catches them:
+  if (any(is.na(wl))) {
+    # This keeps only columns where the NAME is a valid number
+    valid_cols <- !is.na(as.numeric(colnames(scan.spec)))
+    scan.spec <- scan.spec[, valid_cols]
+    wl <- as.numeric(colnames(scan.spec))
+  }
   
-  # f. Create the spectra object and plot
-  # NOTE: The 'spectra' object is required for the 'plot' function from 'spectrolab'
-  spec_object <- spectra(value = abs_data, bands = wl, names = num_samples)
+  # Verify wl doesn't have NAs (from previous error)
+  if (any(is.na(wl))) {
+    valid_wl <- !is.na(wl)
+    scan.spec <- scan.spec[, valid_wl]
+    wl <- wl[valid_wl]
+  }
   
-  # g. Create the plot object
-  # We use the base plot function from your original code, which works well for spectra objects.
-  p <- plot(spec_object, main = paste("Absorbance Spectra for", df_name, "-", month_year_label))
+  # f. Create the spectra object
+  num_samples <- 1:nrow(scan.spec)
+  spec_object <- spectra(value = scan.spec, bands = wl, names = num_samples)
   
-  # h. Save the plot using ggsave (if you use ggplot) or pdf/png devices (for base plot)
-  # Since you are using a custom 'plot' function (likely base R/spectrolab),
-  # we must use a device function like png() or pdf() to save the plot.
-  
+  # g. Save the plot
   filename <- paste0(df_name, "_Absorbance_", gsub(" ", "_", month_year_label), ".png")
   
-  png(filename = filename, width = 800, height = 600) # Opens a PNG graphics device
-  plot(spec_object, main = paste("Absorbance Spectra for", df_name, "-", month_year_label))
-  dev.off() # Closes the device and saves the file
+  png(filename = filename, width = 800, height = 600)
+  # Use try() so a single bad plot doesn't stop the whole loop
+  try(plot(spec_object, main = paste("Absorbance Spectra for", df_name, "-", month_year_label)))
+  dev.off()
   
   message(paste("Successfully saved plot:", filename))
 }

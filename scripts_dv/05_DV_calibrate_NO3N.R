@@ -143,21 +143,18 @@ grab_DVNWT5 <- grab_DVNWT5 %>%
   mutate(NO3..mg.N.L. = ifelse(Date %in% c("2024-09-18", "2025-06-13", "2025-09-DVO") | is.na(NO3..mg.N.L.), NA, NO3..mg.N.L.))
 
 # compare grab vs scan NO3N
-plot(grab_DVO$NO3.Neq..mg.l....Measured.value ~ grab_DVO$NO3..mg.N.L.)
 ggplot(grab_DVO, aes(x = NO3..mg.N.L., y = NO3.Neq..mg.l....Measured.value)) +
   geom_point(color = "blue") +
   geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
 calib.mod.NO3NDVO = lm(grab_DVO$NO3.Neq..mg.l....Measured.value ~ grab_DVO$NO3..mg.N.L.)
 summary(calib.mod.NO3NDVO)
 
-plot(grab_DVMS1$NO3.Neq..mg.l....Measured.value ~ grab_DVMS1$NO3..mg.N.L.)
 ggplot(grab_DVMS1, aes(x = NO3..mg.N.L., y = NO3.Neq..mg.l....Measured.value)) +
   geom_point(color = "blue") +
   geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
 calib.mod.NO3NDVMS1 = lm(grab_DVMS1$NO3.Neq..mg.l....Measured.value ~ grab_DVMS1$NO3..mg.N.L.)
 summary(calib.mod.NO3NDVMS1)
 
-plot(grab_DVNWT5$NO3.Neq..mg.l....Measured.value ~ grab_DVNWT5$NO3..mg.N.L.)
 ggplot(grab_DVNWT5, aes(x = NO3..mg.N.L., y = NO3.Neq..mg.l....Measured.value)) +
   geom_point(color = "blue") +
   geom_text(aes(label = DateTime), vjust = -0.5, size = 3)  # adds date labels above points
@@ -425,7 +422,7 @@ NTestDVMS1 = spectralcal.dfDVMS1
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-NmodDVMS1 = plsr(NO3NDVMS1 ~ SpectraDVMS1, ncomp = 4, data = NTrainDVMS1, validation = "LOO") # usually ncomp is N-1 grab samples you have
+NmodDVMS1 = plsr(NO3NDVMS1 ~ SpectraDVMS1, ncomp = 10, data = NTrainDVMS1, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(NmodDVMS1) # optimized for 4 components
 
 # Plot RMSE of the predictions to optimize model
@@ -434,7 +431,7 @@ plot(RMSEP(NmodDVMS1), legendpos = "topright")
 # Plot predicted vs. measured from optimized model
 # Pick the number of components with the least error (in this case, x)
 # NOTE: This plot may be messy, given low number of grab samples 
-plot(NmodDVMS1, ncomp = 2, asp = 1, line = TRUE)
+plot(NmodDVMS1, ncomp = 4, asp = 1, line = TRUE)
 
 ####################################################################
 #### STEP 8: Make predictions based on reduced-error PLSR model #### 
@@ -457,7 +454,7 @@ NTestDVNWT5 = spectralcal.dfDVNWT5
 
 # PLSR Model with "training" data, use # of grab samples - 1
 # LOO = Leave One Out cross-comparison
-NmodDVNWT5 = plsr(NO3NDVNWT5 ~ SpectraDVNWT5, ncomp = 3, data = NTrainDVNWT5, validation = "LOO") # usually ncomp is N-1 grab samples you have
+NmodDVNWT5 = plsr(NO3NDVNWT5 ~ SpectraDVNWT5, ncomp = 7, data = NTrainDVNWT5, validation = "LOO") # usually ncomp is N-1 grab samples you have
 summary(NmodDVNWT5) # optimized for 4 components
 
 # Plot RMSE of the predictions to optimize model
@@ -466,7 +463,7 @@ plot(RMSEP(NmodDVNWT5), legendpos = "topright")
 # Plot predicted vs. measured from optimized model
 # Pick the number of components with the least error
 # NOTE: This plot may be messy, given low number of grab samples 
-plot(NmodDVNWT5, ncomp = 1, asp = 1, line = TRUE)
+plot(NmodDVNWT5, ncomp = 6, asp = 1, line = TRUE)
 
 ####################################################################
 #### STEP 8: Make predictions based on reduced-error PLSR model #### 
