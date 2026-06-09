@@ -30,11 +30,11 @@ chem_csv <- googledrive::drive_ls(path = chem, type = "csv")
 3
 
 # call the specific file you want (go to link and check which one is the most recent one)
-googledrive::drive_download(file = chem_csv$id[chem_csv$name=="2026-03-31_chem_data.csv"], 
-                            path = "googledrive/2026-03-31_chem_data.csv",
+googledrive::drive_download(file = chem_csv$id[chem_csv$name=="2026-06-08_Laprey_chem_data.csv"], 
+                            path = "googledrive/2026-06-08_Laprey_chem_data.csv",
                             overwrite = T)
 # load it into R
-wqual = read.csv("googledrive/2026-03-31_chem_data.csv")
+wqual = read.csv("googledrive/2026-06-08_Laprey_chem_data.csv")
 
 # Format date columns
 wqual$Collection.Date <- as.Date(wqual$Collection.Date, format = "%Y-%m-%d")
@@ -46,8 +46,10 @@ wqual <- wqual %>% rename(Date = Collection.Date)
 drops <- c("X", "Project", "Sub_ProjectA", "pH", "Cond", "Spec_Cond", "DO_Conc",  "DO.", "Temperature Turbidity", "ID")
 wqual <- wqual[ , !(names(wqual) %in% drops)]
 
-# Filter to get just SS data
-NH <- filter(wqual, Sub_Project == "QuEST")
+# # Filter to get just SS data
+# NH <- filter(wqual, Sub_Project == "QuEST")
+
+NH <- wqual
 
 # Format time columns
 NH$Time <- format(as.POSIXct(NH$Collection.Time, format = "%I:%M:%S %p"), "%H:%M:%S")
@@ -74,6 +76,7 @@ samplelogsheet <- read.xlsx("googledrive/NH_synoptic.xlsx")
 # Convert the numeric column to a proper time format
 samplelogsheet$Collection_Time <- convertToDateTime(samplelogsheet$Collection_Time)
 samplelogsheet$Collection_Date <- convertToDateTime(samplelogsheet$Collection_Date)
+
 
 # Format date and time columns
 samplelogsheet$Date <- as.Date(samplelogsheet$Collection_Date, format = "%Y-%m-%d")
@@ -155,12 +158,18 @@ googledrive::drive_download(file = merged$id[merged$name=="LMP07_absparams.csv"]
 googledrive::drive_download(file = merged$id[merged$name=="LMP27_absparams.csv"], 
                             path = "googledrive/LMP27_absparams.csv",
                             overwrite = T)
+
+#LMP72
+googledrive::drive_download(file = merged$id[merged$name=="LMP72_absparams.csv"], 
+                            path = "googledrive/LMP72_absparams.csv",
+                            overwrite = T)
 # Load them separately
 CTB <- read.csv("googledrive/CTB_absparams.csv")
 SMB <- read.csv("googledrive/SMB_absparams.csv")
 NCBd <- read.csv("googledrive/NCB_absparams.csv")
 LMP07 <- read.csv("googledrive/LMP07_absparams.csv")
 LMP27 <- read.csv("googledrive/LMP27_absparams.csv")
+LMP72 <- read.csv("googledrive/LMP72_absparams.csv")
 
 # Convert the DateTime column to POSIXct
 CTB$DateTime <- as.POSIXct(CTB$DateTime, format = "%Y-%m-%d %H:%M:%S")
@@ -168,6 +177,7 @@ SMB$DateTime <- as.POSIXct(SMB$DateTime, format = "%Y-%m-%d %H:%M:%S")
 NCBd$DateTime <- as.POSIXct(NCBd$DateTime, format = "%Y-%m-%d %H:%M:%S")
 LMP07$DateTime <- as.POSIXct(LMP07$DateTime, format = "%Y-%m-%d %H:%M:%S")
 LMP27$DateTime <- as.POSIXct(LMP27$DateTime, format = "%Y-%m-%d %H:%M:%S")
+LMP72$DateTime <- as.POSIXct(LMP72$DateTime, format = "%Y-%m-%d %H:%M:%S")
 
 ##################################
 #### Merge chem and scan data ####
@@ -182,6 +192,7 @@ USMB <- filter(sample_times, Sample_Name == "SMB")
 UNCBd <- filter(sample_times, Sample_Name == "NCB-down")
 ULMP07 <- filter(sample_times, Sample_Name == "LMP07")
 ULMP27 <- filter(sample_times, Sample_Name == "LMP27")
+ULMP72 <- filter(sample_times, Sample_Name == "LMP72")
 
 # First check if the merge works
 datCTB <- merge(CTB, UCTB, by = "DateTime")
@@ -189,6 +200,7 @@ datSMB <- merge(SMB, USMB, by = "DateTime")
 datNCBd <- merge(NCBd, UNCBd, by = "DateTime")
 datLMP07 <- merge(LMP07, ULMP07, by = "DateTime")
 datLMP27 <- merge(LMP27, ULMP27, by = "DateTime")
+datLMP72 <- merge(LMP72, ULMP72, by = "DateTime")
 
 # scan data first - perform a left join
 dataCTB <- merge(CTB, UCTB, by = "DateTime", all.x = TRUE)
@@ -196,6 +208,7 @@ dataSMB <- merge(SMB, USMB, by = "DateTime", all.x = TRUE)
 dataNCBd <- merge(NCBd, UNCBd, by = "DateTime", all.x = TRUE)
 dataLMP07 <- merge(LMP07, ULMP07, by = "DateTime", all.x = TRUE)
 dataLMP27 <- merge(LMP27, ULMP27, by = "DateTime", all.x = TRUE)
+dataLMP72 <- merge(LMP72, ULMP72, by = "DateTime", all.x = TRUE)
 
 # Check for duplicates in the original datasets
 sum(duplicated(dataCTB))
@@ -203,6 +216,7 @@ sum(duplicated(dataSMB))
 sum(duplicated(dataNCBd))
 sum(duplicated(dataLMP07))
 sum(duplicated(dataLMP27))
+sum(duplicated(dataLMP72))
 
 ##################
 #### Clean up ####
@@ -212,9 +226,11 @@ dataCTB <- dataCTB %>%
                    Device.Rotation.......Measured.value, Device.Tilt.......Measured.value,
                    Supply.Current..mA....Measured.value, Supply.Voltage..V....Measured.status))
 dataSMB <- dataSMB %>%
-  dplyr::select(-c(Temperature_26...F....Measured.value, Temperature_28...F....Measured.value, 
+  dplyr::select(-c(Temperature_26...F....Measured.value, Temperature_28...F....Measured.value,
+                   Temperature_19...C....Measured.value, Temperature_21...C....Measured.status,
                    Device.Rotation.......Measured.value, Device.Tilt.......Measured.value, 
-                   Supply.Voltage..V....Measured.status))
+                   Supply.Voltage..V....Measured.status, X.y, Device.Rotation.......Measured.status,
+                   Supply.Current..mA....Measured.status, Temperature_28...F....Measured.status))
 dataNCBd <- dataNCBd %>% 
   dplyr::select(-c(X.x,X.y, Temperature_26...F....Measured.value, Temperature_26...F....Measured.status,
                 Device.Rotation.......Measured.value, Device.Tilt.......Measured.value,
@@ -226,17 +242,24 @@ dataLMP07 <- dataLMP07 %>%
 dataLMP27 <- dataLMP27 %>% 
   dplyr::select(-c(Temperature_26...F....Measured.status, Temperature_26...F....Measured.value,
                    Device.Rotation.......Measured.value, Device.Tilt.......Measured.value))
+dataLMP72 <- dataLMP72 %>% 
+  dplyr::select(-c(Temperature_37...F....Measured.status, Temperature_37...F....Measured.value,
+                   Device.Rotation.......Measured.value, Device.Tilt.......Measured.value,
+                   Device.Tilt.......Measured.status, Supply.Voltage..V....Measured.status,
+                   Device.Rotation.......Measured.status, Supply.Current..mA....Measured.value,
+                   Supply.Current..mA....Measured.status))
 
 ##########################
 #### Clean up spectra ####
 ##########################
 # Here you find when your spectra go negative. For USF data is around 450-460nm (column 123)
 # Do not remove any spectral values if for tss
-dataCTB_clean <- dataCTB[,-c(96:225)]
-dataSMB_clean <- dataSMB[,-c(96:225)]
-dataNCBd_clean <- dataNCBd[,-c(96:225)]
-dataLMP07_clean <- dataLMP07[,-c(96:225)]
-dataLMP27_clean <- dataLMP27[,-c(96:225)]
+dataCTB_clean <- dataCTB[,-c(120:225)]
+dataSMB_clean <- dataSMB[,-c(120:225)]
+dataNCBd_clean <- dataNCBd[,-c(120:225)]
+dataLMP07_clean <- dataLMP07[,-c(120:225)]
+dataLMP27_clean <- dataLMP27[,-c(120:225)]
+dataLMP72_clean <- dataLMP72[,-c(120:225)]
 
 # data12 <- data12[,-c(220:228)]
 # data20 <- data20[,-c(220:228)]
@@ -247,23 +270,26 @@ dataLMP27_clean <- dataLMP27[,-c(96:225)]
 ################################################
 # Remove rows where the condition under -0.5 and above 60 is not met.
 dataCTB_clean <- dataCTB_clean %>%
-  dplyr::filter(!if_any(c(16:99),
-                        ~ . < 0 | . > 60))
+  dplyr::filter(!if_any(c(16:119),
+                        ~ . < -0.2 | . > 60))
 dataSMB_clean <- dataSMB_clean %>%
-  dplyr::filter(!if_any(c(16:115),
-                        ~ . < 0 | . > 60))
+  dplyr::filter(!if_any(c(16:119),
+                        ~ . < -0.2 | . > 60))
 dataNCBd_clean <- dataNCBd_clean %>%
-  dplyr::filter(!if_any(c(16:115),
-                        ~ . < 0 | . > 60))
+  dplyr::filter(!if_any(c(16:119),
+                        ~ . < -0.2 | . > 60))
 dataLMP07_clean <- dataLMP07_clean %>%
-  dplyr::filter(!if_any(c(16:102),
-                        ~ . < 0 | . > 60))
+  dplyr::filter(!if_any(c(16:119),
+                        ~ . < -0.2 | . > 60))
 dataLMP27_clean <- dataLMP27_clean %>%
-  dplyr::filter(!if_any(c(16:118),
-                        ~ . < 0 | . > 60))
+  dplyr::filter(!if_any(c(16:119),
+                        ~ . < -0.2 | . > 60))
+dataLMP72_clean <- dataLMP72_clean %>%
+  dplyr::filter(!if_any(c(16:119),
+                        ~ . < -0.2 | . > 60))
 ############################
 #### Save matched files ####
-############################
+############################ 
 # Make sure it is in datetime format
 dataCTB_clean$DateTime <- format(dataCTB_clean$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
@@ -284,6 +310,10 @@ write.csv(dataLMP07_clean,"googledrive/LMP07_merged.csv" , row.names=FALSE, quot
 dataLMP27_clean$DateTime <- format(dataLMP27_clean$DateTime, "%Y-%m-%d %H:%M:%S")
 # Save the new data frame to a CSV file
 write.csv(dataLMP27_clean,"googledrive/LMP27_merged.csv" , row.names=FALSE, quote=FALSE)
+# Make sure it is in datetime format
+dataLMP72_clean$DateTime <- format(dataLMP72_clean$DateTime, "%Y-%m-%d %H:%M:%S")
+# Save the new data frame to a CSV file
+write.csv(dataLMP72_clean,"googledrive/LMP72_merged.csv" , row.names=FALSE, quote=FALSE)
 
 # Define the target folder ID in Google Drive
 # This is the "merged" folder
@@ -295,4 +325,5 @@ drive_put(media = "googledrive/SMB_merged.csv", path = as_id(drive_folder_id))
 drive_put(media = "googledrive/NCBd_merged.csv", path = as_id(drive_folder_id))
 drive_put(media = "googledrive/LMP07_merged.csv", path = as_id(drive_folder_id))
 drive_put(media = "googledrive/LMP27_merged.csv", path = as_id(drive_folder_id))
+drive_put(media = "googledrive/LMP72_merged.csv", path = as_id(drive_folder_id))
 
