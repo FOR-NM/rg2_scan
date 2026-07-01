@@ -1,5 +1,6 @@
 ##==============================================================================
-## Project: QuEST
+## Project: FOR-NM
+## Adapted from QuEST
 ## Script to merge scan files in one (using timestamp) for Santa Fe watershed
 ##==============================================================================
 
@@ -11,14 +12,13 @@ library(dplyr)
 #### Clear folders that we will use ####
 ########################################
 # list and delete all files in the folder
-files <- list.files(path = "googledrive", full.names = TRUE)
-file.remove(files)
+#files <- list.files(path = "googledrive", full.names = TRUE)
+#file.remove(files)
 
 ##########################
 #### Import scan data ####
 ##########################
 #### list and download all files in the folder ####
-# this is the in use" folder
 scan <- googledrive::as_id("https://drive.google.com/drive/folders/1np2B4bSWaNMIYE2FHL3YOnZ20FRudsEy")
 # list all CSV files in the folder
 scan_csvs <- googledrive::drive_ls(path = scan)
