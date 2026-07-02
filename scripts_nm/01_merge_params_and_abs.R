@@ -1,5 +1,9 @@
 ##==============================================================================
-## Project: QuEST
+## Project: FOR-NM
+## Adapted from QuEST
+## Original Author: Manuela Londono
+## Modified by : Marcela Mendoza 
+## removed redundant skipping of rows 
 ## Script to merge parameters and fingerprint s::can data
 ## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
@@ -15,7 +19,7 @@ library(openxlsx)
 #######################################
 #### Import abs and parameter data ####
 #######################################
-# this is the "merge_timestamps" folder
+# this is the "merged_timestamps" folder
 scan <- googledrive::as_id("https://drive.google.com/drive/folders/1-dUxVn1hBWy2MpHeIjVt-2QSujpVhijy")
 
 # list all the files in the folder
@@ -40,9 +44,7 @@ colSums(USF12_params == 0, na.rm = TRUE)
 #############################
 #### Tidy both data sets ####
 #############################
-# remove extra rows
-USF12_params <- USF12_params[-c(1:9), ] 
-#USF12_abs <- USF12_abs[-c(1:9), ] 
+# to do: remove rows before deployment 
 
 # change datetime format
 USF12_params <- USF12_params %>%
@@ -105,9 +107,6 @@ colSums(USF20_params == 0, na.rm = TRUE)
 #############################
 #### Tidy both data sets ####
 #############################
-# remove extra rows
-USF20_params <- USF20_params[-c(1:85), ] 
-USF20_abs <- USF20_abs[-c(1:45), ] 
 
 # change datetime format
 USF20_params <- USF20_params %>%
@@ -172,9 +171,6 @@ colSums(USF21_params == 0, na.rm = TRUE)
 #############################
 #### Tidy both data sets ####
 #############################
-# remove extra rows
-USF21_params <- USF21_params[-c(1:28), ] 
-USF21_abs <- USF21_abs[-c(1:28), ] 
 
 # change datetime format
 USF21_params <- USF21_params %>%
@@ -213,4 +209,11 @@ drive_folder_id <- "1hlc9U54d70T5-hml_F9RM8FAiUCVRFmp"
 
 # upload the file to the specified Google Drive folder
 drive_upload(media = "googledrive/USF21_absparams_Bubbles.csv", path = as_id(drive_folder_id))
+
+##############################
+#### TO DO ####
+##############################
+# previous code manually got rid of rows before 'deployment ' at the beginning, handle that automatically w datasheets
+#
+
 

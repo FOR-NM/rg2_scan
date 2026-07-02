@@ -1,6 +1,9 @@
 ##==============================================================================
 ## Project: FOR-NM
 ## Adapted from QuEST
+## Original Author: Manuela Londono
+## Modified by : Marcela Mendoza 
+## adding alternate file upload  management
 ## Script to merge scan files in one (using timestamp) for Santa Fe watershed
 ##==============================================================================
 
@@ -19,10 +22,9 @@ library(dplyr)
 #### Import scan data ####
 ##########################
 #### list and download all files in the folder ####
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1np2B4bSWaNMIYE2FHL3YOnZ20FRudsEy")
-# list all CSV files in the folder
-scan_csvs <- googledrive::drive_ls(path = scan)
-3
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/1UDrRJ10t04kXT2Op0W-GZz9vEe2B_C8H?usp=drive_link")
+# list all excel files in the folder
+scan_csvs <- googledrive::drive_ls(path = scan, pattern = "*.xlsx")
 
 # create empty list to store data frames
 scan_list <- list()
@@ -30,7 +32,7 @@ scan_list <- list()
 # loop over each file in the `scan_csvs` data frame
 for (i in seq_along(scan_csvs$id)) {
   # define the local file path
-  local_path <- file.path("googledrive", scan_csvs$name[i])
+  local_path <- file.path("data/raw", scan_csvs$name[i])
   
   # download the file
   googledrive::drive_download(
@@ -70,7 +72,7 @@ for (i in seq_along(scan_list)) {
 }
 
 # site names
-site_names <- c("USF12", "USF20", "USF21")
+site_names <- c("USF02","USF24", "USF25", "USF40",  "USF41")
 
 # group files in `scan_list` by matching `site_names` in file names
 
@@ -85,9 +87,6 @@ scan_list_by_site <- lapply(site_names, function(site) {
 
 # name the list by site
 names(scan_list_by_site) <- site_names
-
-# TEMPORARY REMOVE 20 AND 21
-# scan_list_by_site <- scan_list_by_site[-c(2,3)]
 
 # combine data for each site
 combined_by_site <- lapply(scan_list_by_site, function(site_data_list) {
@@ -107,19 +106,9 @@ combined_by_site <- lapply(combined_by_site, function(df) {
 })
 
 lapply(names(combined_by_site), function(site) {
-  write.csv(combined_by_site[[site]], file.path("data", paste0(site, "_params.csv")))
+  write.csv(combined_by_site[[site]], file.path("data/merged_timestamps", paste0(site, "_params.csv")))
 })
 
-lapply(names(combined_by_site), function(site) {
-  file <- paste0("data/", site, "_params.csv")
-  # this is the "merged timestamps" folder
-  drive_folder_id <- "1-dUxVn1hBWy2MpHeIjVt-2QSujpVhijy"
-  # Upload file to the specified Google Drive folder
-  drive_put(
-    media = file,
-    path = as_id(drive_folder_id)
-  )
-})
 
 ##==============================================================================
 ## Now we need to do the same thing but for the compensated abs tab
@@ -135,14 +124,7 @@ scan_list <- list()
 # loop over each file in the `scan_csvs` data frame
 for (i in seq_along(scan_csvs$id)) {
   # define the local file path
-  local_path <- file.path("googledrive", scan_csvs$name[i])
-  
-  # download the file
-  googledrive::drive_download(
-    file = scan_csvs$id[i],
-    path = local_path,
-    overwrite = TRUE
-  )
+  local_path <- file.path("data/raw", scan_csvs$name[i])
   
   # read the header row (row 2)
   header <- read_excel(local_path, sheet = 2, skip = 1, n_max = 1, col_names = FALSE)
@@ -172,9 +154,6 @@ for (i in seq_along(scan_list)) {
   scan_list[[i]] <- df
 }
 
-# site names
-site_names <- c("USF12", "USF20", "USF21")
-
 # group files in `scan_list` by matching `site_names` in file names
 scan_list_by_site <- lapply(site_names, function(site) {
   # names(scan_list) gives the names of all files in scan_list.
@@ -187,9 +166,6 @@ scan_list_by_site <- lapply(site_names, function(site) {
 
 # name the list by site
 names(scan_list_by_site) <- site_names
-
-# TEMPORARY REMOVE 20 AND 21
-#scan_list_by_site <- scan_list_by_site[-c(2,3)]
 
 # combine data for each site
 combined_by_site <- lapply(scan_list_by_site, function(site_data_list) {
@@ -209,17 +185,11 @@ combined_by_site <- lapply(combined_by_site, function(df) {
 })
 
 lapply(names(combined_by_site), function(site) {
-  write.csv(combined_by_site[[site]], file.path("data", paste0(site, "_abs.csv")))
+  write.csv(combined_by_site[[site]], file.path("data/merged_timestamps", paste0(site, "_abs.csv")))
 })
 
-lapply(names(combined_by_site), function(site) {
-  file <- paste0("data/", site, "_abs.csv")
-  # this is the "in use" folder
-  drive_folder_id <- "1-dUxVn1hBWy2MpHeIjVt-2QSujpVhijy"
-  # upload file to the specified Google Drive folder
-  drive_put(
-    media = file,
-    path = as_id(drive_folder_id)
-  )
-})
-
+##############################
+#### TO DO ####
+##############################
+# reduce code to only opening file once, instead of twice ( eliminate duplicated flow)
+# upload to GDrive 'Merged_timestamps' folder 
