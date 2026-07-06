@@ -87,11 +87,9 @@ for (site in site_names){
   
 }
 
-
 ##############################
 #### TO DO ####
 ##############################
 # previous code manually got rid of rows before 'deployment ' at the beginning, handle that automatically w datasheets
-
 
 
