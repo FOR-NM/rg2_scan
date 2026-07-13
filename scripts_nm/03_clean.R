@@ -10,14 +10,6 @@ library(lubridate) # edit date format
 library(xts) # time series
 library(ggplot2)
 
-########################################
-#### Clear folders that we will use ####
-########################################
-# list and delete all files in the folder
-files <- list.files(path = "googledrive", full.names = TRUE)
-file.remove(files)
-files <- list.files(path = "data", full.names = TRUE)
-file.remove(files)
 
 #####################
 #### Import Data ####
@@ -25,7 +17,7 @@ file.remove(files)
 # load data from Google Drive. This is the "merged" folder
 scan <- googledrive::as_id("https://drive.google.com/drive/folders/1hlc9U54d70T5-hml_F9RM8FAiUCVRFmp")
 scan_csvs <- googledrive::drive_ls(path = scan, type = "csv")
-3
+
 
 # create empty list to store data frames
 scan_list <- list()
