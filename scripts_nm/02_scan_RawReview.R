@@ -1,13 +1,14 @@
 ##==============================================================================
-## Project: QuEST
+## Project: FOR-NM
+## Adapted from QuEST
+## Original Author: Manuela Londono
+## Modified by : Marcela Mendoza 
 ## Script to visualize raw scan data from NM
 ## Here we will plot some images but will not be saving cleaned data back. 
 ## It is just so see what your data looks like and understand what needs to get done
 ## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
 
-library(dataRetrieval) # download USGS discharge data
-library(googledrive) # download docs from Drive
 library(tidyverse)
 library(dplyr)
 library(ggplot2)
@@ -22,36 +23,28 @@ library(xts) # time series
 #### Import & Visualize Data ####
 #################################
 # load data from Google drive. This is the "merge timestamps" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1-dUxVn1hBWy2MpHeIjVt-2QSujpVhijy")
+#scan <- googledrive::as_id("https://drive.google.com/drive/folders/1-dUxVn1hBWy2MpHeIjVt-2QSujpVhijy")
 # list all CSV files in the folder
-scan_csvs <- googledrive::drive_ls(path = scan)
+#scan_csvs <- googledrive::drive_ls(path = scan)
+
+input_path<- "data/merged_params_and_abs/" #local path
+
+scan<- input_path
+scan_csvs<- list.files(path = scan, pattern = "\\.csv$")
 
 # create empty list to store data frames
 scan_list <- list()
 
 # loop over each file in the `scan_csvs` data frame
-for (i in seq_along(scan_csvs$id)) {
+for (i in seq_along(scan_csvs)) {
   # define the local file path
-  local_path <- file.path("googledrive", scan_csvs$name[i])
-  
-  # download the file
-  googledrive::drive_download(
-    file = scan_csvs$id[i],
-    path = local_path,
-    overwrite = TRUE
-  )
-  
-  # read the header row (row 2)
-  header <- read_excel(local_path, skip = 1, n_max = 1, col_names = FALSE)
-  # convert the header to a character vector and clean empty names
-  col_names <- as.character(unlist(header[1, ]))
-  col_names[col_names == ""] <- paste0("X", seq_along(col_names[col_names == ""]))
+  local_path <- file.path(input_path, scan_csvs[i])
   
   # read the data starting from row 4 using the header as column names
-  data <- read_excel(local_path, skip = 4, col_names = col_names)
+  data <- read_csv(local_path)
   
   # store the data in the list
-  scan_list[[scan_csvs$name[i]]] <- data
+  scan_list[[scan_csvs[i]]] <- data
 }
 
 #################
@@ -62,17 +55,20 @@ for (i in seq_along(scan_csvs$id)) {
 for (i in seq_along(scan_list)) {
   # access the current data frame
   df <- scan_list[[i]]
+  print(colnames(df))
   
   # change names for easier handling
-  colnames(df)[1] ="dateTime"
-  colnames(df)[2] ="DOC"
-  colnames(df)[6] ="NO3N"
-  colnames(df)[8] ="NO3"
-  colnames(df)[12] ="TOC"
-  colnames(df)[14] ="TSS"
-  colnames(df)[16] ="Temp"
-  colnames(df)[11] ="Voltage"
   
+  df <- df %>% rename(
+    "dateTime" = "DateTime",
+    "DOC" = "DOCeq..mg.l....Measured.value", 
+    "NO3N"= "NO3.Neq..mg.l....Measured.value", 
+    "NO3" = "NO3eq..mg.l....Measured.value", 
+    "TOC" = "TOCeq..mg.l....Measured.value", 
+    "TSS" = "TSSeq..mg.l....Measured.value",
+    "Temp"= "Temperature_21...C....Measured.value", 
+    "Voltage"= "Supply.Voltage..V....Measured.value"
+  )
   # make sure values are numeric 
   df$DOC <- as.numeric(df$DOC)
   df$NO3N <- as.numeric(df$NO3N)
@@ -102,19 +98,6 @@ for (i in seq_along(scan_list)) {
 # look at your data and decide if you need to do anything else with it
 scan_list[1]
 
-# IN THIS CASE I am going to remove the first few rows of data to clean it more since they are junk
-
-scan_list[[1]] <- scan_list[[1]][-c(1:93), ]
-
-#second data frame:
-scan_list[2]
-
-scan_list[[2]] <- scan_list[[2]][-c(1:28), ]
-
-#third data frame:
-scan_list[3]
-
-scan_list[[3]] <- scan_list[[3]][-c(1:9), ]
 
 ##################
 #### Plotting ####
@@ -127,7 +110,7 @@ for (i in seq_along(scan_list)) {
   p <- ggplot(data = df, aes(x = dateTime, y = DOC)) + 
     geom_line() + 
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
-    ggtitle(paste(scan_csvs$name[i])) +
+    ggtitle(paste(scan_csvs[i])) +
     theme(axis.text.x = element_text(angle=45))
   print(p)
 }
@@ -140,7 +123,7 @@ for (i in seq_along(scan_list)) {
   p <- ggplot(data = df, aes(x = dateTime, y = NO3)) + 
     geom_line() + 
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
-    ggtitle(paste(scan_csvs$name[i])) +
+    ggtitle(paste(scan_csvs[i])) +
     theme(axis.text.x = element_text(angle=45))
   print(p)
 }
@@ -153,7 +136,7 @@ for (i in seq_along(scan_list)) {
   p <- ggplot(data = df, aes(x = dateTime, y = NO3N)) + 
     geom_line() + 
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
-    ggtitle(paste(scan_csvs$name[i])) +
+    ggtitle(paste(scan_csvs[i])) +
     theme(axis.text.x = element_text(angle=45))
   print(p)
   
@@ -167,7 +150,7 @@ for (i in seq_along(scan_list)) {
   p <- ggplot(data = df, aes(x = dateTime, y = TOC)) + 
     geom_line() + 
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
-    ggtitle(paste(scan_csvs$name[i])) +
+    ggtitle(paste(scan_csvs[i])) +
     theme(axis.text.x = element_text(angle=45))
   print(p)
   
@@ -181,7 +164,7 @@ for (i in seq_along(scan_list)) {
   p <- ggplot(data = df, aes(x = dateTime, y = TSS)) + 
     geom_line() + 
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
-    ggtitle(paste(scan_csvs$name[i])) +
+    ggtitle(paste(scan_csvs[i])) +
     theme(axis.text.x = element_text(angle=45))
   print(p)
   
@@ -195,7 +178,7 @@ for (i in seq_along(scan_list)) {
   p <- ggplot(data = df, aes(x = dateTime, y = Temp)) + 
     geom_line() + 
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
-    ggtitle(paste(scan_csvs$name[i])) +
+    ggtitle(paste(scan_csvs[i])) +
     theme(axis.text.x = element_text(angle=45))
   print(p)
 }
@@ -208,7 +191,7 @@ for (i in seq_along(scan_list)) {
   p <- ggplot(data = df, aes(x = dateTime, y = Voltage)) + 
     geom_line() + 
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
-    ggtitle(paste(scan_csvs$name[i])) +
+    ggtitle(paste(scan_csvs[i])) +
     theme(axis.text.x = element_text(angle=45))
   print(p)
 }
@@ -229,10 +212,11 @@ for (i in seq_along(scan_list)) {
     geom_line(aes(x=dateTime, y=NO3, color='NO3')) +
     geom_line(aes(x=dateTime, y=DOC, color='DOC')) +
     scale_x_datetime(date_breaks = "1 day", date_labels = "%m/%d") +
-    ggtitle(paste(scan_csvs$name[i])) +
+    ggtitle(paste(scan_csvs[i])) +
     theme(axis.text.x = element_text(angle=45)) +
     ylab("Measured")
   print(p)
+  ggsave(paste0("scan_figs/", scan_csvs[i], ".png"), p)
 }
  
-
+# To do : re- run aggregation of abs and params for USF41 and run this script 

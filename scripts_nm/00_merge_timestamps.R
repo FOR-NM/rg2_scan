@@ -3,13 +3,14 @@
 ## Adapted from QuEST
 ## Original Author: Manuela Londono
 ## Modified by : Marcela Mendoza 
-## adding alternate file upload  management
+## adding alternate file upload  management, added download flag
 ## Script to merge scan files in one (using timestamp) for Santa Fe watershed
 ##==============================================================================
 
 library(readxl) #to read excel 
 library(googledrive)
 library(dplyr)
+library(readr)
 
 ########################################
 #### Clear folders that we will use ####
@@ -18,10 +19,12 @@ library(dplyr)
 #files <- list.files(path = "googledrive", full.names = TRUE)
 #file.remove(files)
 
+
 ##########################
 #### Import scan data ####
 ##########################
 #### list and download all files in the folder ####
+download_flag<- FALSE
 scan <- googledrive::as_id("https://drive.google.com/drive/folders/1UDrRJ10t04kXT2Op0W-GZz9vEe2B_C8H?usp=drive_link")
 # list all excel files in the folder
 scan_csvs <- googledrive::drive_ls(path = scan, pattern = "*.xlsx")
@@ -35,11 +38,17 @@ for (i in seq_along(scan_csvs$id)) {
   local_path <- file.path("data/raw", scan_csvs$name[i])
   
   # download the file
+  if (download_flag){
   googledrive::drive_download(
     file = scan_csvs$id[i],
     path = local_path,
     overwrite = TRUE
   )
+  }
+  
+  #####
+  #### To Do: Clean USF41 and other problematic data files ####
+  ###
   
   # read the header row (row 2)
   header <- read_excel(local_path, skip = 1, n_max = 1, col_names = FALSE)
@@ -67,6 +76,14 @@ for (i in seq_along(scan_list)) {
   # change names for easier handling
   colnames(df)[1] ="DateTime"
   
+  #make sure DateTime is in correct format
+  df <- df %>%
+    mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
+  
+  # Convert all text columns that contain numbers, stripping commas safely
+  df <- df %>% 
+    mutate(across(where(is.character), ~parse_number(.))) # introduced to fix USF 41 6-11 file 
+
   # Update the data frame in the list
   scan_list[[i]] <- df
 }
@@ -87,6 +104,8 @@ scan_list_by_site <- lapply(site_names, function(site) {
 
 # name the list by site
 names(scan_list_by_site) <- site_names
+
+
 
 # combine data for each site
 combined_by_site <- lapply(scan_list_by_site, function(site_data_list) {
@@ -150,6 +169,11 @@ for (i in seq_along(scan_list)) {
   # change names for easier handling
   colnames(df)[1] ="DateTime"
   
+  df <- df %>%
+    mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
+  df <- df %>%
+    mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
+  
   # update the data frame in the list
   scan_list[[i]] <- df
 }
@@ -192,4 +216,4 @@ lapply(names(combined_by_site), function(site) {
 #### TO DO ####
 ##############################
 # reduce code to only opening file once, instead of twice ( eliminate duplicated flow)
-# upload to GDrive 'Merged_timestamps' folder 
+# upload to GDrive 'Merged_timestamps' folder  ?? do we need to do this 
