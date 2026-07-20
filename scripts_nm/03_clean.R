@@ -15,37 +15,28 @@ library(ggplot2)
 #### Import Data ####
 #####################
 # load data from Google Drive. This is the "merged" folder
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1hlc9U54d70T5-hml_F9RM8FAiUCVRFmp")
-scan_csvs <- googledrive::drive_ls(path = scan, type = "csv")
+
+
+input_path<- "data/merged_params_and_abs/" #local path
+
+scan<- input_path
+scan_csvs<- list.files(path = scan, pattern = "\\.csv$")
 
 
 # create empty list to store data frames
 scan_list <- list()
 
 # loop over each file in the `scan_csvs` data frame
-for (i in seq_along(scan_csvs$id)) {
+for (i in seq_along(scan_csvs)) {
   # define the local file path
-  local_path <- file.path("googledrive", scan_csvs$name[i])
-  
-  # download the file
-  googledrive::drive_download(
-    file = scan_csvs$id[i],
-    path = local_path,
-    overwrite = TRUE
-  )
-  
-  # read the header row (row 2)
-  header <- read_csv(local_path, n_max = 1, col_names = TRUE)
+  local_path <- file.path(input_path, scan_csvs[i])
   
   # read the data starting from row 4 using the header as column names
   data <- read_csv(local_path)
   
   # store the data in the list
-  scan_list[[scan_csvs$name[i]]] <- data
+  scan_list[[scan_csvs[i]]] <- data
 }
-
-# TEMPORARY REMOVE extra files
-# scan_list <- scan_list[-c(4:8)]
 
 #################
 #### Tidying ####
@@ -55,12 +46,12 @@ scan_list <- lapply(scan_list, function(df) {
   # rename columns by matching the existing names
   df <- df %>%
     rename(
-      DOC_mg.l = DOCeq..mg.l....Measured.value,
-      NO3.N_mg.l = NO3.Neq..mg.l....Measured.value,
-      NO3_mg.l =  NO3eq..mg.l....Measured.value,
-      TOC_mg.l = TOCeq..mg.l....Measured.value,
-      TSS_mg.l = TSSeq..mg.l....Measured.value,
-      Temp_C = Temperature_19...C....Measured.value,
+      'DOC_mg.l' = 'DOCeq..mg.l....Measured.value',
+      'NO3.N_mg.l' = 'NO3.Neq..mg.l....Measured.value',
+      'NO3_mg.l' =  'NO3eq..mg.l....Measured.value',
+      'TOC_mg.l' = 'TOCeq..mg.l....Measured.value',
+      'TSS_mg.l' = 'TSSeq..mg.l....Measured.value',
+      'Temp_C' = "Temperature_21...C....Measured.value",
     )
   
   # ensure numeric variables are converted to numeric
@@ -133,11 +124,11 @@ scan_list <- lapply(scan_list, function(df) {
   # rename columns by matching the existing names
   df <- df %>%
     rename(
-      DOC_status = DOCeq..mg.l....Measured.status,  # rename the status column for DOC
-      NO3.N_status = NO3.Neq..mg.l....Measured.status,  # rename the status column for NO3.N
-      NO3_status = NO3eq..mg.l....Measured.status,  # rename the status column for NO3
-      TOC_status = TOCeq..mg.l....Measured.status,  # rename the status column for TOC
-      TSS_status = TSSeq..mg.l....Measured.status  # rename the status column for TSS
+      'DOC_status' = 'DOCeq..mg.l....Measured.status',  # rename the status column for DOC
+      'NO3.N_status' = 'NO3.Neq..mg.l....Measured.status',  # rename the status column for NO3.N
+      'NO3_status' = 'NO3eq..mg.l....Measured.status',  # rename the status column for NO3
+      'TOC_status' = 'TOCeq..mg.l....Measured.status',  # rename the status column for TOC
+      'TSS_status' = 'TSSeq..mg.l....Measured.status'  # rename the status column for TSS
     )
   
   # ensure numeric variables are converted to numeric
@@ -199,14 +190,13 @@ extract_id <- function(file_name) {
 scan_filtered <- mapply(function(df, file_name) {
   df <- add_column(df, serial_number = extract_id(file_name))
   return(df)
-}, scan_list, scan_csvs$name, SIMPLIFY = FALSE)
+}, scan_list, scan_csvs, SIMPLIFY = FALSE)
 
-# TEMPORARY REMOVE extra files
-#scan_filtered <- scan_filtered[-c(4:16)]
 
-USF12 <- scan_filtered[["USF12_absparams_Buttercup.csv"]]
-USF21 <- scan_filtered[["USF21_absparams_Bubbles.csv"]]
-USF20 <- scan_filtered[["USF20_absparams_Blossom.csv"]]
+
+#USF12 <- scan_filtered[["USF12_absparams_Buttercup.csv"]]
+#USF21 <- scan_filtered[["USF21_absparams_Bubbles.csv"]]
+#USF20 <- scan_filtered[["USF20_absparams_Blossom.csv"]]
 
 ########################################
 #### remove error section from USF20 ###
@@ -220,19 +210,19 @@ USF20 <- scan_filtered[["USF20_absparams_Blossom.csv"]]
 #########################################
 #### remove low volt at end of USF21 ####
 #########################################
-USF21_test <- USF21 %>%
-  mutate(across(
-    c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean", 27:236),
-    ~ ifelse(between(DateTime, as.Date("2024-11-15"), as.Date("2024-11-16")), NA, .)
-  ))
+#USF21_test <- USF21 %>%
+#  mutate(across(
+#    c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean", 27:236),
+#    ~ ifelse(between(DateTime, as.Date("2024-11-15"), as.Date("2024-11-16")), NA, .)
+#  ))
 
 ########################
 #### Return to list ####
 ########################
-scan_filtered2 <- list()
-scan_filtered2[["USF20"]] <- USF20
-scan_filtered2[["USF21"]] <- USF21_test
-scan_filtered2[["USF12"]] <- USF12
+#scan_filtered2 <- list()
+#scan_filtered2[["USF20"]] <- USF20
+#scan_filtered2[["USF21"]] <- USF21
+#scan_filtered2[["USF12"]] <- USF12
 
 #####################################
 #### Plot all variables together ####
@@ -252,20 +242,18 @@ plot_variables <- function(df, file_name) {
     ylab("Measured")
 }
 
-# plot
-print(plot_variables(scan_filtered2[[1]], scan_csvs$name[1]))
-print(plot_variables(scan_filtered2[[2]], scan_csvs$name[2]))
-print(plot_variables(scan_filtered2[[3]], scan_csvs$name[3]))
+# plot and save
+for (i in seq_along(scan_csvs)){
+print(plot_variables(scan_filtered[[i]], scan_csvs[i]))
+  ggsave(paste0("scan_figs/", scan_csvs[i], "_Measured.png"), plot_variables(scan_filtered[[i]], scan_csvs[i]))
+}
 
-# save figures to folder
-for (i in seq_along(scan_filtered)) {
-  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_Measured.png"), plot_variables(scan_filtered[[i]], scan_csvs$name[i]))
-  }
+
 
 #####################################
 #### Plot all variables separate ####
 #####################################
-# function to plot each variable separately in the same panel
+# function to plot each variable separately in the same panel, to do: rename 
 plot_variables <- function(df, file_name) {
   # ensure column selection works correctly
   df_long <- df %>%
@@ -283,20 +271,16 @@ plot_variables <- function(df, file_name) {
     theme(legend.position = "none")  # hide legend since we have separate panels
 }
 
-# generate plots
-print(plot_variables(scan_filtered2[[1]], scan_csvs$name[1]))
-print(plot_variables(scan_filtered2[[2]], scan_csvs$name[2]))
-print(plot_variables(scan_filtered2[[3]], scan_csvs$name[3]))
+# generate plots and save 
+for (i in seq_along(scan_csvs)){
+  print(plot_variables(scan_filtered[[i]], scan_csvs[i]))
+  ggsave(paste0("scan_figs/", scan_csvs[i], "_separate.png"), plot_variables(scan_filtered[[i]], scan_csvs[i]))
+}
 
-### save figures to folder ###
-for (i in seq_along(scan_filtered)) {
-  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_separate.png"), plot_variables(scan_filtered[[i]], scan_csvs$name[i]))
-  }
 
-tail(scan_filtered1[[1]])
 
 ###################################
-#### Plot just a section of it ####
+#### Plot just a section of it #### To do: erase this? or place it somewhere else 
 ###################################
 Date1 <- as.Date("2025-08-25", "%Y-%m-%d")
 Date2 <- as.Date("2025-08-30", "%Y-%m-%d")

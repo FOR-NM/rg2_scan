@@ -216,7 +216,6 @@ for (i in seq_along(scan_list)) {
     theme(axis.text.x = element_text(angle=45)) +
     ylab("Measured")
   print(p)
-  ggsave(paste0("scan_figs/", scan_csvs[i], ".png"), p)
+  ggsave(paste0("scan_figs/", scan_csvs[i], ".png"), p) 
 }
  
-# To do : re- run aggregation of abs and params for USF41 and run this script 
