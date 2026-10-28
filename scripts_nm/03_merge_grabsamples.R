@@ -1,7 +1,7 @@
 ##==============================================================================
 ## Project: QuEST
-## Here we will prep grab sample data by matching the grab samples with the time stamp of the s::can
-## press Command+Option+O to collapse all sections and get an overview of the workflow!
+## Here we will prep grab sample data by matching the grab samples with the 
+## time stamp of the s::can
 ##==============================================================================
 
 library(googledrive)

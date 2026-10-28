@@ -2,26 +2,22 @@
 ## Project: QuEST - Script to tidy up a bit scan data and plot it
 ## press Command+Option+O to collapse all sections and get an overview of the workflow!
 ##==============================================================================
-library(dataRetrieval) # download USGS discharge data
 library(googledrive) # download docs from Drive
 library(tidyverse)
-library(readxl) # to read Excel
 library(lubridate) # edit date format
-library(xts) # time series
 library(ggplot2)
-
 
 #####################
 #### Import Data ####
 #####################
-# load data from Google Drive. This is the "merged" folder
-
-
+# load data from Google drive. This is the "merge timestamps" folder
+#scan <- googledrive::as_id("https://drive.google.com/drive/folders/1-dUxVn1hBWy2MpHeIjVt-2QSujpVhijy")
+# list all CSV files in the folder
+#scan_csvs <- googledrive::drive_ls(path = scan)
 input_path<- "data/merged_params_and_abs/" #local path
 
 scan<- input_path
 scan_csvs<- list.files(path = scan, pattern = "\\.csv$")
-
 
 # create empty list to store data frames
 scan_list <- list()
@@ -61,6 +57,39 @@ scan_list <- lapply(scan_list, function(df) {
   
   return(df)
 })
+
+#####################################################################
+#### Plot all variables separate before removing no medium reads ####
+#####################################################################
+# function to plot each variable separately in the same panel
+plot_variables <- function(df, file_name) {
+  # ensure column selection works correctly
+  df_long <- df %>%
+    dplyr::select("DateTime", "Temp_C", "TSS_mg.l", "TOC_mg.l", "NO3.N_mg.l", "NO3_mg.l", "DOC_mg.l") %>%
+    pivot_longer(cols = -DateTime, names_to = "Variable", values_to = "Value")
+  
+  # generate the plot
+  ggplot(data = df_long, aes(x = DateTime, y = Value, color = Variable)) +
+    geom_line() +
+    facet_wrap(~Variable, scales = "free_y", ncol = 1) +  # separate plot for each variable, stacked vertically
+    scale_x_datetime(date_breaks = "15 days", date_labels = "%m/%d") +
+    ggtitle(file_name) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    ylab("Measured Value") +
+    theme(legend.position = "none")  # hide legend since we have separate panels
+}
+
+# generate plots
+print(plot_variables(scan_list[[1]], scan_csvs[1]))
+print(plot_variables(scan_list[[2]], scan_csvs[2]))
+print(plot_variables(scan_list[[3]], scan_csvs[3]))
+print(plot_variables(scan_list[[4]], scan_csvs[4]))
+print(plot_variables(scan_list[[5]], scan_csvs[5]))
+
+### save figures to folder ###
+for (i in seq_along(scan_list)) {
+  ggsave(paste0("scan_figs/", scan_csvs[i], "raw.png"), plot_variables(scan_list[[i]], scan_csvs[i]))
+}
 
 #########################################################################################
 #### Count number of service dates (out of water days) and 'ABOVE' and 'BELOW' values####
@@ -111,9 +140,8 @@ final_count_table <- do.call(rbind, count_list)
 # print the final table
 print(final_count_table)
 
-#### save data ####
-# save the final table to a CSV file
-# write.csv(final_count_table, "final_NAcount_table.csv", row.names = TRUE)
+### save the final table to a CSV file
+write.csv(final_count_table, "final_NAcount_table.csv", row.names = TRUE)
 
 #################################################
 #### Clean service dates (out of water days) ####
@@ -139,28 +167,26 @@ scan_list <- lapply(scan_list, function(df) {
   # define status values to replace with NA
   status_values_to_replace <- c("NO_MEDIUM", "VAL_BELOW:NO_MEDIUM")
   
-  # create new cleaned columns (e.g., DOC_clean, NO3_clean) and set to NA if the status column has invalid values
+  # overwrite the value columns in place with NA wherever their own status
+  # flags a bad read -- no separate "_clean" columns. The *_status columns
+  # (kept as-is) already say WHY a value is NA, so there's no need for an
+  # extra flag column on top of that.
   df <- df %>%
     mutate(
-      DOC_clean = ifelse(DOC_status %in% status_values_to_replace, NA, DOC_mg.l),
-      NO3.N_clean = ifelse(NO3.N_status %in% status_values_to_replace, NA, NO3.N_mg.l),
-      NO3_clean = ifelse(NO3_status %in% status_values_to_replace, NA, NO3_mg.l),
-      TOC_clean = ifelse(TOC_status %in% status_values_to_replace, NA, TOC_mg.l),
-      TSS_clean = ifelse(TSS_status %in% status_values_to_replace, NA, TSS_mg.l)
+      DOC_mg.l = ifelse(DOC_status %in% status_values_to_replace, NA, DOC_mg.l),
+      NO3.N_mg.l = ifelse(NO3.N_status %in% status_values_to_replace, NA, NO3.N_mg.l),
+      NO3_mg.l = ifelse(NO3_status %in% status_values_to_replace, NA, NO3_mg.l),
+      TOC_mg.l = ifelse(TOC_status %in% status_values_to_replace, NA, TOC_mg.l),
+      TSS_mg.l = ifelse(TSS_status %in% status_values_to_replace, NA, TSS_mg.l)
     )
   
   # find all spectral columns (those starting with "X" and ending with ".nm")
   spectra_cols <- grep("^X[0-9]+\\.[0-9]+\\.nm$", colnames(df), value = TRUE)
   
-  # debug: Print the spectral columns found
-  print(paste("Spectral columns in", deparse(substitute(df)), ":", toString(spectra_cols)))
-  
   # If there are spectral columns, clean them
   if (length(spectra_cols) > 0) {
     # loop through each spectral column and apply the NA logic based on status
     for (col in spectra_cols) {
-      # debug: Check which column is being processed
-      print(paste("Processing spectral column:", col))
       
       # apply the NA logic based on status values
       df[[col]] <- ifelse(
@@ -174,81 +200,11 @@ scan_list <- lapply(scan_list, function(df) {
     }
   }
   
-  # return the cleaned dataframe
+  # return the cleaned dataframe -- without this, the last expression run
+  # above is the if/for block, which evaluates to NULL, so lapply() would
+  # silently collect a list of NULLs instead of the cleaned dataframes
   return(df)
 })
-
-###############################################
-#### Add instrument name or serial number  ####
-###############################################
-# create function to extract file name (they all start with B)
-extract_id <- function(file_name) {
-  str_extract(file_name, "B\\w+")
-}
-
-# apply function to add extracted name to all data frames 
-scan_filtered <- mapply(function(df, file_name) {
-  df <- add_column(df, serial_number = extract_id(file_name))
-  return(df)
-}, scan_list, scan_csvs, SIMPLIFY = FALSE)
-
-
-
-#USF12 <- scan_filtered[["USF12_absparams_Buttercup.csv"]]
-#USF21 <- scan_filtered[["USF21_absparams_Bubbles.csv"]]
-#USF20 <- scan_filtered[["USF20_absparams_Blossom.csv"]]
-
-########################################
-#### remove error section from USF20 ###
-########################################
-# USF20_test <- USF20 %>%
-#   mutate(across(
-#     c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean", 21:232),
-#     ~ ifelse(between(DateTime, as.Date("2024-09-25"), as.Date("2024-10-17")), NA, .)
-#   ))
-
-#########################################
-#### remove low volt at end of USF21 ####
-#########################################
-#USF21_test <- USF21 %>%
-#  mutate(across(
-#    c("DOC_clean", "NO3.N_clean", "NO3_clean", "TOC_clean", "TSS_clean", 27:236),
-#    ~ ifelse(between(DateTime, as.Date("2024-11-15"), as.Date("2024-11-16")), NA, .)
-#  ))
-
-########################
-#### Return to list ####
-########################
-#scan_filtered2 <- list()
-#scan_filtered2[["USF20"]] <- USF20
-#scan_filtered2[["USF21"]] <- USF21
-#scan_filtered2[["USF12"]] <- USF12
-
-#####################################
-#### Plot all variables together ####
-#####################################
-# plot after filtering pre-deployed and out of water times
-plot_variables <- function(df, file_name) {
-  ggplot(data = df) +
-    geom_line(aes(x = DateTime, y = Temp_C, color = 'Temp')) +
-    geom_line(aes(x = DateTime, y = TSS_clean, color = 'TSS')) +
-    geom_line(aes(x = DateTime, y = TOC_clean, color = 'TOC')) +
-    geom_line(aes(x = DateTime, y = NO3.N_clean, color = 'NO3.N')) +
-    geom_line(aes(x = DateTime, y = NO3_clean, color = 'NO3')) +
-    geom_line(aes(x = DateTime, y = DOC_clean, color = 'DOC')) +
-    scale_x_datetime(date_breaks = "15 days", date_labels = "%m/%d") +
-    ggtitle(file_name) +
-    theme(axis.text.x = element_text(angle = 45)) +
-    ylab("Measured")
-}
-
-# plot and save
-for (i in seq_along(scan_csvs)){
-print(plot_variables(scan_filtered[[i]], scan_csvs[i]))
-  ggsave(paste0("scan_figs/", scan_csvs[i], "_Measured.png"), plot_variables(scan_filtered[[i]], scan_csvs[i]))
-}
-
-
 
 #####################################
 #### Plot all variables separate ####
@@ -257,7 +213,7 @@ print(plot_variables(scan_filtered[[i]], scan_csvs[i]))
 plot_variables <- function(df, file_name) {
   # ensure column selection works correctly
   df_long <- df %>%
-    dplyr::select("DateTime", "Temp_C", "TSS_clean", "TOC_clean", "NO3.N_clean", "NO3_clean", "DOC_clean") %>%
+    dplyr::select("DateTime", "Temp_C", "TSS_mg.l", "TOC_mg.l", "NO3.N_mg.l", "NO3_mg.l", "DOC_mg.l") %>%
     pivot_longer(cols = -DateTime, names_to = "Variable", values_to = "Value")
   
   # generate the plot
@@ -274,59 +230,57 @@ plot_variables <- function(df, file_name) {
 # generate plots and save 
 for (i in seq_along(scan_csvs)){
   print(plot_variables(scan_filtered[[i]], scan_csvs[i]))
-  ggsave(paste0("scan_figs/", scan_csvs[i], "_separate.png"), plot_variables(scan_filtered[[i]], scan_csvs[i]))
+  ggsave(paste0("scan_figs/", scan_csvs[i], ".png"), plot_variables(scan_filtered[[i]], scan_csvs[i]))
 }
 
-
-
-###################################
-#### Plot just a section of it #### To do: erase this? or place it somewhere else 
-###################################
-Date1 <- as.Date("2025-08-25", "%Y-%m-%d")
-Date2 <- as.Date("2025-08-30", "%Y-%m-%d")
-
-# create empty list to store data frames
-scan_subdf <- list()
-
-# loop through each data frame in the list to change DateTime column name
-for (i in seq_along(scan_filtered1)) {
-  # Access the current data frame
-  df <- scan_filtered1[[i]]
-  
-  # change time frame
-  subdf <- df[df$DateTime < Date2 & df$DateTime > Date1,]
-  
-  # update the data frame in the list
-  scan_subdf[[i]] <- subdf
-}
-
-# function to plot each variable separately in the same panel
-plot_variables <- function(df, file_name) {
-  # ensure column selection works correctly
-  df_long <- df %>%
-    dplyr::select("DateTime", "Temp_C", "TSS_clean", "TOC_clean", "NO3.N_clean", "NO3_clean", "DOC_clean") %>%
-    pivot_longer(cols = -DateTime, names_to = "Variable", values_to = "Value")
-  
-  # generate the plot
-  ggplot(data = df_long, aes(x = DateTime, y = Value, color = Variable)) +
-    geom_line() +
-    facet_wrap(~Variable, scales = "free_y", ncol = 1) +  # separate plot for each variable, stacked vertically
-    scale_x_datetime(date_breaks = "7 days", date_labels = "%m/%d") +
-    ggtitle(file_name) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-    ylab("Measured Value") +
-    theme(legend.position = "none")  # hide legend since we have separate panels
-}
-
-# generate plots
-print(plot_variables(scan_subdf[[1]], scan_csvs$name[1]))
-print(plot_variables(scan_subdf[[2]], scan_csvs$name[2]))
-print(plot_variables(scan_subdf[[3]], scan_csvs$name[3]))
-
-### save figures to folder ###
-for (i in seq_along(scan_subdf)) {
-  ggsave(paste0("scan_figs/", scan_csvs$name[i], "_subdf.png"), plot_variables(scan_subdf[[i]], scan_csvs$name[i]))
-}
+# ###################################
+# #### Plot just a section of it #### To do: erase this? or place it somewhere else 
+# ###################################
+# Date1 <- as.Date("2025-08-25", "%Y-%m-%d")
+# Date2 <- as.Date("2025-08-30", "%Y-%m-%d")
+# 
+# # create empty list to store data frames
+# scan_subdf <- list()
+# 
+# # loop through each data frame in the list to change DateTime column name
+# for (i in seq_along(scan_filtered1)) {
+#   # Access the current data frame
+#   df <- scan_filtered1[[i]]
+#   
+#   # change time frame
+#   subdf <- df[df$DateTime < Date2 & df$DateTime > Date1,]
+#   
+#   # update the data frame in the list
+#   scan_subdf[[i]] <- subdf
+# }
+# 
+# # function to plot each variable separately in the same panel
+# plot_variables <- function(df, file_name) {
+#   # ensure column selection works correctly
+#   df_long <- df %>%
+#     dplyr::select("DateTime", "Temp_C", "TSS_mg.l", "TOC_mg.l", "NO3.N_mg.l", "NO3_mg.l", "DOC_mg.l") %>%
+#     pivot_longer(cols = -DateTime, names_to = "Variable", values_to = "Value")
+#   
+#   # generate the plot
+#   ggplot(data = df_long, aes(x = DateTime, y = Value, color = Variable)) +
+#     geom_line() +
+#     facet_wrap(~Variable, scales = "free_y", ncol = 1) +  # separate plot for each variable, stacked vertically
+#     scale_x_datetime(date_breaks = "7 days", date_labels = "%m/%d") +
+#     ggtitle(file_name) +
+#     theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+#     ylab("Measured Value") +
+#     theme(legend.position = "none")  # hide legend since we have separate panels
+# }
+# 
+# # generate plots
+# print(plot_variables(scan_subdf[[1]], scan_csvs$name[1]))
+# print(plot_variables(scan_subdf[[2]], scan_csvs$name[2]))
+# print(plot_variables(scan_subdf[[3]], scan_csvs$name[3]))
+# 
+# ### save figures to folder ###
+# for (i in seq_along(scan_subdf)) {
+#   ggsave(paste0("scan_figs/", scan_csvs$name[i], "_subdf.png"), plot_variables(scan_subdf[[i]], scan_csvs$name[i]))
+# }
 
 ####################################
 #### Save cleaned data to Drive ####
@@ -337,22 +291,20 @@ remove_extension <- function(file_name) {
 }
 
 # loop through each data frame in the list
-for (i in seq_along(scan_filtered2)) {
+for (i in seq_along(scan_filtered)) {
   # access the current data frame
-  df <- scan_filtered2[[i]]
+  df <- scan_filtered[[i]]
   
   # define the file name and path
-  clean_name <- remove_extension(scan_csvs$name[i])
-  file_name <- paste0("googledrive/", clean_name, "_clean.csv")
+  clean_name <- remove_extension(scan_csvs[i])
+  file_name <- file.path("data/clean", paste0(clean_name, "_clean.csv"))
   
   # save the new data frame to a CSV file
   write.csv(df, file_name, row.names=FALSE, quote=FALSE)
   
   # define the target folder ID in Google Drive, this is the "clean" folder
-  drive_folder_id <- "1g6aSuGnb--Qeyk-rceX82Y5wSNzCqFg0"
+  drive_folder_id <- "1j_I0brd1bzAfHlG3is0WRRayPR1MEcUs"
   
   # upload the file to the specified Google Drive folder
   drive_put(media = file_name, path = as_id(drive_folder_id))
 }
-
-
