@@ -2,7 +2,7 @@
 ## Project: FOR-NM
 ## Adapted from QuEST
 ## Original Author: Manuela Londono
-## Script to merge scan files in one and combining abs and parameters data 
+## This script merges scan files in one and combines abs and parameters into one 
 ## from the separate sheets. 
 ##==============================================================================
 
@@ -10,50 +10,94 @@ library(readxl) #to read excel
 library(googledrive)
 library(dplyr)
 library(readr)
+library(parallel)
 
 ##########################
 #### Import scan data ####
 ##########################
-#### list, download once, and read BOTH sheets from that same local file ####
-scan <- googledrive::as_id("https://drive.google.com/drive/folders/1UDrRJ10t04kXT2Op0W-GZz9vEe2B_C8H")
+#### list, download in parallel, and read BOTH sheets from that same local file ####
+scan <- googledrive::as_id("https://drive.google.com/drive/folders/143s0aoqhJB8XUgz2lgRHmgWqI8rG6XwW")
 # list all xlsx files in the folder
 scan_csvs <- googledrive::drive_ls(path = scan, pattern = "*.xlsx")
-2
+
+# Retry wrapper so one bad transfer doesn't kill the whole loop.
+# Google Drive downloads occasionally hang (curl "Operation too slow" after
+# ~10 min of near-zero throughput); this retries a few times with a short
+# pause before giving up on that one file and moving on.
+download_with_retry <- function(file, path, max_tries = 3, wait_sec = 15) {
+  for (attempt in seq_len(max_tries)) {
+    ok <- tryCatch({
+      googledrive::drive_download(file = file, path = path, overwrite = TRUE)
+      TRUE
+    }, error = function(e) {
+      message(sprintf("  attempt %d/%d failed for %s: %s", attempt, max_tries, path, conditionMessage(e)))
+      FALSE
+    })
+    if (isTRUE(ok)) return(TRUE)
+    if (attempt < max_tries) Sys.sleep(wait_sec)
+  }
+  FALSE
+}
+
+# 1. Download all files in PARALLEL first (parallel::mclapply -- base R,
+#    fork-based so Mac/Linux only, which is what this runs on), THEN read
+#    them sequentially from local disk. This was downloading one multi-MB
+#    file at a time before -- with 20+ files that serial wait was the real
+#    bottleneck, not the double-download issue fixed earlier.
+n_workers <- max(1, parallel::detectCores() - 1)
+message(sprintf("Downloading %d files (%d in parallel)...", nrow(scan_csvs), n_workers))
+
+download_ok <- unlist(parallel::mclapply(seq_along(scan_csvs$id), function(i) {
+  local_path <- file.path("data/raw", scan_csvs$name[i])
+  download_with_retry(file = scan_csvs$id[i], path = local_path, max_tries = 3, wait_sec = 15)
+}, mc.cores = n_workers))
+
+failed_downloads <- scan_csvs$name[!download_ok]
+if (length(failed_downloads) > 0) {
+  warning("The following files failed to download after retries and were skipped:\n",
+          paste(" -", failed_downloads, collapse = "\n"))
+}
+
 scan_list_param <- list()  # sheet 1: params
 scan_list       <- list()  # sheet 2: compensated fingerprint / abs
+failed_reads    <- character(0)
 
-# loop over each file in the `scan_csvs` data frame -- download ONCE per
-# file and read both sheets from that same local copy (previously this
-# downloaded every file twice, once in a separate loop per sheet)
+# 2. loop over each SUCCESSFULLY DOWNLOADED file and read it (local disk, fast)
 for (i in seq_along(scan_csvs$id)) {
-  # define the local file path
+  if (!download_ok[i]) next
   local_path <- file.path("data/raw", scan_csvs$name[i])
 
-  # download the file (once)
-  googledrive::drive_download(
-    file = scan_csvs$id[i],
-    path = local_path,
-    overwrite = TRUE
-  )
+  result <- tryCatch({
+    #### sheet 1: params ####
+    header_param <- read_excel(local_path, skip = 1, n_max = 1, col_names = FALSE)
+    col_names_param <- as.character(unlist(header_param[1, ]))
+    col_names_param[col_names_param == ""] <- paste0("X", seq_along(col_names_param[col_names_param == ""]))
+    data_param <- read_excel(local_path, skip = 4, col_names = col_names_param)
 
-  #### sheet 1: params ####
-  # read the header row (row 2)
-  header_param <- read_excel(local_path, skip = 1, n_max = 1, col_names = FALSE)
-  # convert the header to a character vector and clean empty names
-  col_names_param <- as.character(unlist(header_param[1, ]))
-  col_names_param[col_names_param == ""] <- paste0("X", seq_along(col_names_param[col_names_param == ""]))
-  # read the data starting from row 4 using the header as column names
-  data_param <- read_excel(local_path, skip = 4, col_names = col_names_param)
+    #### sheet 2: compensated fingerprint / abs ####
+    header_abs <- read_excel(local_path, sheet = 2, skip = 1, n_max = 1, col_names = FALSE)
+    col_names_abs <- as.character(unlist(header_abs[1, ]))
+    col_names_abs[col_names_abs == ""] <- paste0("X", seq_along(col_names_abs[col_names_abs == ""]))
+    data_abs <- read_excel(local_path, sheet = 2, skip = 4, col_names = col_names_abs)
 
-  #### sheet 2: compensated fingerprint / abs ####
-  header_abs <- read_excel(local_path, sheet = 2, skip = 1, n_max = 1, col_names = FALSE)
-  col_names_abs <- as.character(unlist(header_abs[1, ]))
-  col_names_abs[col_names_abs == ""] <- paste0("X", seq_along(col_names_abs[col_names_abs == ""]))
-  data_abs <- read_excel(local_path, sheet = 2, skip = 4, col_names = col_names_abs)
+    list(param = data_param, abs = data_abs)
+  }, error = function(e) {
+    message(sprintf("  failed to read/parse %s: %s", scan_csvs$name[i], conditionMessage(e)))
+    NULL
+  })
 
-  # store the data in the lists
-  scan_list_param[[scan_csvs$name[i]]] <- data_param
-  scan_list[[scan_csvs$name[i]]]       <- data_abs
+  if (is.null(result)) {
+    failed_reads <- c(failed_reads, scan_csvs$name[i])
+    next
+  }
+
+  scan_list_param[[scan_csvs$name[i]]] <- result$param
+  scan_list[[scan_csvs$name[i]]]       <- result$abs
+}
+
+if (length(failed_reads) > 0) {
+  warning("The following files downloaded but failed to read/parse and were skipped:\n",
+          paste(" -", failed_reads, collapse = "\n"))
 }
 
 ####################################
@@ -81,7 +125,7 @@ for (i in seq_along(scan_list_param)) {
 }
 
 # site names
-site_names <- c("USF02", "USF24", "USF25", "USF40", "USF41")
+site_names <- c("USF24", "USF25", "USF40", "USF41")
 
 # group files in `scan_list_param` by matching `site_names` in file names
 

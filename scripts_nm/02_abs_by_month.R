@@ -14,7 +14,7 @@ library(googledrive)
 #### Upload scan dataframe [with spectra] ####
 ##############################################
 # site names
-site_names <- c("USF02", "USF24", "USF25", "USF40", "USF41")
+site_names <- c("USF24", "USF25", "USF40", "USF41")
 
 local_dir <- "data/clean"
 

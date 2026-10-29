@@ -84,7 +84,6 @@ print(plot_variables(scan_list[[1]], scan_csvs[1]))
 print(plot_variables(scan_list[[2]], scan_csvs[2]))
 print(plot_variables(scan_list[[3]], scan_csvs[3]))
 print(plot_variables(scan_list[[4]], scan_csvs[4]))
-print(plot_variables(scan_list[[5]], scan_csvs[5]))
 
 ### save figures to folder ###
 for (i in seq_along(scan_list)) {
@@ -92,50 +91,43 @@ for (i in seq_along(scan_list)) {
 }
 
 #########################################################################################
-#### Count number of service dates (out of water days) and 'ABOVE' and 'BELOW' values####
+#### Count every status flag that actually appears in the data, per file           ####
 #########################################################################################
-# when scan is out of water it records as NO_MEDIUM
-# replace 'NO_MEDIUM' values with NA
-# also when it reads < lower error limit or  > upper error limit, it flags as 'VAL_BELOW' or 'VAL_ABOVE'
-# replace 'VAL_BELOW' or 'VAL_ABOVE' flagged values with NA 
+# Status codes aren't a fixed, known list, and a cell can hold several at once
+# joined with ":" (e.g. "MATH_ERR:NO_MEDIUM:COMP_BELOW_REF:VAL_BELOW:NEG_MED").
+# Instead of hardcoding each flag to check for (and having to add a new line
+# every time a new one turns up, like MED_TEMP_LOW/COMP_BELOW_REF just did),
+# this finds every distinct flag actually present and counts rows for all of
+# them automatically.
 
-### first, count how many logs with , 'VAL_BELOW' or 'VAL_ABOVE' each one has ###
-# initialize a list to store the counts for each file
-count_list <- list()
+# for each file: split every status cell's compound value on ":", collapse
+# to the flags actually present in each row (so a flag repeated across
+# several status columns in the same row only counts once for that row),
+# and tally how many rows contain each flag
+file_flag_counts <- lapply(scan_list, function(data) {
+  # filter to only character columns (the status columns, at this point in the pipeline)
+  char_data <- data[, sapply(data, is.character), drop = FALSE]
+  
+  row_flags <- apply(char_data, 1, function(row) {
+    row <- row[!is.na(row) & row != ""]
+    unique(unlist(strsplit(row, ":", fixed = TRUE)))
+  })
+  
+  table(unlist(row_flags))
+})
 
-# loop over each data frame in the list
-for (file_name in names(scan_list)) {
-  
-  # Get the data frame
-  data <- scan_list[[file_name]]
-  
-  # filter to only character columns
-  char_data <- data[, sapply(data, is.character)]
-  
-  # count the number of rows that contain VAL_BELOW, VAL_ABOVE, or NO_MEDIUM
-  val_below_count <- sum(apply(char_data, 1, function(row) any(row == "VAL_BELOW", na.rm = TRUE)))
-  val_above_count <- sum(apply(char_data, 1, function(row) any(row == "VAL_ABOVE", na.rm = TRUE)))
-  no_medium_count <- sum(apply(char_data, 1, function(row) any(row == "NO_MEDIUM", na.rm = TRUE)))
-  math_err_count <- sum(apply(char_data, 1, function(row) any(row == "MATH_ERR", na.rm = TRUE)))
-  volt_low_count <- sum(apply(char_data, 1, function(row) any(row == "VOLT_LOW", na.rm = TRUE)))
-  volt_high_count <- sum(apply(char_data, 1, function(row) any(row == "VOLT_HIGH", na.rm = TRUE)))
-  hw_deffect_count <- sum(apply(char_data, 1, function(row) any(row == "HW_DEFECT", na.rm = TRUE)))
-  
-  # store the counts in a data frame
-  count_list[[file_name]] <- data.frame(
-    File = file_name,
-    VAL_BELOW = val_below_count,
-    VAL_ABOVE = val_above_count,
-    NO_MEDIUM = no_medium_count,
-    MATH_ERR = math_err_count,
-    VOLT_LOW = volt_low_count,
-    VOLT_HIGH = volt_high_count,
-    HW_DEFECT = hw_deffect_count
-  )
-}
+# union of every flag seen across ALL files, so every file gets a column for
+# every flag anyone has -- 0 where that file never saw it, instead of the
+# column being missing
+all_flags <- sort(unique(unlist(lapply(file_flag_counts, names))))
 
-# combine all the individual data frames into one
-final_count_table <- do.call(rbind, count_list)
+# combine into one wide table: one row per file, one column per flag
+final_count_table <- do.call(rbind, lapply(names(file_flag_counts), function(file_name) {
+  counts <- file_flag_counts[[file_name]]
+  row_counts <- setNames(as.list(rep(0L, length(all_flags))), all_flags)
+  row_counts[names(counts)] <- as.integer(counts)
+  data.frame(File = file_name, as.data.frame(row_counts, check.names = FALSE))
+}))
 
 # print the final table
 print(final_count_table)
@@ -164,8 +156,17 @@ scan_list <- lapply(scan_list, function(df) {
     mutate(across(c(DOC_mg.l, NO3.N_mg.l, NO3_mg.l, TOC_mg.l, TSS_mg.l, Temp_C), as.numeric)) %>%
     mutate(DateTime = as.POSIXct(DateTime, format = "%Y-%m-%d %H:%M:%S"))
   
-  # define status values to replace with NA
-  status_values_to_replace <- c("NO_MEDIUM", "VAL_BELOW:NO_MEDIUM")
+  # Status can be compound (e.g. "MATH_ERR:NO_MEDIUM:COMP_BELOW_REF:VAL_BELOW:NEG_MED"),
+  # so an exact match against a fixed list of strings misses any combination
+  # that isn't byte-for-byte one of those -- switched to a substring check:
+  # any status containing "NO_MEDIUM" anywhere in it counts.
+  # !is.na(status) guards against grepl() returning NA for a missing status
+  # (unlike %in%, which safely returns FALSE for NA) -- without that guard,
+  # a row with no status at all would turn into NA here instead of staying
+  # as its original (not-flagged) value.
+  has_no_medium <- function(status) {
+    !is.na(status) & grepl("NO_MEDIUM", status, fixed = TRUE)
+  }
   
   # overwrite the value columns in place with NA wherever their own status
   # flags a bad read -- no separate "_clean" columns. The *_status columns
@@ -173,11 +174,11 @@ scan_list <- lapply(scan_list, function(df) {
   # extra flag column on top of that.
   df <- df %>%
     mutate(
-      DOC_mg.l = ifelse(DOC_status %in% status_values_to_replace, NA, DOC_mg.l),
-      NO3.N_mg.l = ifelse(NO3.N_status %in% status_values_to_replace, NA, NO3.N_mg.l),
-      NO3_mg.l = ifelse(NO3_status %in% status_values_to_replace, NA, NO3_mg.l),
-      TOC_mg.l = ifelse(TOC_status %in% status_values_to_replace, NA, TOC_mg.l),
-      TSS_mg.l = ifelse(TSS_status %in% status_values_to_replace, NA, TSS_mg.l)
+      DOC_mg.l = ifelse(has_no_medium(DOC_status), NA, DOC_mg.l),
+      NO3.N_mg.l = ifelse(has_no_medium(NO3.N_status), NA, NO3.N_mg.l),
+      NO3_mg.l = ifelse(has_no_medium(NO3_status), NA, NO3_mg.l),
+      TOC_mg.l = ifelse(has_no_medium(TOC_status), NA, TOC_mg.l),
+      TSS_mg.l = ifelse(has_no_medium(TSS_status), NA, TSS_mg.l)
     )
   
   # find all spectral columns (those starting with "X" and ending with ".nm")
@@ -190,11 +191,11 @@ scan_list <- lapply(scan_list, function(df) {
       
       # apply the NA logic based on status values
       df[[col]] <- ifelse(
-        df$DOC_status %in% status_values_to_replace |
-          df$NO3.N_status %in% status_values_to_replace |
-          df$NO3_status %in% status_values_to_replace |
-          df$TOC_status %in% status_values_to_replace |
-          df$TSS_status %in% status_values_to_replace,
+        has_no_medium(df$DOC_status) |
+          has_no_medium(df$NO3.N_status) |
+          has_no_medium(df$NO3_status) |
+          has_no_medium(df$TOC_status) |
+          has_no_medium(df$TSS_status),
         NA, df[[col]]
       )
     }
@@ -229,8 +230,8 @@ plot_variables <- function(df, file_name) {
 
 # generate plots and save 
 for (i in seq_along(scan_csvs)){
-  print(plot_variables(scan_filtered[[i]], scan_csvs[i]))
-  ggsave(paste0("scan_figs/", scan_csvs[i], ".png"), plot_variables(scan_filtered[[i]], scan_csvs[i]))
+  print(plot_variables(scan_list[[i]], scan_csvs[i]))
+  ggsave(paste0("scan_figs/", scan_csvs[i], ".png"), plot_variables(scan_list[[i]], scan_csvs[i]))
 }
 
 # ###################################
@@ -291,9 +292,9 @@ remove_extension <- function(file_name) {
 }
 
 # loop through each data frame in the list
-for (i in seq_along(scan_filtered)) {
+for (i in seq_along(scan_list)) {
   # access the current data frame
-  df <- scan_filtered[[i]]
+  df <- scan_list[[i]]
   
   # define the file name and path
   clean_name <- remove_extension(scan_csvs[i])
